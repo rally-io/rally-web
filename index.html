@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rally - הפלטפורמה המובילה לפאדל</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <!-- Base Scripts -->
+    <script src="/assets/js/i18n.js"></script>
+    <script src="/assets/js/nav.js"></script>
+    <script src="/assets/js/footer.js"></script>
+    <script src="/assets/js/main.js"></script>
+</head>
+<body class="antialiased bg-slate-950 text-slate-50 selection:bg-electric-green selection:text-slate-900">
+    <div id="navbar-placeholder"></div>
+    
+    <main>
+        <!-- Hero Section -->
+        <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-b from-electric-green/10 to-transparent pointer-events-none"></div>
+            <!-- Glow effect -->
+            <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-electric-green/20 blur-[120px] rounded-full pointer-events-none"></div>
+            
+            <div class="container mx-auto px-4 relative z-10 text-center">
+                <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 max-w-4xl mx-auto" data-aos>
+                    <span data-i18n="hero.headline">The Leading Padel Platform in Israel</span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto" data-aos data-i18n="hero.subheadline">
+                    Find courts, manage tournaments, and run your club in one comprehensive app.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4" data-aos>
+                    <a href="/app.html" class="flex items-center justify-center gap-3 w-full sm:w-auto px-8 py-4 bg-electric-green text-slate-950 font-bold rounded-full hover-glow text-lg">
+                        <i data-lucide="smartphone" class="w-5 h-5"></i>
+                        <span data-i18n="hero.cta_app">Download App</span>
+                    </a>
+                    <a href="/crm.html" class="flex items-center justify-center gap-3 w-full sm:w-auto px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-full backdrop-blur-sm transition-colors text-lg">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                        <span data-i18n="hero.cta_crm">For Club Managers</span>
+                    </a>
+                </div>
+
+                <!-- Stores Badges Placeholder -->
+                <div class="mt-12 flex justify-center gap-4 opacity-70 hover:opacity-100 transition-opacity" data-aos>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store" class="h-12 cursor-pointer">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" class="h-12 cursor-pointer">
+                </div>
+            </div>
+        </section>
+
+        <!-- Mockup showcase -->
+        <section class="pb-20 relative z-10" data-aos>
+            <div class="container mx-auto px-4">
+                <div class="relative max-w-5xl mx-auto rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-lg shadow-2xl">
+                    <div class="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center overflow-hidden relative">
+                        <!-- Placeholder for actual app screenshot / video -->
+                        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1627056461460-70f90e756cb8?w=1600&h=900&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
+                        <i data-lucide="play-circle" class="w-20 h-20 text-electric-green z-10 cursor-pointer hover:scale-110 transition-transform drop-shadow-lg"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Overview -->
+        <section class="py-24 bg-slate-900 relative">
+            <div class="container mx-auto px-4 relative z-10">
+                <h2 class="text-3xl md:text-5xl font-bold text-center mb-16" data-i18n="features.title">Everything in One Place</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Feature 1 -->
+                    <div class="p-8 rounded-2xl bg-slate-800 border border-white/5 hover:border-electric-green/50 transition-colors group" data-aos>
+                        <div class="w-14 h-14 rounded-full bg-electric-green/10 flex items-center justify-center mb-6 text-electric-green group-hover:scale-110 transition-transform">
+                            <i data-lucide="calendar-check"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3" data-i18n="features.booking_title">Easy Court Booking</h3>
+                        <p class="text-gray-400" data-i18n="features.booking_desc">View real-time availability and book courts with a click, including Google Maps navigation.</p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="p-8 rounded-2xl bg-slate-800 border border-white/5 hover:border-electric-green/50 transition-colors group" data-aos>
+                        <div class="w-14 h-14 rounded-full bg-electric-green/10 flex items-center justify-center mb-6 text-electric-green group-hover:scale-110 transition-transform">
+                            <i data-lucide="trophy"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3" data-i18n="features.tournaments_title">Tournaments</h3>
+                        <p class="text-gray-400" data-i18n="features.tournaments_desc">Register for local tournaments, track bracket stages, and play to win.</p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="p-8 rounded-2xl bg-slate-800 border border-white/5 hover:border-electric-green/50 transition-colors group" data-aos>
+                        <div class="w-14 h-14 rounded-full bg-electric-green/10 flex items-center justify-center mb-6 text-electric-green group-hover:scale-110 transition-transform">
+                            <i data-lucide="trending-up"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3" data-i18n="features.ranking_title">Performance Based Ranking</h3>
+                        <p class="text-gray-400" data-i18n="features.ranking_desc">Improve your skill rating with Rally's unique dynamic ELO system.</p>
+                    </div>
+
+                    <!-- Feature 4 -->
+                    <div class="p-8 rounded-2xl bg-slate-800 border border-white/5 hover:border-electric-green/50 transition-colors group" data-aos>
+                        <div class="w-14 h-14 rounded-full bg-electric-green/10 flex items-center justify-center mb-6 text-electric-green group-hover:scale-110 transition-transform">
+                            <i data-lucide="credit-card"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3" data-i18n="features.payments_title">Secure Payments</h3>
+                        <p class="text-gray-400" data-i18n="features.payments_desc">Pay directly from the app securely and quickly with leading Israeli payment gateways.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="footer-placeholder"></div>
+</body>
+</html>

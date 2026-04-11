@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rally - App</title>
+    <!-- Tailwind via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <!-- Base Scripts -->
+    <script src="/assets/js/i18n.js"></script>
+    <script src="/assets/js/nav.js"></script>
+    <script src="/assets/js/footer.js"></script>
+    <script src="/assets/js/main.js"></script>
+</head>
+<body class="antialiased bg-slate-950 text-slate-50 selection:bg-electric-green selection:text-slate-900">
+    <div id="navbar-placeholder"></div>
+    
+    <main class="pt-32 pb-24">
+        <section class="container mx-auto px-4 mb-20 text-center">
+            <h1 class="text-4xl md:text-6xl font-bold mb-6" data-aos data-i18n="nav.app">App</h1>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto" data-aos data-i18n="features.title">Everything in One Place</p>
+        </section>
+
+        <!-- App Features -->
+        <section class="container mx-auto px-4 max-w-6xl">
+            <!-- Feature Block 1 -->
+            <div class="flex flex-col md:flex-row items-center gap-12 mb-24" data-aos>
+                <div class="flex-1 order-2 md:order-1">
+                    <div class="w-16 h-16 rounded-2xl bg-electric-green/10 flex items-center justify-center mb-6 text-electric-green">
+                        <i data-lucide="map-pin" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-3xl font-bold mb-4" data-i18n="features.booking_title">Easy Court Booking</h2>
+                    <p class="text-lg text-gray-400 mb-8 leading-relaxed" data-i18n="features.booking_desc">View real-time availability and book courts with a click, including Google Maps navigation.</p>
+                </div>
+                <div class="flex-1 order-1 md:order-2 w-full">
+                    <div class="bg-slate-800 border border-white/10 rounded-3xl aspect-square flex items-center justify-center p-8 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-tr from-electric-green/5 to-transparent"></div>
+                        <img src="https://images.unsplash.com/photo-1627056461460-70f90e756cb8?w=800&q=80" alt="Padel App Mockup" class="rounded-xl shadow-2xl relative z-10 object-cover w-full h-full opacity-80 mix-blend-luminosity">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature Block 2 -->
+            <div class="flex flex-col md:flex-row items-center gap-12 mb-24" data-aos>
+                <div class="flex-1 w-full">
+                    <div class="bg-slate-800 border border-white/10 rounded-3xl aspect-square flex items-center justify-center p-8 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-electric-green/5 to-transparent"></div>
+                        <i data-lucide="medal" class="w-32 h-32 text-electric-green/20"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="w-16 h-16 rounded-2xl bg-electric-green/10 flex items-center justify-center mb-6 text-electric-green">
+                        <i data-lucide="bar-chart-2" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-3xl font-bold mb-4" data-i18n="features.ranking_title">Performance-based Ranking</h2>
+                    <p class="text-lg text-gray-400 mb-8 leading-relaxed" data-i18n="features.ranking_desc">Improve your skill rating with Rally's unique dynamic ELO system.</p>
+                </div>
+            </div>
+            
+            <!-- Download CTA -->
+            <div class="text-center py-16 bg-slate-900 border border-white/5 rounded-3xl" data-aos>
+                <h3 class="text-2xl font-bold mb-8" data-i18n="hero.cta_app">Download App</h3>
+                <div class="flex flex-wrap justify-center gap-4 px-4">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store" class="h-12 cursor-pointer hover:scale-105 transition-transform">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" class="h-12 cursor-pointer hover:scale-105 transition-transform">
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="footer-placeholder"></div>
+</body>
+</html>

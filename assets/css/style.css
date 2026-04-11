@@ -1,0 +1,63 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&family=Inter:wght@300;400;500;700&display=swap');
+
+/* Dynamic Typography based on Lang */
+html[lang="he"] {
+  font-family: 'Heebo', sans-serif;
+  font-size: 17px; /* Slightly larger for Hebrew readability */
+}
+
+html[lang="en"] {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+}
+
+/* Base styling */
+body {
+  background-color: #0B1120; /* Dark Navy - Sports aesthetic */
+  color: #F8FAFC;
+  overflow-x: hidden;
+}
+
+/* Accent Colors */
+.text-electric-green {
+  color: #39FF14;
+}
+.bg-electric-green {
+  background-color: #39FF14;
+}
+.border-electric-green {
+  border-color: #39FF14;
+}
+
+/* Utilities for hover and glowing */
+.hover-glow:hover {
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.5);
+  transition: all 0.3s ease;
+}
+
+/* Custom scroll transitions */
+[data-aos] {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+[data-aos].aos-animate {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Sticky navigation behavior */
+#main-nav {
+  transition: background-color 0.3s ease, border-bottom 0.3s ease;
+}
+#main-nav.scrolled {
+  background-color: rgba(11, 17, 32, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Global RTL adjustments */
+html[dir="rtl"] .icon-flip {
+  transform: scaleX(-1);
+}

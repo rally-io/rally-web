@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "app": "App",
+    "crm": "CRM",
+    "pricing": "Pricing",
+    "contact": "Contact"
+  },
+  "hero": {
+    "headline": "The Leading Padel Platform in Israel",
+    "subheadline": "Find courts, manage tournaments, and run your club in one comprehensive app.",
+    "cta_app": "Download App",
+    "cta_crm": "For Club Managers"
+  },
+  "features": {
+    "title": "Everything in One Place",
+    "booking_title": "Easy Court Booking",
+    "booking_desc": "View real-time availability and book courts with a click, including Google Maps navigation.",
+    "tournaments_title": "Tournaments & Competitions",
+    "tournaments_desc": "Register for local tournaments, track bracket stages, and play to win.",
+    "ranking_title": "Performance-based Ranking",
+    "ranking_desc": "Improve your skill rating with Rally's unique dynamic ELO system.",
+    "payments_title": "Secure Payments",
+    "payments_desc": "Pay directly from the app securely and quickly with leading Israeli payment gateways."
+  },
+  "crm_features": {
+    "title": "Smart CRM for Clubs",
+    "dashboard_title": "Advanced Dashboard",
+    "dashboard_desc": "Control all your courts from one intuitive interface.",
+    "revenue_title": "Revenue Analytics",
+    "revenue_desc": "Track income and activity data to maximize your club's profits.",
+    "users_title": "Player Management",
+    "users_desc": "Easily manage player profiles, match history, and memberships.",
+    "automated_title": "Automated Billing",
+    "automated_desc": "Save time with smart billing, eco-friendly invoices, and receipts."
+  },
+  "pricing": {
+    "title": "Transparent Pricing",
+    "app_title": "For Padel Lovers",
+    "app_price": "Free",
+    "app_feature1": "Court Search",
+    "app_feature2": "Personal Ranking",
+    "app_feature3": "Tournament Entry",
+    "crm_title": "For Clubs",
+    "crm_price": "Contact Us",
+    "crm_feature1": "Full Court Management",
+    "crm_feature2": "Automated Payments",
+    "crm_feature3": "Advanced Reports"
+  },
+  "contact": {
+    "title": "Get in Touch",
+    "name": "Full Name",
+    "email": "Email Address",
+    "message": "Your Message",
+    "submit": "Send Message",
+    "address": "1 Padel St, Tel Aviv, Israel"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last Updated: March 1, 2026",
+    "content": "Rally respects your privacy. This document outlines how we collect, use, and protect your data in accordance with the Israeli Privacy Protection Law (5741-1981) and GDPR. We collect contact info, game preferences, and location data (Google Maps) to improve the service. Our payment systems are securely operated by Cardcom and Tranzila."
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "updated": "Last Updated: March 1, 2026",
+    "content": "Welcome to Rally. By using our app or site, you agree to these terms. Usage is governed by the laws of the State of Israel. Cancellations are subject to the Consumer Protection Law. Players are fully responsible for their health and safety during matches."
+  },
+  "footer": {
+    "rights": "All rights reserved Rally",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}
