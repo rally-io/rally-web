@@ -3,17 +3,18 @@ document.addEventListener('DOMContentLoaded', () => {
     <nav id="main-nav" class="fixed w-full z-50 transition-all duration-300 py-4">
       <div class="container mx-auto px-4 flex justify-between items-center">
         <!-- Logo -->
-        <a href="/index.html" class="flex items-center gap-2 group">
-          <img src="/assets/img/logo.jpeg" alt="Rally Logo" class="w-10 h-10 rounded-full group-hover:scale-110 transition-transform object-cover">
+        <a href="./index.html" class="flex items-center gap-2 group">
+          <img src="./assets/img/logo.jpeg" alt="Rally Logo" class="w-10 h-10 rounded-full group-hover:scale-110 transition-transform object-cover">
           <span class="text-2xl font-bold tracking-tight text-white">Rally</span>
         </a>
         
         <!-- Desktop Nav -->
         <div class="hidden md:flex items-center gap-8">
-          <a href="/app.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.app">App</a>
-          <a href="/crm.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.crm">CRM</a>
-          <a href="/pricing.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.pricing">Pricing</a>
-          <a href="/contact.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.contact">Contact</a>
+          <a href="./app.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.app">App</a>
+          <a href="./crm.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.crm">CRM</a>
+          <a href="./level.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.level">Level</a>
+          <a href="./pricing.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.pricing">Pricing</a>
+          <a href="./contact.html" class="text-gray-300 hover:text-white transition-colors" data-i18n="nav.contact">Contact</a>
         </div>
 
         <!-- Right / Language details -->
@@ -29,12 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
       
-      <!-- Mobile Nav (Hidden by default) -->
       <div id="mobile-menu" class="hidden md:hidden absolute top-full left-0 w-full bg-slate-900 border-b border-white/10 flex-col items-center py-4 space-y-4 shadow-lg backdrop-blur-md">
-        <a href="/app.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.app">App</a>
-        <a href="/crm.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.crm">CRM</a>
-        <a href="/pricing.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.pricing">Pricing</a>
-        <a href="/contact.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.contact">Contact</a>
+        <a href="./app.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.app">App</a>
+        <a href="./crm.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.crm">CRM</a>
+        <a href="./level.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.level">Level</a>
+        <a href="./pricing.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.pricing">Pricing</a>
+        <a href="./contact.html" class="text-gray-300 hover:text-white text-lg" data-i18n="nav.contact">Contact</a>
       </div>
     </nav>
   `;
