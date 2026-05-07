@@ -15,6 +15,13 @@
     <script src="./assets/js/nav.js?v=2"></script>
     <script src="./assets/js/footer.js?v=2"></script>
     <script src="./assets/js/main.js?v=2"></script>
+    <style>
+        .privacy-section { margin-bottom: 2.5rem; }
+        .privacy-section h2 { font-size: 1.5rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .privacy-section p { margin-bottom: 0.75rem; color: #94a3b8; line-height: 1.8; }
+        .privacy-section ul { list-style: disc; padding-inline-start: 1.5rem; margin-bottom: 0.75rem; }
+        .privacy-section ul li { color: #94a3b8; line-height: 1.8; margin-bottom: 0.5rem; }
+    </style>
 </head>
 <body class="antialiased bg-slate-950 text-slate-50 selection:bg-electric-green selection:text-slate-900">
     <div id="navbar-placeholder"></div>
@@ -22,12 +29,142 @@
     <main class="pt-32 pb-24">
         <section class="container mx-auto px-4 max-w-4xl">
             <h1 class="text-4xl md:text-5xl font-bold mb-4 text-center" data-aos data-i18n="privacy.title">Privacy Policy</h1>
-            <p class="text-gray-500 mb-12 text-center" data-aos data-i18n="privacy.updated">Last Updated: March 1, 2026</p>
+            <p class="text-gray-500 mb-4 text-center" data-aos data-i18n="privacy.updated">Last Updated: May 7, 2026</p>
             
-            <div class="bg-slate-900 rounded-3xl p-8 md:p-12 border border-white/5 prose prose-invert max-w-none text-gray-300 leading-relaxed" data-aos>
-                <p data-i18n="privacy.content">
-                    Rally respects your privacy. This document outlines how we collect, use, and protect your data in accordance with the Israeli Privacy Protection Law (5741-1981) and GDPR. We collect contact info, game preferences, and location data (Google Maps) to improve the service. Our payment systems are securely operated by Cardcom and Tranzila.
-                </p>
+            <div class="bg-slate-900 rounded-3xl p-8 md:p-12 border border-white/5 max-w-none" data-aos>
+
+                <!-- Intro -->
+                <div class="privacy-section">
+                    <p data-i18n="privacy.intro1"></p>
+                    <p data-i18n="privacy.intro2"></p>
+                </div>
+
+                <!-- General -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.general_title"></h2>
+                    <p data-i18n="privacy.general_p1"></p>
+                    <p data-i18n="privacy.general_p2"></p>
+                    <p data-i18n="privacy.general_p3"></p>
+                    <p data-i18n="privacy.general_p4"></p>
+                    <p data-i18n="privacy.general_p5"></p>
+                    <p data-i18n="privacy.general_p6"></p>
+                </div>
+
+                <!-- Database & Usage -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.database_title"></h2>
+                    <p data-i18n="privacy.database_intro"></p>
+                    <ul>
+                        <li data-i18n="privacy.database_li1"></li>
+                        <li data-i18n="privacy.database_li2"></li>
+                        <li data-i18n="privacy.database_li3"></li>
+                        <li data-i18n="privacy.database_li4"></li>
+                        <li data-i18n="privacy.database_li5"></li>
+                        <li data-i18n="privacy.database_li6"></li>
+                    </ul>
+                </div>
+
+                <!-- Usage & Direct Marketing -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.marketing_title"></h2>
+                    <p data-i18n="privacy.marketing_intro"></p>
+                    <ul>
+                        <li data-i18n="privacy.marketing_li1"></li>
+                        <li data-i18n="privacy.marketing_li2"></li>
+                        <li data-i18n="privacy.marketing_li3"></li>
+                        <li data-i18n="privacy.marketing_li4"></li>
+                        <li data-i18n="privacy.marketing_li5"></li>
+                    </ul>
+                    <p data-i18n="privacy.marketing_p1"></p>
+                    <p data-i18n="privacy.marketing_p2"></p>
+                </div>
+
+                <!-- Third Party Disclosure -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.thirdparty_title"></h2>
+                    <p data-i18n="privacy.thirdparty_intro"></p>
+                    <ul>
+                        <li data-i18n="privacy.thirdparty_li1"></li>
+                        <li data-i18n="privacy.thirdparty_li2"></li>
+                        <li data-i18n="privacy.thirdparty_li3"></li>
+                        <li data-i18n="privacy.thirdparty_li4"></li>
+                        <li data-i18n="privacy.thirdparty_li5"></li>
+                        <li data-i18n="privacy.thirdparty_li6"></li>
+                        <li data-i18n="privacy.thirdparty_li7"></li>
+                        <li data-i18n="privacy.thirdparty_li8"></li>
+                        <li data-i18n="privacy.thirdparty_li9"></li>
+                        <li data-i18n="privacy.thirdparty_li10"></li>
+                    </ul>
+                </div>
+
+                <!-- Aggregated Data -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.aggregated_title"></h2>
+                    <p data-i18n="privacy.aggregated_p1"></p>
+                </div>
+
+                <!-- Third Parties & AI -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.ai_title"></h2>
+                    <p data-i18n="privacy.ai_p1"></p>
+                    <p data-i18n="privacy.ai_p2"></p>
+                    <p data-i18n="privacy.ai_p3"></p>
+                    <p data-i18n="privacy.ai_p4"></p>
+                    <p data-i18n="privacy.ai_p5"></p>
+                    <p data-i18n="privacy.ai_p6"></p>
+                </div>
+
+                <!-- User Choices -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.choices_title"></h2>
+                    <p data-i18n="privacy.choices_p1"></p>
+                    <p data-i18n="privacy.choices_p2"></p>
+                </div>
+
+                <!-- Chats & Communities -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.chats_title"></h2>
+                    <p data-i18n="privacy.chats_p1"></p>
+                    <p data-i18n="privacy.chats_p2"></p>
+                    <p data-i18n="privacy.chats_p3"></p>
+                    <p data-i18n="privacy.chats_p4"></p>
+                </div>
+
+                <!-- Court Owners -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.courts_title"></h2>
+                    <p data-i18n="privacy.courts_p1"></p>
+                    <p data-i18n="privacy.courts_p2"></p>
+                </div>
+
+                <!-- Data Collection Technologies -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.tech_title"></h2>
+                    <p data-i18n="privacy.tech_p1"></p>
+                    <p data-i18n="privacy.tech_p2"></p>
+                </div>
+
+                <!-- Information Security -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.security_title"></h2>
+                    <p data-i18n="privacy.security_p1"></p>
+                    <p data-i18n="privacy.security_p2"></p>
+                </div>
+
+                <!-- Right to Access -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.access_title"></h2>
+                    <p data-i18n="privacy.access_p1"></p>
+                    <p data-i18n="privacy.access_p2"></p>
+                    <p data-i18n="privacy.access_p3"></p>
+                </div>
+
+                <!-- Changes to Policy -->
+                <div class="privacy-section">
+                    <h2 data-i18n="privacy.changes_title"></h2>
+                    <p data-i18n="privacy.changes_p1"></p>
+                </div>
+
             </div>
         </section>
     </main>
