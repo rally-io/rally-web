@@ -7,7 +7,7 @@ import { ProfileRing } from './ProfileRing'
 import { cn } from '@/lib/utils'
 
 export function Navbar() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const { data: status } = useOnboardingStatus()

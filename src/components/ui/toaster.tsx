@@ -1,6 +1,5 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
 import { ToastAction } from "@/components/ui/toast"
 import { ToastClose } from "@/components/ui/toast"
 import {
@@ -11,7 +10,7 @@ import {
   ToastViewport,
 } from "@/components/ui/toast"
 
-type ToastElement = React.ReactElement<ToastProps>
+type ToastElement = React.ReactElement<React.ComponentPropsWithoutRef<typeof Toast>>
 
 interface ToasterProps {
   toasts: ToastElement[]
@@ -20,16 +19,19 @@ interface ToasterProps {
 export function Toaster({ toasts }: ToasterProps) {
   return (
     <ToastProvider>
-      {toasts.map((toast, index) => (
-        <Toast key={index} {...toast.props}>
-          <div className="grid gap-1">
-            <ToastTitle>{toast.props.title}</ToastTitle>
-            <ToastDescription>{toast.props.description}</ToastDescription>
-          </div>
-          {toast.props.action}
-          <ToastClose />
-        </Toast>
-      ))}
+      {toasts.map((toast, index) => {
+        const { title, description, action, ...rest } = toast.props as any
+        return (
+          <Toast key={index} {...rest}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && <ToastDescription>{description}</ToastDescription>}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        )
+      })}
       <ToastViewport />
     </ToastProvider>
   )

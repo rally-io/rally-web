@@ -38,3 +38,10 @@ yarn-error.log*
 
 # Misc
 *.map
+
+.agents/
+.claude/
+.superpowers/
+skills-lock.json
+server.log
+docs/

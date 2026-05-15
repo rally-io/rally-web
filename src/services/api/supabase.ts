@@ -7,7 +7,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function signInWithPhone(phone: string, code: string) {
-  return supabase.auth.verifyOTP({ phone, token: code, type: 'sms' })
+  return supabase.auth.verifyOtp({ phone, token: code, type: 'sms' })
 }
 
 export async function signOut() {
