@@ -1,8 +1,8 @@
 // src/types/api.ts
-export interface ApiSuccess<T> {
+export interface ApiSuccess<T, M = unknown> {
   success: true
   data: T
-  meta: any
+  meta: M | null
   error: null
 }
 
@@ -15,7 +15,11 @@ export interface ApiFailure {
   }
 }
 
-export type ApiResponse<T> = ApiSuccess<T> | ApiFailure
+export type ApiResponse<T, M = unknown> = ApiSuccess<T, M> | ApiFailure
+
+export interface CursorMeta {
+  next_cursor: string | null
+}
 
 // Clubs
 export interface Club {
@@ -136,6 +140,31 @@ export interface TournamentRegistrationRequest {
   invite_phone?: string | null
   invite_country_code?: string | null
   use_credits: boolean
+}
+
+export interface TournamentRegistrationResponse {
+  id: string
+  tournament_id: string
+  player_1_id: string
+  player_2_id: string | null
+  player_2_name: string | null
+  guest_player_2_id: string | null
+  guest_player_2_name: string | null
+  team_name: string | null
+  status: string
+  payment_status: string | null
+  credits_applied: number
+  service_fee: number
+  amount_to_pay: number
+  amount_credited: number | null
+  entry_fee: number
+  tournament_name: string
+  tournament_club_name: string
+  image_url: string | null
+  thumb_url: string | null
+  start_date: string
+  end_date: string
+  within_cancellation_window: boolean
 }
 
 // Profile update

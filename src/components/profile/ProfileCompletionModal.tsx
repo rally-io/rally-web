@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { SkillLevelPicker } from './SkillLevelPicker'
 
-interface MissingField {
+export interface MissingField {
   field: string
   label: string
   scope: string

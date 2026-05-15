@@ -6,7 +6,6 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach auth token from localStorage
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('sb-access-token')
   if (token) {
@@ -15,24 +14,50 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// Extract data on success, throw typed error on failure
 client.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response) {
       const { status, data } = error.response
+
       if (status === 401) {
-        return Promise.reject({ isUnauthorized: true, detail: data.detail })
+        return Promise.reject({
+          isUnauthorized: true,
+          status,
+          detail: data?.detail ?? 'Authentication required',
+        })
       }
+
       if (data?.error?.code === 'PROFILE_FIELDS_REQUIRED') {
-        return Promise.reject({ isProfileFieldsRequired: true, ...data.error })
+        return Promise.reject({
+          isProfileFieldsRequired: true,
+          status,
+          ...data.error,
+        })
       }
-      if (data?.success === false) {
-        return Promise.reject(data.error)
+
+      if (data?.success === false && data?.error) {
+        return Promise.reject({
+          status,
+          code: data.error.code,
+          message: data.error.message,
+          details: data.error.details,
+        })
       }
+
+      if (status === 404) {
+        return Promise.reject({
+          isNotFound: true,
+          status,
+          message: data?.detail ?? 'Not found',
+        })
+      }
+
       if (data?.detail) {
-        return Promise.reject({ code: 'SERVER_ERROR', message: data.detail })
+        return Promise.reject({ status, code: 'SERVER_ERROR', message: data.detail })
       }
+
+      return Promise.reject({ status, code: 'SERVER_ERROR', message: 'An unexpected error occurred' })
     }
     return Promise.reject({ code: 'NETWORK_ERROR', message: 'Network error' })
   },
