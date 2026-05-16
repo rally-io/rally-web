@@ -3,5 +3,18 @@
 @theme {
   --color-electric-green: #39ff14;
   --color-slate-950: #020617;
+  --color-rally-bg: #111111;
+  --color-rally-surface: #1c1c1e;
+  --color-rally-surface-2: #27272a;
+  --color-rally-border: #333333;
+  --color-rally-border-light: #3f3f46;
+  --color-rally-accent: #ccff00;
+  --color-rally-accent-text: #000000;
+  --color-rally-text: #ffffff;
+  --color-rally-text-2: #a1a1aa;
+  --color-rally-text-muted: #71717a;
+  --color-rally-error: #ef4444;
+  --color-rally-success: #22c55e;
+  --color-rally-info: #3b82f6;
   --font-sans: var(--font-sans, system-ui, -apple-system, sans-serif);
 }
