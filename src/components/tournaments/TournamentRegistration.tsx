@@ -332,7 +332,7 @@ export function TournamentRegistration({
           </Button>
           <p className="mt-2 text-center text-xs text-gray-500">
             {t('tournaments.agree_prefix')}{' '}
-            <a href="/terms.html" className="underline text-gray-400 hover:text-white">
+            <a href="/terms" className="underline text-gray-400 hover:text-white">
               {t('tournaments.terms_of_use')}
             </a>
           </p>
