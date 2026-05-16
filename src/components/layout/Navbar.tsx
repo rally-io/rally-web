@@ -12,6 +12,7 @@ import {
   Settings,
   CircleUserRound,
   Medal,
+  Languages,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -41,9 +42,20 @@ function getInitials(name: string, email: string | null | undefined): string {
 }
 
 export function Navbar() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
+
+  const toggleLanguage = () => {
+    const next = i18n.language === 'he' ? 'en' : 'he'
+    void i18n.changeLanguage(next)
+    try {
+      localStorage.setItem('rallyLang', next)
+    } catch {
+      // localStorage may be unavailable (private mode, SSR) — non-fatal
+    }
+  }
+  const otherLangLabel = i18n.language === 'he' ? 'EN' : 'עב'
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const { session, signOut, user } = useAuth()
@@ -139,6 +151,15 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleLanguage}
+            className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-electric-green hover:border-electric-green/40 transition-colors"
+            aria-label="Toggle language"
+          >
+            <Languages size={14} />
+            <span>{otherLangLabel}</span>
+          </button>
+
           {isSignedIn && status !== 'loading' ? (
             <div className="relative">
               <button
@@ -264,6 +285,17 @@ export function Navbar() {
 
       {mobileOpen && (
         <nav className="md:hidden border-t border-slate-800 bg-slate-950 px-4 py-4 flex flex-col gap-3">
+          <button
+            onClick={() => {
+              toggleLanguage()
+              setMobileOpen(false)
+            }}
+            className="self-start inline-flex items-center gap-1.5 rounded-full border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-electric-green hover:border-electric-green/40 transition-colors"
+            aria-label="Toggle language"
+          >
+            <Languages size={14} />
+            <span>{otherLangLabel}</span>
+          </button>
           {navLinks.map((link) => (
             <Link
               key={link.to}
