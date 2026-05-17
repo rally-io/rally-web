@@ -3,33 +3,21 @@ import type { ReactNode } from 'react'
 interface FactCardProps {
   icon?: ReactNode
   label: string
-  value: string
-  highlightLabel?: string
-  highlightValue?: string
+  value: ReactNode
 }
 
-export function FactCard({
-  icon, label, value, highlightLabel, highlightValue,
-}: FactCardProps) {
+export function FactCard({ icon, label, value }: FactCardProps) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-rally-surface border border-rally-border p-4">
-      <div className="flex items-center gap-3 min-w-0">
-        {icon && <span className="text-rally-accent shrink-0">{icon}</span>}
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
-            {label}
-          </p>
-          <p className="text-rally-text font-semibold truncate">{value}</p>
-        </div>
-      </div>
-      {highlightLabel && (
-        <div className="text-end shrink-0 ms-3">
-          <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
-            {highlightLabel}
-          </p>
-          <p className="text-rally-accent font-bold">{highlightValue}</p>
-        </div>
+    <div className="rounded-2xl bg-rally-surface border border-rally-border p-5 hover:border-rally-accent/40 transition-colors">
+      {icon && (
+        <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-rally-accent/15 text-rally-accent mb-3">
+          {icon}
+        </span>
       )}
+      <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
+        {label}
+      </p>
+      <p className="text-rally-text font-bold text-lg mt-1">{value}</p>
     </div>
   )
 }

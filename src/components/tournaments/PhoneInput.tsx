@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
+import { useRtl } from '@/hooks/useRtl'
 
 interface PhoneInputProps {
   onChange: (v: { countryCode: string; phone: string }) => void
@@ -9,6 +10,7 @@ interface PhoneInputProps {
 
 export function PhoneInput({ onChange, placeholder }: PhoneInputProps) {
   const { t } = useTranslation()
+  const { isRTL } = useRtl()
   const [dial, setDial] = useState(DEFAULT_COUNTRY.dial)
   const [phone, setPhone] = useState('')
 
@@ -16,7 +18,7 @@ export function PhoneInput({ onChange, placeholder }: PhoneInputProps) {
     onChange({ countryCode: nextDial, phone: nextPhone })
 
   return (
-    <div className="flex gap-2">
+    <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
       <select
         aria-label={t('tournament.partnerSelectCountryTitle')}
         value={dial}
@@ -30,10 +32,11 @@ export function PhoneInput({ onChange, placeholder }: PhoneInputProps) {
       <input
         type="tel"
         inputMode="tel"
+        dir={isRTL ? 'rtl' : 'ltr'}
         placeholder={placeholder ?? t('tournament.partnerMobileNumberPlaceholder')}
         value={phone}
         onChange={(e) => { setPhone(e.target.value); emit(dial, e.target.value) }}
-        className="flex-1 rounded-md bg-rally-surface-2 border border-rally-border text-rally-text px-3 py-2"
+        className="flex-1 rounded-md bg-rally-surface-2 border border-rally-border text-rally-text px-3 py-2 placeholder:text-rally-text-muted"
       />
     </div>
   )
