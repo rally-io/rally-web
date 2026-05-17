@@ -60,7 +60,7 @@ export default function TournamentsPage() {
         className="pointer-events-none fixed inset-0 bg-gradient-to-b from-rally-bg/40 via-transparent to-rally-bg/60"
       />
       <section className="relative container mx-auto px-4 max-w-7xl">
-        <h1 className="font-display text-5xl md:text-7xl font-black tracking-tight text-rally-text mb-4">
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-rally-text mb-4">
           {t('tournament.tabTournaments')}
         </h1>
         <p className="text-lg md:text-xl text-rally-text-2 max-w-2xl mb-10 leading-relaxed">
