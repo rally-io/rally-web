@@ -60,9 +60,11 @@ export function AuthOptionsStep({ onContinueWithEmail }: AuthOptionsStepProps) {
         type="button"
         onClick={onContinueWithEmail}
         disabled={pending !== null}
-        className="w-full flex items-center justify-center gap-3 rounded-md border border-white/10 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-50 hover:bg-slate-700 disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-3 rounded-md border border-white/10 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-50 hover:bg-slate-700 transition-colors disabled:opacity-50"
       >
-        <Mail size={18} />
+        <span className="w-5 h-5 flex items-center justify-center">
+          <Mail size={20} />
+        </span>
         <span>{t('auth.continue_email') || 'Continue with email'}</span>
       </button>
 

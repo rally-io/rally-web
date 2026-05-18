@@ -52,7 +52,7 @@ export default function TournamentsPage() {
         aria-hidden
         className="pointer-events-none fixed inset-0 bg-cover bg-center opacity-[0.07]"
         style={{
-          backgroundImage: "url('/padel-hero-bg.png')",
+          backgroundImage: "url('/padel-hero-bg.jpg')",
         }}
       />
       <div

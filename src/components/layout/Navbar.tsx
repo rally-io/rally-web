@@ -12,7 +12,11 @@ import {
   Settings,
   CircleUserRound,
   Medal,
-  Languages,
+  ChevronDown,
+  Home,
+  Trophy,
+  LayoutDashboard,
+  Mail,
   type LucideIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -55,21 +59,22 @@ export function Navbar() {
       // localStorage may be unavailable (private mode, SSR) — non-fatal
     }
   }
-  const otherLangLabel = i18n.language === 'he' ? 'EN' : 'עב'
+  const isHebrew = i18n.language === 'he'
+  const currentFlag = isHebrew ? '🇮🇱' : '🇺🇸'
+  const otherFlag = isHebrew ? '🇺🇸' : '🇮🇱'
+  const otherLangLabel = isHebrew ? 'English' : 'עברית'
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
   const { session, signOut, user } = useAuth()
   const { status, onboardingStatus, playerProfile, ensurePlayerProfile, clearSession } = useAppSession()
   const isSignedIn = !!session
 
-  const navLinks: { to: string; label: string }[] = [
-    { to: '/', label: t('nav.app') },
-    { to: '/clubs', label: t('nav.clubs') },
-    { to: '/tournaments', label: t('nav.tournaments') },
-    { to: '/crm', label: t('nav.crm') },
-    { to: '/level', label: t('nav.level') },
-    { to: '/pricing', label: t('nav.pricing') },
-    { to: '/contact', label: t('nav.contact') },
+  const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
+    { to: '/', label: t('nav.app'), icon: Home },
+    { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
+    { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
+    { to: '/contact', label: t('nav.contact'), icon: Mail },
   ]
 
   // Mirrors the mobile drawer (AppDrawerItems). Items without a web route are
@@ -142,36 +147,76 @@ export function Navbar() {
   }, [location.pathname, location.search])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-      <div className="container mx-auto flex items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-rally-bg/80 backdrop-blur-xl shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
+      <div className="container mx-auto flex items-center justify-between px-4 py-4 md:py-5 rtl:max-md:flex-row-reverse">
         <Link to="/" className="flex-shrink-0">
-          <Logo size="sm" showText={false} />
+          <Logo size="md" showText={true} />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={cn(
-                'text-sm transition-colors hover:text-electric-green',
-                location.pathname === link.to ? 'text-electric-green' : 'text-slate-300',
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="hidden md:flex items-center gap-1">
+          {navLinks.map((link) => {
+            const isActive = location.pathname === link.to
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={cn(
+                  'relative font-display font-semibold text-base px-4 py-2.5 rounded-lg transition-all duration-200',
+                  isActive
+                    ? 'text-rally-accent'
+                    : 'text-rally-text-2 hover:text-rally-text hover:bg-white/5',
+                )}
+              >
+                {link.label}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-1 left-3 right-3 h-[3px] bg-rally-accent rounded-full shadow-glow-electric"
+                  />
+                )}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={toggleLanguage}
-            className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-electric-green hover:border-electric-green/40 transition-colors"
-            aria-label="Toggle language"
-          >
-            <Languages size={14} />
-            <span>{otherLangLabel}</span>
-          </button>
+          <div className="hidden md:block relative">
+            <button
+              onClick={() => setLangOpen((o) => !o)}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3.5 py-2 hover:border-rally-accent/40 hover:bg-white/5 transition-colors"
+              aria-label="Change language"
+              aria-expanded={langOpen}
+            >
+              <span className="text-lg leading-none">{currentFlag}</span>
+              <ChevronDown
+                size={16}
+                className={cn(
+                  'text-rally-text-muted transition-transform',
+                  langOpen && 'rotate-180',
+                )}
+              />
+            </button>
+            {langOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setLangOpen(false)}
+                />
+                <div className="absolute end-0 mt-2 w-44 rounded-xl border border-white/10 bg-rally-surface shadow-2xl z-50 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      toggleLanguage()
+                      setLangOpen(false)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-rally-text hover:bg-white/5 transition-colors"
+                  >
+                    <span className="text-lg leading-none">{otherFlag}</span>
+                    <span className="flex-1 text-start font-medium">{otherLangLabel}</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {isSignedIn && status !== 'loading' ? (
             <div className="relative">
@@ -287,41 +332,37 @@ export function Navbar() {
           )}
 
           <button
-            className="md:hidden p-2 text-slate-300 hover:text-electric-green"
+            className="md:hidden p-2.5 rounded-lg border border-white/10 text-rally-text-2 hover:text-rally-accent hover:border-rally-accent/40 transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <nav className="md:hidden border-t border-slate-800 bg-slate-950 px-4 py-4 flex flex-col gap-3">
-          <button
-            onClick={() => {
-              toggleLanguage()
-              setMobileOpen(false)
-            }}
-            className="self-start inline-flex items-center gap-1.5 rounded-full border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-electric-green hover:border-electric-green/40 transition-colors"
-            aria-label="Toggle language"
-          >
-            <Languages size={14} />
-            <span>{otherLangLabel}</span>
-          </button>
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                'text-sm transition-colors hover:text-electric-green',
-                location.pathname === link.to ? 'text-electric-green' : 'text-slate-300',
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="md:hidden border-t border-white/10 bg-rally-bg px-4 py-4 flex flex-col gap-1">
+          {navLinks.map((link) => {
+            const isActive = location.pathname === link.to
+            const Icon = link.icon
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-xl font-display font-semibold text-base transition-colors min-h-[48px]',
+                  isActive
+                    ? 'bg-rally-accent/10 text-rally-accent border border-rally-accent/30'
+                    : 'text-rally-text-2 hover:text-rally-text hover:bg-white/5 border border-transparent',
+                )}
+              >
+                <Icon size={20} className={isActive ? 'text-rally-accent' : 'text-rally-text-muted'} />
+                <span>{link.label}</span>
+              </Link>
+            )
+          })}
           {isSignedIn ? (
             <>
               <div className="h-px bg-slate-800 my-1" />
@@ -374,11 +415,24 @@ export function Navbar() {
             <Link
               to={loginHref}
               onClick={() => setMobileOpen(false)}
-              className="text-sm text-slate-300 hover:text-electric-green transition-colors"
+              className="flex items-center justify-center gap-3 mt-2 px-4 py-3 rounded-xl bg-rally-accent text-rally-accent-text font-display font-bold text-base shadow-glow-electric hover:bg-rally-accent-hover transition-colors min-h-[48px]"
             >
-              {t('nav.signin')}
+              <CircleUserRound size={20} />
+              <span>{t('nav.signin')}</span>
             </Link>
           )}
+          <div className="h-px bg-white/10 my-2" />
+          <button
+            onClick={() => {
+              toggleLanguage()
+              setMobileOpen(false)
+            }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium text-rally-text-2 hover:text-rally-text hover:bg-white/5 transition-colors min-h-[48px]"
+            aria-label="Change language"
+          >
+            <span className="text-xl leading-none">{otherFlag}</span>
+            <span>{otherLangLabel}</span>
+          </button>
         </nav>
       )}
     </header>

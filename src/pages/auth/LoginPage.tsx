@@ -53,8 +53,21 @@ export default function LoginPage() {
     : step.userExists ? (t('auth.signin_title') || 'Welcome back')
     : (t('auth.signup_title') || 'Create your account')
 
+  const handleOuterBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate('/')
+    }
+  }
+
   return (
-    <AuthCard title={title} footer={<LegalDisclaimer />}>
+    <AuthCard
+      title={title}
+      subtitle={step.kind === 'options' ? t('auth.welcome_subtitle') : undefined}
+      footer={<LegalDisclaimer />}
+      onBack={step.kind === 'options' ? handleOuterBack : undefined}
+    >
       {step.kind === 'options' && (
         <AuthOptionsStep onContinueWithEmail={() => setStep({ kind: 'email' })} />
       )}
