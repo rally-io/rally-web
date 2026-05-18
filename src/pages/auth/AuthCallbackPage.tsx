@@ -30,7 +30,17 @@ export default function AuthCallbackPage() {
           return
         }
         if (data.session) {
-          navigate('/', { replace: true })
+          let returnTo = '/'
+          try {
+            const stashed = sessionStorage.getItem('rally:auth-return')
+            if (stashed && stashed.startsWith('/') && !stashed.startsWith('//')) {
+              returnTo = stashed
+            }
+            sessionStorage.removeItem('rally:auth-return')
+          } catch {
+            // sessionStorage may be unavailable — fall back to home.
+          }
+          navigate(returnTo, { replace: true })
           return
         }
         attempts += 1

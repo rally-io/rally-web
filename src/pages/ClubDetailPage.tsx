@@ -4,8 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { MapPin } from 'lucide-react'
 import { useClub } from '@/hooks/useClub'
 import { useBookCourt } from '@/hooks/useBookCourt'
+import { useAppSession } from '@/hooks/useAppSession'
+import { useAuthGate } from '@/hooks/useAuthGate'
 import { ClubSlotPicker, type SelectedSlot } from '@/components/clubs/ClubSlotPicker'
 import { ProfileCompletionModal, type MissingField } from '@/components/profile/ProfileCompletionModal'
+import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -32,6 +35,9 @@ export default function ClubDetailPage() {
   const clubParams = useMemo(() => ({ date, duration }), [date, duration])
   const { data: club, isLoading, isError } = useClub(id!, clubParams)
   const bookCourt = useBookCourt()
+  const { status } = useAppSession()
+  const { requireSignIn } = useAuthGate()
+  const signedOut = status === 'signed_out'
 
   const submitBooking = async () => {
     if (!selectedSlot || !id) return
@@ -121,27 +127,41 @@ export default function ClubDetailPage() {
           />
 
           {selectedSlot && (
-            <div className="mt-6 p-6 bg-slate-800 rounded-2xl border border-white/10">
-              <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-                <div>
-                  <p className="text-gray-400">{t('clubs.court_fee', { defaultValue: 'Court fee' })}</p>
-                  <p className="text-2xl font-bold text-electric-green">₪{selectedSlot.price}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">{t('clubs.service_fee', { defaultValue: 'Service fee' })}</p>
-                  <p className="text-xl font-bold">₪{selectedSlot.service_fee}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">{t('clubs.court', { defaultValue: 'Court' })}</p>
-                  <p className="text-xl font-bold">{selectedSlot.court_name}</p>
-                </div>
+            signedOut ? (
+              <div className="mt-6">
+                <SignInRequiredPanel
+                  message={t('auth.gate.sign_in_to_book')}
+                  ctaLabel={t('auth.gate.sign_in_button')}
+                  onSignIn={() => {
+                    void requireSignIn().catch(() => {
+                      // USER_CANCELLED — keep slot selection.
+                    })
+                  }}
+                />
               </div>
-              <Button onClick={submitBooking} className="w-full" disabled={bookCourt.isPending}>
-                {bookCourt.isPending
-                  ? t('clubs.booking', { defaultValue: 'Booking...' })
-                  : t('clubs.book_now', { defaultValue: 'Book Now' })}
-              </Button>
-            </div>
+            ) : (
+              <div className="mt-6 p-6 bg-slate-800 rounded-2xl border border-white/10">
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
+                  <div>
+                    <p className="text-gray-400">{t('clubs.court_fee', { defaultValue: 'Court fee' })}</p>
+                    <p className="text-2xl font-bold text-electric-green">₪{selectedSlot.price}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">{t('clubs.service_fee', { defaultValue: 'Service fee' })}</p>
+                    <p className="text-xl font-bold">₪{selectedSlot.service_fee}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400">{t('clubs.court', { defaultValue: 'Court' })}</p>
+                    <p className="text-xl font-bold">{selectedSlot.court_name}</p>
+                  </div>
+                </div>
+                <Button onClick={submitBooking} className="w-full" disabled={bookCourt.isPending}>
+                  {bookCourt.isPending
+                    ? t('clubs.booking', { defaultValue: 'Booking...' })
+                    : t('clubs.book_now', { defaultValue: 'Book Now' })}
+                </Button>
+              </div>
+            )
           )}
         </div>
       </section>

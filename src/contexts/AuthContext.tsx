@@ -90,6 +90,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async signInWithOAuth(provider) {
+      // Stash the page the user came from so AuthCallbackPage can restore it
+      // after the OAuth full-page redirect. Don't stash auth pages themselves.
+      try {
+        const here = window.location.pathname + window.location.search
+        if (!here.startsWith('/login') && !here.startsWith('/auth/')) {
+          sessionStorage.setItem('rally:auth-return', here)
+        }
+      } catch {
+        // sessionStorage may be unavailable (private mode) — non-fatal.
+      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo: `${window.location.origin}/auth/callback` },

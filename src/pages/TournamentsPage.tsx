@@ -14,8 +14,10 @@ type TournamentsTab = 'upcoming' | 'my'
 export default function TournamentsPage() {
   const { t } = useTranslation()
   const { status } = useAppSession()
+  const signedOut = status === 'signed_out'
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab: TournamentsTab = searchParams.get('tab') === 'my' ? 'my' : 'upcoming'
+  const tab: TournamentsTab =
+    !signedOut && searchParams.get('tab') === 'my' ? 'my' : 'upcoming'
   const setTab = (key: TournamentsTab) => {
     const next = new URLSearchParams(searchParams)
     if (key === 'upcoming') next.delete('tab')
@@ -29,8 +31,6 @@ export default function TournamentsPage() {
     const h = setTimeout(() => setDebounced(search.trim()), 300)
     return () => clearTimeout(h)
   }, [search])
-
-  const signedOut = status === 'signed_out'
   const filters = useMemo(
     () => ({
       type: tab,
@@ -67,23 +67,25 @@ export default function TournamentsPage() {
           {t('tournament.tournamentsHeroSubtitle')}
         </p>
 
-        <div className="flex gap-3 mb-8">
-          {(['upcoming', 'my'] as const).map((key) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                tab === key
-                  ? 'bg-rally-accent text-rally-accent-text shadow-glow-electric'
-                  : 'bg-transparent border border-rally-border text-rally-text-2 hover:border-rally-border-strong hover:text-rally-text'
-              }`}
-            >
-              {key === 'upcoming'
-                ? t('tournament.tournamentsUpcomingTab')
-                : t('tournament.tournamentsMyTab')}
-            </button>
-          ))}
-        </div>
+        {!signedOut && (
+          <div className="flex gap-3 mb-8">
+            {(['upcoming', 'my'] as const).map((key) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                  tab === key
+                    ? 'bg-rally-accent text-rally-accent-text shadow-glow-electric'
+                    : 'bg-transparent border border-rally-border text-rally-text-2 hover:border-rally-border-strong hover:text-rally-text'
+                }`}
+              >
+                {key === 'upcoming'
+                  ? t('tournament.tournamentsUpcomingTab')
+                  : t('tournament.tournamentsMyTab')}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="relative mb-10">
           <Search className="absolute end-5 top-1/2 -translate-y-1/2 w-5 h-5 text-rally-text-muted pointer-events-none" />

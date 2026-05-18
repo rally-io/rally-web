@@ -7,6 +7,9 @@ import {
 import { useTournament } from '@/hooks/useTournament'
 import { useRegisterTournament } from '@/hooks/useRegisterTournament'
 import { useRtl } from '@/hooks/useRtl'
+import { useAppSession } from '@/hooks/useAppSession'
+import { useAuthGate } from '@/hooks/useAuthGate'
+import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
@@ -28,6 +31,9 @@ export default function TournamentDetailPage() {
   const navigate = useNavigate()
   const { data: tr, isLoading, isError } = useTournament(id!)
   const register = useRegisterTournament()
+  const { status } = useAppSession()
+  const { requireSignIn } = useAuthGate()
+  const signedOut = status === 'signed_out'
   const [partner, setPartner] = useState<PartnerSelectionState>({ phase: 'idle' })
   const [error, setError] = useState('')
   const partnerSectionRef = useRef<HTMLDivElement>(null)
@@ -261,7 +267,7 @@ export default function TournamentDetailPage() {
           </section>
         )}
 
-        {!myReg && partnered && (
+        {!signedOut && !myReg && partnered && (
           <section ref={partnerSectionRef} className="scroll-mt-24">
             <div className="flex items-baseline justify-between gap-3 mb-2">
               <h2 className="font-display text-2xl md:text-3xl font-bold text-rally-text">
@@ -285,58 +291,70 @@ export default function TournamentDetailPage() {
 
       <div className="fixed bottom-0 inset-x-0 bg-rally-bg/95 backdrop-blur border-t border-rally-border">
         <div className="container mx-auto max-w-3xl px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
-                {payState
-                  ? t('tournament.registrationStatus_payment_pending', {
-                      defaultValue: 'Payment pending',
-                    })
-                  : t('tournament.tournamentsEntryFee')}
-              </p>
-              <p className="text-2xl md:text-3xl font-black text-rally-accent">
-                {formatCurrency(tr.entry_fee)}
-              </p>
+          {signedOut ? (
+            <SignInRequiredPanel
+              message={t('auth.gate.sign_in_to_register')}
+              ctaLabel={t('auth.gate.sign_in_button')}
+              onSignIn={() => {
+                void requireSignIn().catch(() => {
+                  // USER_CANCELLED is expected; do nothing.
+                })
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
+                  {payState
+                    ? t('tournament.registrationStatus_payment_pending', {
+                        defaultValue: 'Payment pending',
+                      })
+                    : t('tournament.tournamentsEntryFee')}
+                </p>
+                <p className="text-2xl md:text-3xl font-black text-rally-accent">
+                  {formatCurrency(tr.entry_fee)}
+                </p>
+              </div>
+              {payState ? (
+                <button
+                  disabled
+                  title={t('tournament.paymentDeferredNotice')}
+                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+                >
+                  {t('tournament.tournamentsProceedToPay')}
+                </button>
+              ) : myReg ? (
+                <button
+                  disabled
+                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+                >
+                  {t('tournament.tournamentDetailAlreadyRegistered')}
+                </button>
+              ) : !open ? (
+                <button
+                  disabled
+                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+                >
+                  {t('tournament.tournamentDetailRegistrationClosed')}
+                </button>
+              ) : partnerRequired ? (
+                <button
+                  onClick={scrollToPartner}
+                  className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+                >
+                  {t('tournament.ctaFillDetails')}
+                </button>
+              ) : (
+                <button
+                  disabled={register.isPending}
+                  onClick={handleRegister}
+                  className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold disabled:opacity-40 enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+                >
+                  {t('tournament.tournamentsProceedToPay')}
+                </button>
+              )}
             </div>
-            {payState ? (
-              <button
-                disabled
-                title={t('tournament.paymentDeferredNotice')}
-                className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
-              >
-                {t('tournament.tournamentsProceedToPay')}
-              </button>
-            ) : myReg ? (
-              <button
-                disabled
-                className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
-              >
-                {t('tournament.tournamentDetailAlreadyRegistered')}
-              </button>
-            ) : !open ? (
-              <button
-                disabled
-                className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
-              >
-                {t('tournament.tournamentDetailRegistrationClosed')}
-              </button>
-            ) : partnerRequired ? (
-              <button
-                onClick={scrollToPartner}
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
-              >
-                {t('tournament.ctaFillDetails')}
-              </button>
-            ) : (
-              <button
-                disabled={register.isPending}
-                onClick={handleRegister}
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold disabled:opacity-40 enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
-              >
-                {t('tournament.tournamentsProceedToPay')}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </main>
