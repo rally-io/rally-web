@@ -19,26 +19,35 @@ export default function AuthCallbackPage() {
       return
     }
 
+    // Capture the return path synchronously at effect setup. In dev StrictMode
+    // the effect runs twice; without caching, the first run consumes the stash
+    // and the second run defaults to '/' and clobbers the first navigate.
+    let returnTo = '/'
+    try {
+      const stashed = sessionStorage.getItem('rally:auth-return')
+      if (stashed && stashed.startsWith('/') && !stashed.startsWith('//')) {
+        returnTo = stashed
+      }
+    } catch {
+      // sessionStorage may be unavailable — fall back to home.
+    }
+
     let attempts = 0
     let cancelled = false
 
     async function pollForSession() {
       while (!cancelled && attempts < 10) {
         const { data, error: getErr } = await supabase.auth.getSession()
+        if (cancelled) return
         if (getErr) {
           setError(getErr.message)
           return
         }
         if (data.session) {
-          let returnTo = '/'
           try {
-            const stashed = sessionStorage.getItem('rally:auth-return')
-            if (stashed && stashed.startsWith('/') && !stashed.startsWith('//')) {
-              returnTo = stashed
-            }
             sessionStorage.removeItem('rally:auth-return')
           } catch {
-            // sessionStorage may be unavailable — fall back to home.
+            // non-fatal
           }
           navigate(returnTo, { replace: true })
           return

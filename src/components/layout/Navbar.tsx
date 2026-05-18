@@ -15,7 +15,7 @@ import {
   Languages,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppSession } from '@/hooks/useAppSession'
 import { ProfileRing } from './ProfileRing'
@@ -59,7 +59,7 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const { session, signOut, user } = useAuth()
-  const { status, onboardingStatus, playerProfile, ensurePlayerProfile } = useAppSession()
+  const { status, onboardingStatus, playerProfile, ensurePlayerProfile, clearSession } = useAppSession()
   const isSignedIn = !!session
 
   const navLinks: { to: string; label: string }[] = [
@@ -93,7 +93,14 @@ export function Navbar() {
   const handleSignOut = async () => {
     setMenuOpen(false)
     setMobileOpen(false)
-    await signOut()
+    try {
+      clearSession()
+      await signOut()
+    } catch (err) {
+      console.error('[Navbar] Sign out failed:', err)
+    }
+    // Navigate unconditionally — if sign-out failed the user is still shown the
+    // home page (signed-in state) which is less confusing than being stuck.
     navigate('/')
   }
 
@@ -127,6 +134,12 @@ export function Navbar() {
     const [path] = to.split('?')
     return location.pathname === path
   }
+
+  const loginHref = useMemo(() => {
+    const here = location.pathname + location.search
+    if (here.startsWith('/login') || here.startsWith('/auth/')) return '/login'
+    return `/login?next=${encodeURIComponent(here)}`
+  }, [location.pathname, location.search])
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
@@ -266,7 +279,7 @@ export function Navbar() {
             </div>
           ) : (
             <Link
-              to="/login"
+              to={loginHref}
               className="text-sm text-slate-300 hover:text-electric-green transition-colors"
             >
               {t('nav.signin')}
@@ -359,7 +372,7 @@ export function Navbar() {
             </>
           ) : (
             <Link
-              to="/login"
+              to={loginHref}
               onClick={() => setMobileOpen(false)}
               className="text-sm text-slate-300 hover:text-electric-green transition-colors"
             >

@@ -1,4 +1,5 @@
 import { createContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import type { Session, User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { isAuthError } from '@/lib/auth'
@@ -110,6 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async signOut() {
       await supabase.auth.signOut()
+      // Force the batched setSession(null) (queued by onAuthStateChange during
+      // signOut) to flush synchronously. Without this, React 18 defers the state
+      // update, so navigate('/') in the caller renders the Navbar with the old
+      // session still intact.
+      flushSync(() => setSession(null))
     },
 
     async requestPasswordReset(email) {
