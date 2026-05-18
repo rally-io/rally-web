@@ -3,9 +3,6 @@ import client from './client'
 import type {
   ApiResponse, Tournament, TournamentDetail, RegistrationDetail, PlayerSearchResult,
 } from '@/types/api'
-import { getMockTournamentList, getMockTournamentDetail } from '@/lib/mockTournaments'
-
-const USE_MOCK = import.meta.env.VITE_USE_MOCK_DATA === 'true'
 
 export interface TournamentListParams {
   type?: 'upcoming' | 'my'
@@ -18,14 +15,12 @@ export interface TournamentListParams {
 export async function getTournaments(
   params: TournamentListParams = {},
 ): Promise<ApiResponse<{ items: Tournament[]; next_cursor: string | null }>> {
-  if (USE_MOCK) return getMockTournamentList(params)
   return client.get('/rally/v1/tournaments/', { params })
 }
 
 export async function getTournament(
   tournamentId: string,
 ): Promise<ApiResponse<TournamentDetail>> {
-  if (USE_MOCK) return getMockTournamentDetail(tournamentId)
   return client.get(`/rally/v1/tournaments/${tournamentId}`)
 }
 
