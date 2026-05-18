@@ -23,6 +23,23 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>({ kind: 'options' })
   const [rememberedEmail, setRememberedEmail] = useState('')
 
+  // Mirror `next` into sessionStorage so the OAuth full-page redirect can
+  // restore the original destination from /auth/callback. (signInWithOAuth
+  // skips stashing when called from /login itself.) Clear any stale entry
+  // when there is no valid next so a previous value doesn't redirect on the
+  // next OAuth sign-in.
+  useEffect(() => {
+    try {
+      if (next && next !== '/' && next.startsWith('/') && !next.startsWith('//')) {
+        sessionStorage.setItem('rally:auth-return', next)
+      } else {
+        sessionStorage.removeItem('rally:auth-return')
+      }
+    } catch {
+      // sessionStorage may be unavailable (private mode) — non-fatal.
+    }
+  }, [next])
+
   // If already signed in, bounce to next (or home).
   useEffect(() => {
     if (!isLoading && session) {

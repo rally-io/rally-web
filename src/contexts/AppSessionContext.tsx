@@ -23,6 +23,9 @@ export interface AppSessionContextValue {
   // Imperative opener for the blocking ProfileCompletionModal. Set by the modal mount.
   // Accepts null to allow unregistration on unmount.
   __setBlockingHandlers: (handlers: { open: () => Promise<void> } | null) => void
+  // Removes all session-related query cache immediately. Call this before signOut() so
+  // the old profile data is gone before the session clears, preventing a stale-data flash.
+  clearSession: () => void
 }
 
 export const AppSessionContext = createContext<AppSessionContextValue | null>(null)
@@ -79,6 +82,11 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     await refetch()
   }, [refetch])
 
+  const clearSession = useCallback(() => {
+    queryClient.removeQueries({ queryKey: ['onboarding-status'] })
+    queryClient.removeQueries({ queryKey: ['player-profile-me'] })
+  }, [queryClient])
+
   // The blocking ProfileCompletionModal registers its "open and wait for completion" handler here.
   const blockingHandlers = useRef<{ open: () => Promise<void> } | null>(null)
   const __setBlockingHandlers = useCallback((h: { open: () => Promise<void> } | null) => {
@@ -125,7 +133,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     refetchOnboarding,
     ensurePlayerProfile,
     __setBlockingHandlers,
-  }), [status, onboardingStatus, playerProfile, refetchOnboarding, ensurePlayerProfile, __setBlockingHandlers])
+    clearSession,
+  }), [status, onboardingStatus, playerProfile, refetchOnboarding, ensurePlayerProfile, __setBlockingHandlers, clearSession])
 
   return <AppSessionContext.Provider value={value}>{children}</AppSessionContext.Provider>
 }
