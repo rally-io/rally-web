@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { updateProfile } from '@/services/api/profile'
 import { createPlayerProfile } from '@/services/api/auth'
 import { useAuth } from '@/hooks/useAuth'
@@ -39,11 +40,6 @@ type BlockingProps = {
 type Props = InlineProps | BlockingProps
 
 const COUNTRY_CODES = ['+972', '+44', '+1', '+33', '+34', '+49', '+39']
-const GENDERS: { value: Gender; label: string }[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'choose_not_to_answer', label: 'Prefer not to say' },
-]
 
 export function ProfileCompletionModal(props: Props) {
   if (props.mode === 'blocking') return <BlockingModal {...props} />
@@ -54,6 +50,7 @@ export function ProfileCompletionModal(props: Props) {
 // Inline mode — preserves the existing behavior used by ProfileRing.
 // ---------------------------------------------------------------------------
 function InlineModal({ open, onOpenChange, missingFields, onSuccess }: InlineProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState<Record<string, any>>({})
 
@@ -69,14 +66,14 @@ function InlineModal({ open, onOpenChange, missingFields, onSuccess }: InlinePro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-slate-900 border-white/10">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Complete Your Profile</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{t('profile.completeTitle')}</DialogTitle>
         </DialogHeader>
-        <p className="text-gray-400 mb-6">Please fill in the following details to continue.</p>
+        <p className="text-gray-400 mb-6">{t('profile.completeSubtitle')}</p>
         <div className="space-y-6">
           {(missingFields ?? []).map((field) => (
             <div key={field.field}>
               <Label className="mb-2 block">
-                {field.field === 'contact_number' ? 'Phone Number' : field.label}
+                {field.field === 'contact_number' ? t('profile.phoneNumber') : field.label}
               </Label>
               {field.field === 'contact_number' ? (
                 <Input
@@ -98,13 +95,13 @@ function InlineModal({ open, onOpenChange, missingFields, onSuccess }: InlinePro
           ))}
         </div>
         <div className="flex gap-3 mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">{t('profile.cancel')}</Button>
           <Button
             onClick={() => mutation.mutate(formData)}
             disabled={mutation.isPending}
             className="flex-1 bg-electric-green text-slate-950 hover:bg-electric-green/90"
           >
-            {mutation.isPending ? 'Saving...' : 'Save'}
+            {mutation.isPending ? t('profile.saving') : t('profile.save')}
           </Button>
         </div>
       </DialogContent>
@@ -117,6 +114,7 @@ function InlineModal({ open, onOpenChange, missingFields, onSuccess }: InlinePro
 // Cannot be dismissed by clicking backdrop or pressing ESC.
 // ---------------------------------------------------------------------------
 function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [firstName, setFirstName] = useState('')
@@ -125,6 +123,12 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
   const [contactNumber, setContactNumber] = useState('')
   const [gender, setGender] = useState<Gender>('choose_not_to_answer')
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const genders: { value: Gender; label: string }[] = [
+    { value: 'male', label: t('profile.genderMale') },
+    { value: 'female', label: t('profile.genderFemale') },
+    { value: 'choose_not_to_answer', label: t('profile.genderPreferNot') },
+  ]
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -139,7 +143,7 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
       }
       const result = await createPlayerProfile(payload)
       if (!result.success) {
-        throw new Error(result.error.message ?? 'Could not create profile')
+        throw new Error(result.error.message ?? t('profile.errorCannotCreate'))
       }
       return result.data
     },
@@ -148,7 +152,7 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
       onSuccess()
     },
     onError: (err: any) => {
-      setSubmitError(err?.message ?? 'Something went wrong')
+      setSubmitError(err?.message ?? t('profile.errorGeneric'))
     },
   })
 
@@ -171,27 +175,25 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
         showCloseButton={false}
       >
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Tell us about you</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{t('profile.blockingTitle')}</DialogTitle>
         </DialogHeader>
-        <p className="text-gray-400 mb-4">
-          We need a few details before you can book courts or join tournaments.
-        </p>
+        <p className="text-gray-400 mb-4">{t('profile.blockingSubtitle')}</p>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="mb-1 block">First name</Label>
+              <Label className="mb-1 block">{t('profile.firstName')}</Label>
               <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus />
             </div>
             <div>
-              <Label className="mb-1 block">Last name</Label>
+              <Label className="mb-1 block">{t('profile.lastName')}</Label>
               <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-[7rem_1fr] gap-3">
             <div>
-              <Label className="mb-1 block">Country code</Label>
+              <Label className="mb-1 block">{t('profile.countryCode')}</Label>
               <select
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
@@ -201,7 +203,7 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
               </select>
             </div>
             <div>
-              <Label className="mb-1 block">Phone number</Label>
+              <Label className="mb-1 block">{t('profile.phone')}</Label>
               <Input
                 type="tel"
                 value={contactNumber}
@@ -212,13 +214,13 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
           </div>
 
           <div>
-            <Label className="mb-1 block">Gender</Label>
+            <Label className="mb-1 block">{t('profile.gender')}</Label>
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value as Gender)}
               className="w-full rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm"
             >
-              {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+              {genders.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
             </select>
           </div>
 
@@ -229,14 +231,14 @@ function BlockingModal({ open, onSuccess, onCancel }: BlockingProps) {
 
         <div className="flex gap-3 mt-6">
           <Button variant="outline" onClick={onCancel} className="flex-1">
-            Sign out
+            {t('profile.signOut')}
           </Button>
           <Button
             onClick={() => { setSubmitError(null); mutation.mutate() }}
             disabled={!canSubmit || mutation.isPending}
             className="flex-1 bg-electric-green text-slate-950 hover:bg-electric-green/90"
           >
-            {mutation.isPending ? 'Saving...' : 'Continue'}
+            {mutation.isPending ? t('profile.saving') : t('profile.continue')}
           </Button>
         </div>
       </DialogContent>

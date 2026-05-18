@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Calendar, MapPin, Clock } from 'lucide-react'
+import { Calendar, MapPin, Clock, Flame } from 'lucide-react'
 import type { Tournament } from '@/types/api'
 import { useRtl } from '@/hooks/useRtl'
 import {
@@ -69,6 +69,12 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
         {tr.registration_status && (
           <div className="absolute bottom-3 start-3">
             <StatusBadge status={tr.registration_status} />
+          </div>
+        )}
+        {open && (
+          <div className="absolute top-3 end-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rally-warning text-rally-text-on-light text-[11px] font-black uppercase tracking-wider shadow-md animate-pulse">
+            <Flame className="w-3.5 h-3.5" />
+            <span>{t('tournament.tournamentsLastSpots')}</span>
           </div>
         )}
       </div>
