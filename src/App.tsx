@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from './components/layout/Layout'
 import { ProfileCompletionGate } from './components/profile/ProfileCompletionModal'
+import { AuthGateModal } from './components/auth/AuthGateModal'
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -33,6 +34,8 @@ export default function App() {
     <div dir={i18n.language === 'he' ? 'rtl' : 'ltr'}>
       {/* Mounted once — handles blocking onboarding for both proactive guards and 403 retries */}
       <ProfileCompletionGate />
+      {/* Mounted once — opens when any page calls requireSignIn() from useAuthGate */}
+      <AuthGateModal />
 
       <Routes>
         {/* Bare auth screens (no Layout/Navbar/Footer) */}

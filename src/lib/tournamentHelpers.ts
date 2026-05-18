@@ -8,6 +8,19 @@ export function isRegistrationOpen(deadline: string | null | undefined): boolean
   return t >= Date.now()
 }
 
+export function getCountdown(
+  target: string | null | undefined,
+): { days: number; hours: number; expired: boolean } {
+  if (!target) return { days: 0, hours: 0, expired: true }
+  const t = new Date(target).getTime()
+  if (!Number.isFinite(t)) return { days: 0, hours: 0, expired: true }
+  const diff = t - Date.now()
+  if (diff <= 0) return { days: 0, hours: 0, expired: true }
+  const days = Math.floor(diff / 86_400_000)
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000)
+  return { days, hours, expired: false }
+}
+
 export function parseSkillLevel(
   str: string | null | undefined,
 ): { range: string | null; level: string | null } {
@@ -89,6 +102,44 @@ export function formatTournamentDateRange(
   const left = isHe ? yearFmt.format(e) : dayFmt.format(s)
   const right = isHe ? dayFmt.format(s) : yearFmt.format(e)
   return `${left} - ${right}`
+}
+
+export function formatTournamentCardDate(
+  start: string,
+  end: string,
+  locale: 'he-IL' | 'en-US',
+  withTime: boolean = false,
+): string {
+  const s = parseFlexibleDate(start)
+  const e = parseFlexibleDate(end)
+  if (!Number.isFinite(s.getTime())) return ''
+
+  const hasEnd = Number.isFinite(e.getTime())
+  const sameDay =
+    hasEnd &&
+    s.getFullYear() === e.getFullYear() &&
+    s.getMonth() === e.getMonth() &&
+    s.getDate() === e.getDate()
+
+  if (sameDay || !hasEnd) {
+    const dateStr = new Intl.DateTimeFormat(locale, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    }).format(s)
+    if (withTime) {
+      const hh = String(s.getHours()).padStart(2, '0')
+      const mm = String(s.getMinutes()).padStart(2, '0')
+      return `${dateStr} · ${hh}:${mm}`
+    }
+    return dateStr
+  }
+
+  const dayFmt = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' })
+  const isHe = locale === 'he-IL'
+  const left = isHe ? dayFmt.format(e) : dayFmt.format(s)
+  const right = isHe ? dayFmt.format(s) : dayFmt.format(e)
+  return `${left} – ${right}`
 }
 
 export function buildPayload(

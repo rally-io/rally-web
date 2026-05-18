@@ -2,7 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { useTournaments } from '@/hooks/useTournaments'
 import { useAppSession } from '@/hooks/useAppSession'
+import { useAuthGate } from '@/hooks/useAuthGate'
 import { TournamentCard } from '@/components/tournaments/TournamentCard'
+import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Tournament } from '@/types/api'
@@ -28,6 +30,7 @@ export default function MyActivityPage() {
   }
 
   const signedOut = status === 'signed_out'
+  const { requireSignIn } = useAuthGate()
   const tournamentsEnabled = activeType === 'tournaments' && !signedOut
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
     useTournaments(tournamentsEnabled ? { type: 'my' } : { type: 'upcoming' })
@@ -43,25 +46,35 @@ export default function MyActivityPage() {
           {t('myActivity.title')}
         </h1>
 
-        <div className="flex gap-2 mb-8 flex-wrap">
-          {VALID_TYPES.map((key) => (
-            <button
-              key={key}
-              onClick={() => setActiveType(key)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                activeType === key
-                  ? 'bg-rally-accent text-rally-accent-text'
-                  : 'bg-rally-surface text-rally-text-2'
-              }`}
-            >
-              {t(`myActivity.filter_${key}`)}
-            </button>
-          ))}
-        </div>
+        {!signedOut && (
+          <div className="flex gap-2 mb-8 flex-wrap">
+            {VALID_TYPES.map((key) => (
+              <button
+                key={key}
+                onClick={() => setActiveType(key)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                  activeType === key
+                    ? 'bg-rally-accent text-rally-accent-text'
+                    : 'bg-rally-surface text-rally-text-2'
+                }`}
+              >
+                {t(`myActivity.filter_${key}`)}
+              </button>
+            ))}
+          </div>
+        )}
 
         {signedOut ? (
-          <div className="text-center py-16 text-rally-text-2">
-            {t('myActivity.sign_in_prompt')}
+          <div className="max-w-xl mx-auto py-12">
+            <SignInRequiredPanel
+              message={t('auth.gate.sign_in_to_view')}
+              ctaLabel={t('auth.gate.sign_in_button')}
+              onSignIn={() => {
+                void requireSignIn().catch(() => {
+                  // USER_CANCELLED — page stays as-is.
+                })
+              }}
+            />
           </div>
         ) : activeType === 'tournaments' ? (
           isError ? (

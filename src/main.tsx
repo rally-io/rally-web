@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 import { AppSessionProvider } from './contexts/AppSessionContext'
+import { AuthGateProvider } from './contexts/AuthGateContext'
 import './i18n'
 import './App.css'
 
@@ -25,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <AuthProvider>
           <AppSessionProvider>
-            <App />
+            <AuthGateProvider>
+              <App />
+            </AuthGateProvider>
           </AppSessionProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -1,20 +1,72 @@
 @import "tailwindcss";
 
 @theme {
-  --color-electric-green: #39ff14;
-  --color-slate-950: #020617;
-  --color-rally-bg: #111111;
-  --color-rally-surface: #1c1c1e;
-  --color-rally-surface-2: #27272a;
-  --color-rally-border: #333333;
-  --color-rally-border-light: #3f3f46;
-  --color-rally-accent: #ccff00;
-  --color-rally-accent-text: #000000;
+  /* === Backgrounds === */
+  --color-rally-bg: #18181b;
+  --color-rally-surface: #232328;
+  --color-rally-surface-2: #2e2e33;
+
+  /* === Text === */
   --color-rally-text: #ffffff;
   --color-rally-text-2: #a1a1aa;
   --color-rally-text-muted: #71717a;
-  --color-rally-error: #ef4444;
+  --color-rally-text-on-light: #18181b;
+  --color-rally-accent-text: #18181b;
+
+  /* === Accents — Electric Lime === */
+  --color-rally-accent: #ccff00;
+  --color-rally-accent-hover: #b8e600;
+  --color-rally-accent-dim: rgba(204, 255, 0, 0.15);
+
+  /* === Accents — Brand Blue === */
+  --color-rally-blue: #0055ff;
+  --color-rally-blue-hover: #0044cc;
+  --color-rally-blue-dim: rgba(0, 85, 255, 0.15);
+
+  /* === Functional === */
   --color-rally-success: #22c55e;
+  --color-rally-warning: #f59e0b;
+  --color-rally-error: #ef4444;
   --color-rally-info: #3b82f6;
-  --font-sans: var(--font-sans, system-ui, -apple-system, sans-serif);
+
+  /* === Borders === */
+  --color-rally-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-rally-border: rgba(255, 255, 255, 0.12);
+  --color-rally-border-strong: rgba(255, 255, 255, 0.24);
+  --color-rally-border-light: rgba(255, 255, 255, 0.24);
+
+  /* === Radius scale === */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow-electric: 0 0 32px rgba(204, 255, 0, 0.3);
+  --shadow-glow-blue: 0 0 32px rgba(0, 85, 255, 0.3);
+
+  /* === Typography === */
+  --font-display: "Rubik", "Heebo", system-ui, -apple-system, sans-serif;
+  --font-body: "Heebo", "Rubik", system-ui, -apple-system, sans-serif;
+  --font-sans: "Heebo", "Rubik", system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-rally-bg);
+  color: var(--color-rally-text);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
