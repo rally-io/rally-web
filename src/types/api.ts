@@ -224,7 +224,10 @@ export interface TournamentRegistrationResponse {
 
 // Profile update
 export interface ProfileUpdateRequest {
+  first_name?: string
+  last_name?: string
   contact_number?: string
+  country_code?: string
   skill_level?: number
 }
 
