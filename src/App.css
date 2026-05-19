@@ -70,3 +70,16 @@ h6 {
   font-family: var(--font-display);
   letter-spacing: -0.01em;
 }
+
+@keyframes blob-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(80px, -60px, 0) scale(1.1);
+  }
+  66% {
+    transform: translate3d(-50px, 40px, 0) scale(0.95);
+  }
+}
