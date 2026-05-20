@@ -105,6 +105,31 @@
     "coming_soon": "Soon",
     "sign_out": "Sign out"
   },
+  "edit_profile": {
+    "title": "Edit Profile",
+    "subtitle": "Update your personal info and skill level",
+    "section_personal": "Personal Info",
+    "section_skill": "Skill Level",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "emailNote": "Email can't be changed",
+    "countryCode": "Country",
+    "phone": "Phone Number",
+    "skillHint": "Not sure of your level? Read how it's calculated",
+    "cancel": "Cancel",
+    "save": "Save Changes",
+    "saving": "Saving…",
+    "saveSuccess": "Profile updated",
+    "saveError": "Couldn't save changes. Please try again.",
+    "loadError": "Couldn't load your profile. Please refresh and try again.",
+    "validation": {
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "phoneRequired": "Phone number is required",
+      "phoneInvalid": "Use digits only (6–15)"
+    }
+  },
   "myActivity": {
     "title": "My Activity",
     "filter_tournaments": "Tournaments",
@@ -384,7 +409,20 @@
     "signOut": "Sign out",
     "continue": "Continue",
     "errorGeneric": "Something went wrong",
-    "errorCannotCreate": "Could not create profile"
+    "errorCannotCreate": "Could not create profile",
+    "skillModalTitle": "Set your skill level",
+    "skillModalSubtitle": "Slide to your padel skill (1.0 – 7.0).",
+    "skillModalConfirm": "Confirm",
+    "skillModalSkip": "Skip",
+    "skillModalSaving": "Saving…",
+    "skillSkipConfirmTitle": "Skill level is required",
+    "skillSkipConfirmBody": "Without a skill level we can't confirm your eligibility for the tournament. Are you sure you want to skip?",
+    "skillSkipConfirmContinue": "Skip anyway",
+    "skillSkipConfirmStay": "Set my level",
+    "gateTournamentTitle": "One quick thing before you register",
+    "gateTournamentSubtitle": "We need these details to confirm your spot in the tournament.",
+    "gateCourtTitle": "One quick thing before you book",
+    "gateCourtSubtitle": "We need a phone number so the club can reach you about your booking."
   },
   "hero": {
     "headline": "Israel's Leading Padel Platform",

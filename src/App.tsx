@@ -19,6 +19,7 @@ import TournamentsPage from './pages/TournamentsPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
 import RegistrationSummaryPage from './pages/RegistrationSummaryPage'
 import MyActivityPage from './pages/MyActivityPage'
+import EditProfilePage from './pages/EditProfilePage'
 import NotFoundPage from './pages/NotFoundPage'
 
 import LoginPage from './pages/auth/LoginPage'
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/tournaments/summary" element={<RegistrationSummaryPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
           <Route path="/my-activity" element={<MyActivityPage />} />
+          <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

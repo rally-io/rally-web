@@ -105,6 +105,31 @@
     "coming_soon": "בקרוב",
     "sign_out": "התנתקות"
   },
+  "edit_profile": {
+    "title": "עריכת פרופיל",
+    "subtitle": "עדכון פרטים אישיים ורמת משחק",
+    "section_personal": "פרטים אישיים",
+    "section_skill": "רמת משחק",
+    "firstName": "שם פרטי",
+    "lastName": "שם משפחה",
+    "email": "אימייל",
+    "emailNote": "לא ניתן לשנות את כתובת האימייל",
+    "countryCode": "קידומת",
+    "phone": "מספר טלפון",
+    "skillHint": "לא בטוחים ברמה שלכם? קראו איך היא מחושבת",
+    "cancel": "ביטול",
+    "save": "שמירת שינויים",
+    "saving": "שומר…",
+    "saveSuccess": "הפרופיל עודכן",
+    "saveError": "לא הצלחנו לשמור. נסו שוב.",
+    "loadError": "לא הצלחנו לטעון את הפרופיל. רעננו את הדף ונסו שוב.",
+    "validation": {
+      "firstNameRequired": "חובה להזין שם פרטי",
+      "lastNameRequired": "חובה להזין שם משפחה",
+      "phoneRequired": "חובה להזין מספר טלפון",
+      "phoneInvalid": "יש להזין ספרות בלבד (6–15)"
+    }
+  },
   "myActivity": {
     "title": "הפעילות שלי",
     "filter_tournaments": "טורנירים",
@@ -251,7 +276,7 @@
     "tournamentsEntryFee": "דמי השתתפות לזוג",
     "tournamentsRegister": "הרשמה",
     "tournamentsPayNow": "לתשלום",
-    "tournamentsProceedToPay": "המשך לתשלום",
+    "tournamentsProceedToPay": "המשך להרשמה",
     "tournamentsViewDetails": "צפייה",
     "tournamentsEmptyTitle": "אין כרגע טורנירים",
     "tournamentsEmptyMessage": "תחזרו בקרוב — טורנירים חדשים בדרך.",
@@ -384,7 +409,20 @@
     "signOut": "התנתקות",
     "continue": "המשך",
     "errorGeneric": "משהו השתבש",
-    "errorCannotCreate": "לא הצלחנו ליצור פרופיל"
+    "errorCannotCreate": "לא הצלחנו ליצור פרופיל",
+    "skillModalTitle": "הגדר את רמת המיומנות שלך",
+    "skillModalSubtitle": "החלק לרמת הפאדל שלך (1.0 – 7.0).",
+    "skillModalConfirm": "אישור",
+    "skillModalSkip": "דלג",
+    "skillModalSaving": "שומר…",
+    "skillSkipConfirmTitle": "רמת מיומנות נדרשת",
+    "skillSkipConfirmBody": "ללא רמת מיומנות לא נוכל לאשר את ההשתתפות שלך בטורניר. בטוח שברצונך לדלג?",
+    "skillSkipConfirmContinue": "דלג בכל זאת",
+    "skillSkipConfirmStay": "הגדר רמה",
+    "gateTournamentTitle": "עוד דבר אחד לפני הרישום",
+    "gateTournamentSubtitle": "נצטרך את הפרטים האלה כדי לאשר את המקום שלך בטורניר.",
+    "gateCourtTitle": "עוד דבר אחד לפני ההזמנה",
+    "gateCourtSubtitle": "נצטרך מספר טלפון כדי שהמועדון יוכל ליצור איתך קשר לגבי ההזמנה."
   },
   "hero": {
     "headline": "הפלטפורמה המובילה לפאדל בישראל",

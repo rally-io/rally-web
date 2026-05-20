@@ -14,7 +14,7 @@ export async function getOnboardingStatus(): Promise<ApiResponse<OnboardingStatu
 }
 
 export async function updateProfile(data: ProfileUpdateRequest): Promise<ApiResponse<unknown>> {
-  return client.patch('/rally/v1/players/me', data)
+  return client.patch('/rally/v1/players/', data)
 }
 
 export async function registerTournament(

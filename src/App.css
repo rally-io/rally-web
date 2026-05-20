@@ -83,3 +83,75 @@ h6 {
     transform: translate3d(-50px, 40px, 0) scale(0.95);
   }
 }
+
+/* Skill-level slider — matches rally-mobile KnowSkillLevelScreen. */
+.skill-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px; /* tap target */
+  background: transparent;
+  cursor: pointer;
+  /* Filled portion is rendered via the gradient on the track below. */
+  --skill-fill-pct: 0%;
+}
+
+/* WebKit (Chrome / Safari) ------------------------------------------------- */
+.skill-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background:
+    linear-gradient(
+      to right,
+      var(--color-rally-accent) 0 var(--skill-fill-pct),
+      var(--color-rally-surface-2) var(--skill-fill-pct) 100%
+    );
+}
+.skill-slider[dir='rtl']::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(
+      to left,
+      var(--color-rally-accent) 0 var(--skill-fill-pct),
+      var(--color-rally-surface-2) var(--skill-fill-pct) 100%
+    );
+}
+.skill-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -10px; /* (thumb 24 - track 4) / 2 */
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--color-rally-accent);
+  border: 3px solid var(--color-rally-bg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Firefox ------------------------------------------------------------------ */
+.skill-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-rally-surface-2);
+}
+.skill-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-rally-accent);
+}
+.skill-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--color-rally-accent);
+  border: 3px solid var(--color-rally-bg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.skill-slider:focus {
+  outline: none;
+}
+.skill-slider:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--color-rally-accent-dim);
+}
+.skill-slider:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 4px var(--color-rally-accent-dim);
+}

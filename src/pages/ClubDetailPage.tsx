@@ -7,7 +7,7 @@ import { useBookCourt } from '@/hooks/useBookCourt'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { ClubSlotPicker, type SelectedSlot } from '@/components/clubs/ClubSlotPicker'
-import { ProfileCompletionModal, type MissingField } from '@/components/profile/ProfileCompletionModal'
+import { ActionGateModal } from '@/components/profile/ActionGateModal'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,17 +29,16 @@ export default function ClubDetailPage() {
   const [date, setDate] = useState<string>(todayIso())
   const [duration, setDuration] = useState<60 | 90 | 120>(60)
   const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null)
-  const [profileModalOpen, setProfileModalOpen] = useState(false)
-  const [missingFields, setMissingFields] = useState<MissingField[]>([])
+  const [gateOpen, setGateOpen] = useState(false)
 
   const clubParams = useMemo(() => ({ date, duration }), [date, duration])
   const { data: club, isLoading, isError } = useClub(id!, clubParams)
   const bookCourt = useBookCourt()
-  const { status } = useAppSession()
+  const { status, playerProfile } = useAppSession()
   const { requireSignIn } = useAuthGate()
   const signedOut = status === 'signed_out'
 
-  const submitBooking = async () => {
+  const runBooking = async () => {
     if (!selectedSlot || !id) return
     try {
       await bookCourt.mutateAsync({
@@ -53,13 +52,18 @@ export default function ClubDetailPage() {
       setSelectedSlot(null)
       navigate('/')
     } catch (err: any) {
-      if (err?.isProfileFieldsRequired) {
-        setMissingFields(err.details?.missing_fields ?? [])
-        setProfileModalOpen(true)
-      } else if (err?.isUnauthorized) {
+      if (err?.isUnauthorized) {
         navigate('/contact')
       }
     }
+  }
+
+  const submitBooking = () => {
+    if (!playerProfile || !playerProfile.contact_number) {
+      setGateOpen(true)
+      return
+    }
+    void runBooking()
   }
 
   if (isLoading) {
@@ -166,14 +170,11 @@ export default function ClubDetailPage() {
         </div>
       </section>
 
-      <ProfileCompletionModal
-        open={profileModalOpen}
-        onOpenChange={setProfileModalOpen}
-        missingFields={missingFields}
-        onSuccess={() => {
-          setProfileModalOpen(false)
-          submitBooking()
-        }}
+      <ActionGateModal
+        open={gateOpen}
+        action="book_court"
+        onOpenChange={setGateOpen}
+        onConfirmed={() => void runBooking()}
       />
     </main>
   )

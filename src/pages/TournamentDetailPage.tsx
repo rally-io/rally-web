@@ -10,6 +10,7 @@ import { useRtl } from '@/hooks/useRtl'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
+import { ActionGateModal } from '@/components/profile/ActionGateModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
@@ -31,12 +32,38 @@ export default function TournamentDetailPage() {
   const navigate = useNavigate()
   const { data: tr, isLoading, isError } = useTournament(id!)
   const register = useRegisterTournament()
-  const { status } = useAppSession()
+  const { status, playerProfile } = useAppSession()
   const { requireSignIn } = useAuthGate()
   const signedOut = status === 'signed_out'
   const [partner, setPartner] = useState<PartnerSelectionState>({ phase: 'idle' })
   const [error, setError] = useState('')
+  const [gateOpen, setGateOpen] = useState(false)
   const partnerSectionRef = useRef<HTMLDivElement>(null)
+
+  const runRegister = async () => {
+    if (!tr) return
+    setError('')
+    try {
+      const result = await register.mutateAsync({
+        tournamentId: tr.id,
+        data: buildPayload(tr.format, partner),
+      })
+      const q = new URLSearchParams({
+        id: tr.id,
+        registration_id: String(result.id),
+        amount_to_pay: String(result.amount_to_pay ?? 0),
+        entry_fee: String(result.entry_fee ?? tr.entry_fee),
+        credits_applied: String(result.credits_applied ?? 0),
+        service_fee: String(result.service_fee ?? 0),
+        status: String(result.status),
+      })
+      navigate(`/tournaments/summary?${q.toString()}`)
+    } catch (e: any) {
+      if (e?.isProfileFieldsRequired || e?.isUnauthorized) return
+      setError(e?.message ?? t('tournament.registrationFailedMessage'))
+    }
+  }
+
   const scrollToPartner = () => {
     partnerSectionRef.current?.scrollIntoView({
       behavior: 'smooth',
@@ -67,27 +94,16 @@ export default function TournamentDetailPage() {
   const payState =
     myReg?.status === 'payment_pending' || myReg?.status === 'approved'
 
-  const handleRegister = async () => {
+  const needsGate =
+    !playerProfile || !playerProfile.contact_number || playerProfile.skill_level == null
+
+  const handleRegister = () => {
     setError('')
-    try {
-      const result = await register.mutateAsync({
-        tournamentId: tr.id,
-        data: buildPayload(tr.format, partner),
-      })
-      const q = new URLSearchParams({
-        id: tr.id,
-        registration_id: String(result.id),
-        amount_to_pay: String(result.amount_to_pay ?? 0),
-        entry_fee: String(result.entry_fee ?? tr.entry_fee),
-        credits_applied: String(result.credits_applied ?? 0),
-        service_fee: String(result.service_fee ?? 0),
-        status: String(result.status),
-      })
-      navigate(`/tournaments/summary?${q.toString()}`)
-    } catch (e: any) {
-      if (e?.isProfileFieldsRequired || e?.isUnauthorized) return
-      setError(e?.message ?? t('tournament.registrationFailedMessage'))
+    if (needsGate) {
+      setGateOpen(true)
+      return
     }
+    void runRegister()
   }
 
   return (
@@ -357,6 +373,13 @@ export default function TournamentDetailPage() {
           )}
         </div>
       </div>
+
+      <ActionGateModal
+        open={gateOpen}
+        action="register_tournament"
+        onOpenChange={setGateOpen}
+        onConfirmed={() => void runRegister()}
+      />
     </main>
   )
 }
