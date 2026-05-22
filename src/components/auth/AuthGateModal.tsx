@@ -10,7 +10,7 @@ import { AuthPasswordStep } from './AuthPasswordStep'
 type Step =
   | { kind: 'options' }
   | { kind: 'email' }
-  | { kind: 'password'; email: string; userExists: boolean }
+  | { kind: 'password'; email: string; userExists: boolean; mode: 'signin' | 'signup' }
 
 export function AuthGateModal() {
   const { t } = useTranslation()
@@ -45,9 +45,10 @@ export function AuthGateModal() {
           )}
           {step.kind === 'email' && (
             <AuthEmailStep
+              mode="signin"
               onBack={() => setStep({ kind: 'options' })}
               onContinue={(email, userExists) =>
-                setStep({ kind: 'password', email, userExists })
+                setStep({ kind: 'password', email, userExists, mode: userExists ? 'signin' : 'signup' })
               }
               onForgotPassword={(email) => {
                 cancel()
@@ -57,13 +58,23 @@ export function AuthGateModal() {
           )}
           {step.kind === 'password' && (
             <AuthPasswordStep
+              mode={step.mode}
               email={step.email}
               userExists={step.userExists}
               onBack={() => setStep({ kind: 'email' })}
+              onSwitchMode={() =>
+                setStep({
+                  kind: 'password',
+                  email: step.email,
+                  userExists: step.userExists,
+                  mode: step.mode === 'signin' ? 'signup' : 'signin',
+                })
+              }
               onForgotPassword={() => {
                 cancel()
                 navigate(`/auth/forgot-password?email=${encodeURIComponent(step.email)}`)
               }}
+              onSignUpSucceededWithSession={() => cancel()}
               onSignUpNeedsVerification={(email) => {
                 cancel()
                 navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`)

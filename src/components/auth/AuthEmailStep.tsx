@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
 interface AuthEmailStepProps {
+  mode: 'signin' | 'signup'
   initialEmail?: string
   onBack: () => void
   onContinue: (email: string, userExists: boolean) => void
   onForgotPassword: (email: string) => void
 }
 
-export function AuthEmailStep({ initialEmail = '', onBack, onContinue, onForgotPassword }: AuthEmailStepProps) {
+export function AuthEmailStep({ mode, initialEmail = '', onBack, onContinue, onForgotPassword }: AuthEmailStepProps) {
   const { t } = useTranslation()
   const { checkEmailExists } = useAuth()
   const [email, setEmail] = useState(initialEmail)
@@ -48,6 +49,12 @@ export function AuthEmailStep({ initialEmail = '', onBack, onContinue, onForgotP
         <ArrowLeft size={16} /> {t('common.back') || 'Back'}
       </button>
 
+      <p className="text-sm text-slate-400">
+        {mode === 'signin'
+          ? (t('auth.email_step_signin_subtitle') || "Enter the email tied to your Rally account.")
+          : (t('auth.email_step_signup_subtitle') || "We'll use this to set up your account.")}
+      </p>
+
       <div>
         <Label htmlFor="email" className="mb-1 block">{t('auth.email_label') || 'Email'}</Label>
         <Input
@@ -66,19 +73,21 @@ export function AuthEmailStep({ initialEmail = '', onBack, onContinue, onForgotP
 
       <Button
         type="submit"
+        variant="accent"
         disabled={pending || email.length === 0}
-        className="w-full bg-electric-green text-slate-950 hover:bg-electric-green/90"
       >
         {pending ? (t('common.loading') || 'Loading...') : (t('auth.continue') || 'Continue')}
       </Button>
 
-      <button
-        type="button"
-        onClick={() => onForgotPassword(email)}
-        className="block text-center w-full text-sm text-slate-400 hover:text-electric-green"
-      >
-        {t('auth.forgot_password') || 'Forgot password?'}
-      </button>
+      {mode === 'signin' && (
+        <button
+          type="button"
+          onClick={() => onForgotPassword(email)}
+          className="block text-center w-full text-sm text-slate-400 hover:text-electric-green"
+        >
+          {t('auth.forgot_password') || 'Forgot password?'}
+        </button>
+      )}
     </form>
   )
 }

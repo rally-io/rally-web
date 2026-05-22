@@ -1,5 +1,6 @@
-import { createContext, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { getOnboardingStatus, getMyPlayerProfile } from '@/services/api/profile'
 import { __setApiBridge } from '@/services/api/client'
@@ -17,12 +18,6 @@ export interface AppSessionContextValue {
   onboardingStatus: OnboardingStatus | null
   playerProfile: PlayerMe | null
   refetchOnboarding: () => Promise<void>
-  // Resolves when a players row is known to exist. Rejects if the user cancels the modal
-  // or is signed out and can't continue.
-  ensurePlayerProfile: () => Promise<void>
-  // Imperative opener for the blocking ProfileCompletionModal. Set by the modal mount.
-  // Accepts null to allow unregistration on unmount.
-  __setBlockingHandlers: (handlers: { open: () => Promise<void> } | null) => void
   // Removes all session-related query cache immediately. Call this before signOut() so
   // the old profile data is gone before the session clears, preventing a stale-data flash.
   clearSession: () => void
@@ -33,6 +28,7 @@ export const AppSessionContext = createContext<AppSessionContextValue | null>(nu
 export function AppSessionProvider({ children }: { children: ReactNode }) {
   const { session, isLoading: authLoading, signOut } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const isSignedIn = !!session
 
   const {
@@ -87,36 +83,19 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     queryClient.removeQueries({ queryKey: ['player-profile-me'] })
   }, [queryClient])
 
-  // The blocking ProfileCompletionModal registers its "open and wait for completion" handler here.
-  const blockingHandlers = useRef<{ open: () => Promise<void> } | null>(null)
-  const __setBlockingHandlers = useCallback((h: { open: () => Promise<void> } | null) => {
-    blockingHandlers.current = h
-  }, [])
-
-  const ensurePlayerProfile = useCallback(async () => {
-    // Caller responsibilities: caller is expected to handle the rejection case
-    // (e.g. don't fire the gated mutation if the user cancelled the modal).
-    if (status === 'ready') return
-    if (status === 'signed_out') throw new Error('SIGNED_OUT')
-    if (status === 'profile_error') throw new Error('PROFILE_ERROR')
-    if (!blockingHandlers.current) {
-      throw new Error('ProfileCompletionModal is not mounted; cannot create player row')
-    }
-    await blockingHandlers.current.open()
-    await refetchOnboarding()
-  }, [status, refetchOnboarding])
-
-  // Wire the axios bridge so the 403 interceptor can fire ensurePlayerProfile / signOut.
+  // Wire the axios bridge so the 403 interceptor can redirect to /profile/edit and 401 can force-sign-out.
   useEffect(() => {
     __setApiBridge({
-      ensurePlayerProfile,
+      redirectToProfileEdit: () => {
+        navigate('/profile/edit')
+      },
       forceSignOut: async () => {
         await signOut()
         queryClient.clear()
       },
     })
     return () => __setApiBridge(null)
-  }, [ensurePlayerProfile, signOut, queryClient])
+  }, [navigate, signOut, queryClient])
 
   // When session becomes null, drop all cached profile data.
   useEffect(() => {
@@ -131,10 +110,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     onboardingStatus,
     playerProfile,
     refetchOnboarding,
-    ensurePlayerProfile,
-    __setBlockingHandlers,
     clearSession,
-  }), [status, onboardingStatus, playerProfile, refetchOnboarding, ensurePlayerProfile, __setBlockingHandlers, clearSession])
+  }), [status, onboardingStatus, playerProfile, refetchOnboarding, clearSession])
 
   return <AppSessionContext.Provider value={value}>{children}</AppSessionContext.Provider>
 }

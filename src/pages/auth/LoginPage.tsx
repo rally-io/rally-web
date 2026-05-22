@@ -8,10 +8,12 @@ import { AuthEmailStep } from '@/components/auth/AuthEmailStep'
 import { AuthPasswordStep } from '@/components/auth/AuthPasswordStep'
 import { LegalDisclaimer } from '@/components/auth/LegalDisclaimer'
 
+type Mode = 'signin' | 'signup'
+
 type Step =
   | { kind: 'options' }
-  | { kind: 'email' }
-  | { kind: 'password'; email: string; userExists: boolean }
+  | { kind: 'email'; mode: Mode }
+  | { kind: 'password'; mode: Mode; email: string; userExists: boolean }
 
 export default function LoginPage() {
   const { t } = useTranslation()
@@ -48,10 +50,14 @@ export default function LoginPage() {
   }, [isLoading, session, navigate, next])
 
   const title =
-    step.kind === 'options' ? (t('auth.welcome') || 'Welcome to Rally')
-    : step.kind === 'email' ? (t('auth.email_step_title') || "What's your email?")
-    : step.userExists ? (t('auth.signin_title') || 'Welcome back')
-    : (t('auth.signup_title') || 'Create your account')
+    step.kind === 'options' ? (t('auth.welcome_hero') || 'Welcome to Rally')
+    : step.kind === 'email'
+      ? step.mode === 'signin'
+        ? (t('auth.email_step_signin_title') || 'Sign in')
+        : (t('auth.email_step_signup_title') || 'Create your account')
+      : step.mode === 'signin'
+        ? (t('auth.signin_title') || 'Welcome back')
+        : (t('auth.signup_title') || 'Create your account')
 
   const handleOuterBack = () => {
     if (window.history.length > 1) {
@@ -69,25 +75,40 @@ export default function LoginPage() {
       onBack={step.kind === 'options' ? handleOuterBack : undefined}
     >
       {step.kind === 'options' && (
-        <AuthOptionsStep onContinueWithEmail={() => setStep({ kind: 'email' })} />
+        <AuthOptionsStep
+          onContinueWithEmail={(mode) => setStep({ kind: 'email', mode })}
+        />
       )}
       {step.kind === 'email' && (
         <AuthEmailStep
+          mode={step.mode}
           initialEmail={rememberedEmail}
           onBack={() => setStep({ kind: 'options' })}
           onContinue={(email, userExists) => {
             setRememberedEmail(email)
-            setStep({ kind: 'password', email, userExists })
+            setStep({ kind: 'password', mode: step.mode, email, userExists })
           }}
           onForgotPassword={(email) => navigate(`/auth/forgot-password?email=${encodeURIComponent(email)}`)}
         />
       )}
       {step.kind === 'password' && (
         <AuthPasswordStep
+          mode={step.mode}
           email={step.email}
           userExists={step.userExists}
-          onBack={() => setStep({ kind: 'email' })}
+          onBack={() => setStep({ kind: 'email', mode: step.mode })}
+          onSwitchMode={() =>
+            setStep({
+              kind: 'password',
+              mode: step.mode === 'signin' ? 'signup' : 'signin',
+              email: step.email,
+              userExists: step.userExists,
+            })
+          }
           onForgotPassword={() => navigate(`/auth/forgot-password?email=${encodeURIComponent(step.email)}`)}
+          onSignUpSucceededWithSession={() =>
+            navigate('/auth/welcome', { replace: true })
+          }
           onSignUpNeedsVerification={(email) =>
             navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`)
           }

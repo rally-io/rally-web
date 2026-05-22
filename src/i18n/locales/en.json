@@ -20,7 +20,7 @@
     "back": "Back"
   },
   "auth": {
-    "welcome": "Your court is waiting",
+    "welcome_hero": "Your court is waiting",
     "welcome_subtitle": "Sign in, grab a partner, and join the next tournament",
     "email_step_title": "What's your email?",
     "signin_title": "Welcome back",
@@ -38,6 +38,23 @@
     "continue_apple": "Sign in with Apple",
     "continue_facebook": "Sign in with Facebook",
     "continue_email": "Sign in with email",
+    "signin_with_email": "Sign in with email",
+    "signup_with_email": "Create account with email",
+    "options_subtitle_signin": "Sign in to your Rally account",
+    "options_subtitle_signup": "Create your Rally account in seconds",
+    "email_step_signin_title": "Sign in",
+    "email_step_signup_title": "Create your account",
+    "email_step_signin_subtitle": "Enter the email tied to your Rally account.",
+    "email_step_signup_subtitle": "We'll use this to set up your account.",
+    "wrong_door_signin_to_signup": "We couldn't find a Rally account for {{email}}.",
+    "wrong_door_signup_to_signin": "{{email}} already has a Rally account.",
+    "switch_to_signup": "Create one instead",
+    "switch_to_signin": "Sign in instead",
+    "welcome": {
+      "title": "Welcome to Rally",
+      "subtitle": "Your account is ready. Browse clubs, join tournaments, and book courts whenever you like.",
+      "cta": "Continue to Rally"
+    },
     "rule_length": "At least 8 characters",
     "rule_uppercase": "One uppercase letter",
     "rule_digit": "One number",
@@ -89,6 +106,11 @@
       "sign_in_to_book": "Sign in to book",
       "sign_in_to_view": "Sign in to view your activity",
       "sign_in_button": "Sign in / Create account"
+    },
+    "legal": {
+      "prefix": "By continuing you agree to our",
+      "terms": "Terms",
+      "privacy": "Privacy"
     }
   },
   "user_menu": {

@@ -6,9 +6,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@/i18n'
 import EditProfilePage from './EditProfilePage'
 import * as profileApi from '@/services/api/profile'
+import * as authApi from '@/services/api/auth'
 import type { PlayerMe } from '@/types/api'
 
-const ensurePlayerProfile = vi.fn()
 const requireSignIn = vi.fn()
 const sessionState: {
   status: 'loading' | 'signed_out' | 'profile_error' | 'profile_incomplete' | 'ready'
@@ -22,12 +22,14 @@ vi.mock('@/hooks/useAppSession', () => ({
   useAppSession: () => ({
     status: sessionState.status,
     playerProfile: sessionState.playerProfile,
-    ensurePlayerProfile,
     onboardingStatus: null,
     refetchOnboarding: vi.fn(),
-    __setBlockingHandlers: vi.fn(),
     clearSession: vi.fn(),
   }),
+}))
+
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { email: 'dana@example.com' } }),
 }))
 
 vi.mock('@/hooks/useAuthGate', () => ({
@@ -46,8 +48,6 @@ function renderPage() {
 }
 
 beforeEach(() => {
-  ensurePlayerProfile.mockReset()
-  ensurePlayerProfile.mockResolvedValue(undefined)
   requireSignIn.mockReset()
   requireSignIn.mockResolvedValue(undefined)
   sessionState.status = 'signed_out'
@@ -65,12 +65,45 @@ describe('EditProfilePage — signed-out branch', () => {
 })
 
 describe('EditProfilePage — profile_incomplete branch', () => {
-  it('calls ensurePlayerProfile on mount', async () => {
+  it('renders the form with empty defaults and creates the players row on submit', async () => {
+    const user = userEvent.setup()
     sessionState.status = 'profile_incomplete'
+    sessionState.playerProfile = null
+    const createSpy = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({
+      success: true,
+      data: { id: 'new' },
+      meta: null,
+      error: null,
+    } as any)
     renderPage()
+
+    const firstName = screen.getByLabelText(/first name/i) as HTMLInputElement
+    const lastName = screen.getByLabelText(/last name/i) as HTMLInputElement
+    const phone = screen.getByLabelText(/phone number/i) as HTMLInputElement
+    expect(firstName.value).toBe('')
+    expect(lastName.value).toBe('')
+    expect(phone.value).toBe('')
+
+    await user.type(firstName, 'Dana')
+    await user.type(lastName, 'Levi')
+    await user.type(phone, '501234567')
+
+    const save = screen.getByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+
     await waitFor(() => {
-      expect(ensurePlayerProfile).toHaveBeenCalledTimes(1)
+      expect(createSpy).toHaveBeenCalledTimes(1)
     })
+    expect(createSpy.mock.calls[0][0]).toMatchObject({
+      first_name: 'Dana',
+      last_name: 'Levi',
+      email: 'dana@example.com',
+      contact_number: '501234567',
+      gender: 'choose_not_to_answer',
+    })
+
+    createSpy.mockRestore()
   })
 })
 
