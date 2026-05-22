@@ -79,6 +79,7 @@ export function AuthGateModal() {
                 cancel()
                 navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`)
               }}
+              onSignInSucceeded={() => cancel()}
             />
           )}
         </div>

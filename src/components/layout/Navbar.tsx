@@ -67,7 +67,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const { session, signOut, user } = useAuth()
-  const { status, onboardingStatus, playerProfile, clearSession } = useAppSession()
+  const { status, playerProfile, clearSession } = useAppSession()
   const isSignedIn = !!session
 
   const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
@@ -113,8 +113,6 @@ export function Navbar() {
     setMenuOpen(false)
     navigate(to)
   }
-
-  const profileIncomplete = onboardingStatus && !onboardingStatus.has_player_profile
 
   const meta = (user?.user_metadata ?? {}) as Record<string, string>
   const profileName = `${playerProfile?.first_name ?? ''} ${playerProfile?.last_name ?? ''}`.trim()

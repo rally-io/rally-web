@@ -55,8 +55,6 @@ function makeSession(overrides: Partial<AppSessionContextValue> = {}): AppSessio
       skill_level: 3,
     },
     refetchOnboarding: vi.fn().mockResolvedValue(undefined),
-    ensurePlayerProfile: vi.fn().mockResolvedValue(undefined),
-    __setBlockingHandlers: vi.fn(),
     clearSession: vi.fn(),
     ...overrides,
   }
