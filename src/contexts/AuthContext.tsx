@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { isAuthError } from '@/lib/auth'
 import { checkEmailExists as apiCheckEmailExists, resendVerificationEmail } from '@/services/api/auth'
 
-export type OAuthProvider = 'google' | 'apple' | 'facebook'
+export type OAuthProvider = 'google'
 
 export interface AuthContextValue {
   session: Session | null
@@ -76,8 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async signUpWithEmail(email, password) {
-      // Mobile-parity: empty name fields at signup. Name is collected during the
-      // blocking ProfileCompletionModal triggered by the first gated action.
+      // Mobile-parity: empty name fields at signup. Name is collected on the
+      // /profile/edit page after the user lands in the app.
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,

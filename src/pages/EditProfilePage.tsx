@@ -4,8 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useAppSession } from '@/hooks/useAppSession'
+import { useAuth } from '@/hooks/useAuth'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { updateProfile } from '@/services/api/profile'
+import { createPlayerProfile } from '@/services/api/auth'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card } from '@/components/ui/card'
@@ -14,19 +16,14 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
+import { SKILL_DEFAULT } from '@/lib/skillLevel'
 import { editProfileSchema, type EditProfileFormValues } from '@/lib/editProfileSchema'
 import type { PlayerMe, ProfileUpdateRequest } from '@/types/api'
 
 export default function EditProfilePage() {
   const { t } = useTranslation()
-  const { status, playerProfile, ensurePlayerProfile } = useAppSession()
+  const { status, playerProfile } = useAppSession()
   const { requireSignIn } = useAuthGate()
-
-  useEffect(() => {
-    if (status === 'profile_incomplete') {
-      void ensurePlayerProfile().catch(() => {})
-    }
-  }, [status, ensurePlayerProfile])
 
   return (
     <main className="pt-24 pb-8 bg-rally-bg min-h-screen">
@@ -57,6 +54,7 @@ export default function EditProfilePage() {
           <p className="text-rally-text-2">{t('edit_profile.loadError')}</p>
         )}
 
+        {status === 'profile_incomplete' && <EditProfileForm profile={null} />}
         {status === 'ready' && playerProfile && (
           <EditProfileForm profile={playerProfile} />
         )}
@@ -67,23 +65,25 @@ export default function EditProfilePage() {
 
 type Status = { kind: 'idle' } | { kind: 'success' } | { kind: 'error'; message: string }
 
-function defaultsFromProfile(profile: PlayerMe): EditProfileFormValues {
+function defaultsFromProfile(profile: PlayerMe | null): EditProfileFormValues {
   // PlayerMe doesn't expose country_code — DEFAULT_COUNTRY.dial is used as the
   // initial selection until the user changes it. The submit code only sends
   // dirty fields, so an unchanged default isn't persisted.
   return {
-    first_name: profile.first_name ?? '',
-    last_name: profile.last_name ?? '',
+    first_name: profile?.first_name ?? '',
+    last_name: profile?.last_name ?? '',
     country_code: DEFAULT_COUNTRY.dial,
-    contact_number: profile.contact_number ?? '',
-    skill_level: profile.skill_level ?? 3.0,
+    contact_number: profile?.contact_number ?? '',
+    skill_level: profile?.skill_level ?? SKILL_DEFAULT,
   }
 }
 
-function EditProfileForm({ profile }: { profile: PlayerMe }) {
+function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
+  const isCreate = profile === null
 
   const defaults = defaultsFromProfile(profile)
 
@@ -103,16 +103,43 @@ function EditProfileForm({ profile }: { profile: PlayerMe }) {
   }, [form])
 
   const mutation = useMutation({
-    mutationFn: (payload: ProfileUpdateRequest) => updateProfile(payload),
-    onSuccess: (result, payload) => {
-      if (!result.success) {
-        setStatus({ kind: 'error', message: result.error.message || t('edit_profile.saveError') })
-        return
+    mutationFn: async (values: EditProfileFormValues) => {
+      if (isCreate) {
+        if (!values.first_name || !values.last_name) return
+        if (!user?.email) throw new Error(t('profile.errorCannotCreate'))
+        const payload = {
+          first_name: values.first_name,
+          last_name: values.last_name,
+          email: user.email,
+          contact_number: values.contact_number || '',
+          country_code: values.country_code ?? DEFAULT_COUNTRY.dial,
+          gender: 'choose_not_to_answer' as const,
+          skill_level: values.skill_level,
+        }
+        const result = await createPlayerProfile(payload)
+        if (!result.success) {
+          throw new Error(result.error.message ?? t('profile.errorCannotCreate'))
+        }
+        return values
       }
+      const dirty = form.formState.dirtyFields
+      const patch: ProfileUpdateRequest = {}
+      if (dirty.first_name) patch.first_name = values.first_name
+      if (dirty.last_name) patch.last_name = values.last_name
+      if (dirty.country_code) patch.country_code = values.country_code
+      if (dirty.contact_number) patch.contact_number = values.contact_number
+      if (dirty.skill_level) patch.skill_level = values.skill_level
+      const result = await updateProfile(patch)
+      if (!result.success) {
+        throw new Error(result.error.message ?? t('edit_profile.saveError'))
+      }
+      return patch
+    },
+    onSuccess: (applied) => {
       setStatus({ kind: 'success' })
       void queryClient.invalidateQueries({ queryKey: ['onboarding-status'] })
       void queryClient.invalidateQueries({ queryKey: ['player-profile-me'] })
-      form.reset({ ...form.getValues(), ...payload } as EditProfileFormValues)
+      form.reset({ ...form.getValues(), ...applied } as EditProfileFormValues)
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : t('edit_profile.saveError')
@@ -122,19 +149,18 @@ function EditProfileForm({ profile }: { profile: PlayerMe }) {
 
   const onSubmit = (values: EditProfileFormValues) => {
     setStatus({ kind: 'idle' })
-    const dirty = form.formState.dirtyFields
-    const payload: ProfileUpdateRequest = {}
-    if (dirty.first_name) payload.first_name = values.first_name
-    if (dirty.last_name) payload.last_name = values.last_name
-    if (dirty.country_code) payload.country_code = values.country_code
-    if (dirty.contact_number) payload.contact_number = values.contact_number
-    if (dirty.skill_level) payload.skill_level = values.skill_level
-    if (Object.keys(payload).length === 0) return
-    mutation.mutate(payload)
+    if (isCreate) {
+      if (!values.first_name || !values.last_name) return
+    } else if (Object.keys(form.formState.dirtyFields).length === 0) {
+      return
+    }
+    mutation.mutate(values)
   }
 
-  const canSubmit =
-    form.formState.isDirty && form.formState.isValid && !mutation.isPending
+  const canSubmit = isCreate
+    ? form.formState.isValid && !mutation.isPending
+    : form.formState.isDirty && form.formState.isValid && !mutation.isPending
+  const showSave = isCreate || form.formState.isDirty
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
@@ -171,7 +197,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe }) {
 
           <div className="mt-3">
             <Label className="mb-1 block text-sm">{t('edit_profile.email')}</Label>
-            <p className="text-rally-text-2 text-sm">{profile.email ?? '—'}</p>
+            <p className="text-rally-text-2 text-sm">{profile?.email ?? user?.email ?? '—'}</p>
           </div>
 
           <div className="grid grid-cols-[1fr_7rem] gap-3 mt-3">
@@ -219,13 +245,16 @@ function EditProfileForm({ profile }: { profile: PlayerMe }) {
             control={form.control}
             name="skill_level"
             render={({ field }) => (
-              <SkillLevelSlider value={field.value} onChange={field.onChange} />
+              <SkillLevelSlider
+                value={field.value ?? SKILL_DEFAULT}
+                onChange={field.onChange}
+              />
             )}
           />
         </Card>
       </div>
 
-      {form.formState.isDirty && (
+      {showSave && (
         <div className="flex gap-3 justify-end">
           <Button
             type="submit"

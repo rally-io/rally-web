@@ -20,7 +20,7 @@
     "back": "חזרה"
   },
   "auth": {
-    "welcome": "המגרש שלך מחכה",
+    "welcome_hero": "המגרש שלך מחכה",
     "welcome_subtitle": "התחבר עכשיו, תפוס שותף, וצא לטורניר הבא",
     "email_step_title": "מה האימייל שלך?",
     "signin_title": "ברוך שובך",
@@ -38,6 +38,23 @@
     "continue_apple": "התחבר עם Apple",
     "continue_facebook": "התחבר עם Facebook",
     "continue_email": "התחבר עם אימייל",
+    "signin_with_email": "התחבר עם אימייל",
+    "signup_with_email": "צור חשבון עם אימייל",
+    "options_subtitle_signin": "התחבר לחשבון Rally שלך",
+    "options_subtitle_signup": "צור את חשבון Rally שלך תוך שניות",
+    "email_step_signin_title": "התחברות",
+    "email_step_signup_title": "יצירת חשבון",
+    "email_step_signin_subtitle": "הזן את האימייל המקושר לחשבון Rally שלך.",
+    "email_step_signup_subtitle": "נשתמש בו להגדרת החשבון שלך.",
+    "wrong_door_signin_to_signup": "לא מצאנו חשבון Rally עבור {{email}}.",
+    "wrong_door_signup_to_signin": "ל-{{email}} כבר יש חשבון Rally.",
+    "switch_to_signup": "צור חשבון חדש",
+    "switch_to_signin": "התחבר במקום זאת",
+    "welcome": {
+      "title": "ברוכים הבאים ל-Rally",
+      "subtitle": "החשבון שלך מוכן. עיין במועדונים, הצטרף לטורנירים והזמן מגרשים מתי שתרצה.",
+      "cta": "המשך אל Rally"
+    },
     "rule_length": "לפחות 8 תווים",
     "rule_uppercase": "אות גדולה אחת",
     "rule_digit": "ספרה אחת",
@@ -89,6 +106,11 @@
       "sign_in_to_book": "התחברו כדי להזמין",
       "sign_in_to_view": "התחברו כדי לצפות בפעילות שלכם",
       "sign_in_button": "התחברות / הרשמה"
+    },
+    "legal": {
+      "prefix": "בהמשך אתם מסכימים ל",
+      "terms": "תנאים",
+      "privacy": "פרטיות"
     }
   },
   "user_menu": {

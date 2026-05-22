@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from './components/layout/Layout'
-import { ProfileCompletionGate } from './components/profile/ProfileCompletionModal'
 import { AuthGateModal } from './components/auth/AuthGateModal'
 
 // Pages
@@ -25,6 +24,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import LoginPage from './pages/auth/LoginPage'
 import AuthCallbackPage from './pages/auth/AuthCallbackPage'
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
+import WelcomePage from './pages/auth/WelcomePage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import SetPasswordPage from './pages/auth/SetPasswordPage'
 
@@ -33,8 +33,6 @@ export default function App() {
 
   return (
     <div dir={i18n.language === 'he' ? 'rtl' : 'ltr'}>
-      {/* Mounted once — handles blocking onboarding for both proactive guards and 403 retries */}
-      <ProfileCompletionGate />
       {/* Mounted once — opens when any page calls requireSignIn() from useAuthGate */}
       <AuthGateModal />
 
@@ -43,6 +41,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/auth/welcome" element={<WelcomePage />} />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
 

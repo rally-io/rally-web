@@ -67,7 +67,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const { session, signOut, user } = useAuth()
-  const { status, onboardingStatus, playerProfile, ensurePlayerProfile, clearSession } = useAppSession()
+  const { status, playerProfile, clearSession } = useAppSession()
   const isSignedIn = !!session
 
   const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
@@ -113,17 +113,6 @@ export function Navbar() {
     setMenuOpen(false)
     navigate(to)
   }
-
-  const handleCompleteProfile = async () => {
-    setMenuOpen(false)
-    try {
-      await ensurePlayerProfile()
-    } catch {
-      // USER_CANCELLED / SIGNED_OUT / PROFILE_ERROR — modal handles its own UX.
-    }
-  }
-
-  const profileIncomplete = onboardingStatus && !onboardingStatus.has_player_profile
 
   const meta = (user?.user_metadata ?? {}) as Record<string, string>
   const profileName = `${playerProfile?.first_name ?? ''} ${playerProfile?.last_name ?? ''}`.trim()
@@ -263,19 +252,6 @@ export function Navbar() {
                       </div>
                     </div>
 
-                    {/* Profile completion (if applicable) */}
-                    {profileIncomplete && (
-                      <div className="p-1.5 border-b border-white/10">
-                        <button
-                          onClick={handleCompleteProfile}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-electric-green hover:bg-electric-green/10 rounded-lg transition-colors"
-                        >
-                          <CircleUserRound size={16} />
-                          {t('user_menu.complete_profile')}
-                        </button>
-                      </div>
-                    )}
-
                     {/* Personal actions — mirrors mobile drawer */}
                     <div className="p-1.5">
                       {personalActions.map((action) => {
@@ -365,17 +341,6 @@ export function Navbar() {
           {isSignedIn ? (
             <>
               <div className="h-px bg-slate-800 my-1" />
-              {profileIncomplete && (
-                <button
-                  onClick={() => {
-                    setMobileOpen(false)
-                    void handleCompleteProfile()
-                  }}
-                  className="text-start text-sm text-electric-green hover:text-electric-green/80 transition-colors"
-                >
-                  {t('user_menu.complete_profile')}
-                </button>
-              )}
               {personalActions.map((action) => {
                 const disabled = action.comingSoon === true || action.to === null
                 if (disabled) {
