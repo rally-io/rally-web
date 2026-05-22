@@ -19,12 +19,15 @@ interface AuthPasswordStepProps {
   onSignUpSucceededWithSession: () => void
   /** Signup completed but Supabase returned no session (email confirmations on). */
   onSignUpNeedsVerification: (email: string) => void
+  /** Signin completed and Supabase returned a session. */
+  onSignInSucceeded: () => void
 }
 
 export function AuthPasswordStep({
   mode, email, userExists,
   onBack, onSwitchMode, onForgotPassword,
   onSignUpSucceededWithSession, onSignUpNeedsVerification,
+  onSignInSucceeded,
 }: AuthPasswordStepProps) {
   const { t } = useTranslation()
   const { signInWithEmail, signUpWithEmail } = useAuth()
@@ -59,6 +62,7 @@ export function AuthPasswordStep({
         return
       }
       await signInWithEmail(email, password)
+      onSignInSucceeded()
     } catch (e: any) {
       const msg = String(e?.message ?? '').toLowerCase()
       if (!isSignUp && /invalid.*login|invalid.*credentials/.test(msg)) {

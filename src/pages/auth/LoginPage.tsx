@@ -112,6 +112,7 @@ export default function LoginPage() {
           onSignUpNeedsVerification={(email) =>
             navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`)
           }
+          onSignInSucceeded={() => navigate(next, { replace: true })}
         />
       )}
     </AuthCard>
