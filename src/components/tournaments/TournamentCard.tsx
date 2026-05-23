@@ -43,7 +43,8 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
 
   const payState =
     tr.registration_status === 'payment_pending' ||
-    tr.registration_status === 'approved'
+    tr.registration_status === 'approved' ||
+    tr.registration_status === 'registered'
 
   const ctaLabel = payState
     ? t('tournament.tournamentsPayNow')
@@ -53,9 +54,19 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
     ? t('tournament.tournamentsRegister')
     : t('tournament.tournamentsViewDetails')
 
+  // Pay-state cards must land on the summary so the user can complete payment;
+  // the summary fetches the registration's amount/credits to drive Pay Now.
+  const linkTo =
+    payState && tr.registration_id
+      ? `/tournaments/summary?${new URLSearchParams({
+          id: tr.id,
+          registration_id: tr.registration_id,
+        }).toString()}`
+      : `/tournaments/${tr.id}`
+
   return (
     <Link
-      to={`/tournaments/${tr.id}`}
+      to={linkTo}
       className="block rounded-[20px] bg-rally-surface border border-rally-border overflow-hidden hover:border-rally-accent/50 transition-colors"
     >
       <div className="relative aspect-video bg-rally-surface-2">

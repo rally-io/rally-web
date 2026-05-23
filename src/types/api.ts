@@ -143,6 +143,7 @@ export interface MyRegistration {
   guest_player_2_name?: string | null
   team_name?: string | null
   status: string
+  payment_status?: string | null
 }
 
 export interface TournamentDetail extends Tournament {
@@ -168,6 +169,8 @@ export interface RegistrationDetail {
   start_date?: string | null
   end_date?: string | null
   within_cancellation_window: boolean
+  /** True ⇒ pre-auth (J4/J5 hold) entity: saved-card capture is forbidden, hosted checkout only. (gap spec §2.5) */
+  requires_approval_event?: boolean
 }
 
 export interface PlayerSearchResult {
@@ -264,7 +267,7 @@ export interface PlayerCreatePayload {
   last_name: string
   email: string
   contact_number: string
-  country_code: string             // ISO style — e.g. '+972'
+  country_code?: string            // ISO style — e.g. '+972'. Omit if no contact_number.
   gender: Gender
   date_of_birth?: string           // 'YYYY-MM-DD'
   skill_level?: number
@@ -293,4 +296,57 @@ export interface SupabaseUserSummary {
   id: string
   email: string | null
   role: string
+}
+
+// --- Payments (PAYMENT_SPEC.md §3) ---
+
+export type PaymentEntityType =
+  | 'booking'
+  | 'tournament_registration'
+  | 'event_participation'
+
+/**
+ * Discriminator passed to initiatePayment / chargeSavedCard.
+ * `use_credits` is only meaningful for tournament_registration (spec §3.2).
+ */
+export type PaymentEntity =
+  | { type: 'booking'; id: string }
+  | { type: 'tournament_registration'; id: string; use_credits?: boolean }
+  | { type: 'event_participation'; id: string }
+
+export type CardBrand =
+  | 'Visa' | 'Mastercard' | 'Diners' | 'Amex' | 'Isracard' | 'Discover'
+
+export interface SavedCard {
+  id: string
+  card_last4: string
+  card_expiry: string        // 'MMYY'
+  brand: CardBrand | null
+  issuer: string | null      // Always null on Grow; HYP-legacy field, kept for response shape parity
+  is_default: boolean
+  created_at: string         // ISO 8601
+  has_token: boolean         // false → must use hosted-checkout, not server-to-server
+}
+
+export interface InitiatePaymentResponse {
+  payment_url: string        // Grow hosted-checkout URL
+}
+
+/**
+ * Spec §3.2 / gap-spec §11 (G9): the three charge-saved-card endpoints normally
+ * return { grow_asmachta, amount }. For a credits-cover-all tournament charge the
+ * backend instead returns { confirmed, amount, credits_applied } with NO
+ * grow_asmachta. Treat a missing grow_asmachta as a valid success — the
+ * confirming screen already guards `asmachta && …` before rendering `#…`.
+ */
+export interface ChargeSavedCardResponse {
+  grow_asmachta?: string
+  amount: number
+  confirmed?: boolean
+  credits_applied?: number
+}
+
+/** Spec §3.1: save_card is only documented on the booking initiate endpoint. */
+export interface InitiateBookingPaymentBody {
+  save_card?: boolean
 }

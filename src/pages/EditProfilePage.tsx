@@ -18,7 +18,7 @@ import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import { SKILL_DEFAULT } from '@/lib/skillLevel'
 import { editProfileSchema, type EditProfileFormValues } from '@/lib/editProfileSchema'
-import type { PlayerMe, ProfileUpdateRequest } from '@/types/api'
+import type { PlayerCreatePayload, PlayerMe, ProfileUpdateRequest } from '@/types/api'
 
 export default function EditProfilePage() {
   const { t } = useTranslation()
@@ -65,13 +65,27 @@ export default function EditProfilePage() {
 
 type Status = { kind: 'idle' } | { kind: 'success' } | { kind: 'error'; message: string }
 
-function defaultsFromProfile(profile: PlayerMe | null): EditProfileFormValues {
+function metaName(user: { user_metadata?: Record<string, unknown> } | null, ...keys: string[]): string {
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>
+  for (const k of keys) {
+    const v = meta[k]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+  }
+  return ''
+}
+
+function defaultsFromProfile(
+  profile: PlayerMe | null,
+  user: { user_metadata?: Record<string, unknown> } | null,
+): EditProfileFormValues {
+  // For new profiles, fall back to Supabase user_metadata (set by OAuth providers
+  // like Google), so social-login users land in the form with names pre-filled.
   // PlayerMe doesn't expose country_code — DEFAULT_COUNTRY.dial is used as the
   // initial selection until the user changes it. The submit code only sends
   // dirty fields, so an unchanged default isn't persisted.
   return {
-    first_name: profile?.first_name ?? '',
-    last_name: profile?.last_name ?? '',
+    first_name: profile?.first_name ?? metaName(user, 'first_name', 'given_name') ?? '',
+    last_name: profile?.last_name ?? metaName(user, 'last_name', 'family_name') ?? '',
     country_code: DEFAULT_COUNTRY.dial,
     contact_number: profile?.contact_number ?? '',
     skill_level: profile?.skill_level ?? SKILL_DEFAULT,
@@ -85,7 +99,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
   const isCreate = profile === null
 
-  const defaults = defaultsFromProfile(profile)
+  const defaults = defaultsFromProfile(profile, user)
 
   const form = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
@@ -104,17 +118,23 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
 
   const mutation = useMutation({
     mutationFn: async (values: EditProfileFormValues) => {
+      const phone = (values.contact_number || '').trim()
       if (isCreate) {
-        if (!values.first_name || !values.last_name) return
+        // No players row yet — only POST can create it. Backend requires names;
+        // fall back to 'Player' (not the email local-part) so social-signup
+        // users don't get leaderboard entries like "12345 12345" without consent.
         if (!user?.email) throw new Error(t('profile.errorCannotCreate'))
-        const payload = {
-          first_name: values.first_name,
-          last_name: values.last_name,
+        const fallback = 'Player'
+        // Backend rejects "country_code without contact_number" — only attach
+        // the dial code when an actual phone number is present.
+        const payload: PlayerCreatePayload = {
+          first_name: (values.first_name || '').trim() || fallback,
+          last_name: (values.last_name || '').trim() || fallback,
           email: user.email,
-          contact_number: values.contact_number || '',
-          country_code: values.country_code ?? DEFAULT_COUNTRY.dial,
-          gender: 'choose_not_to_answer' as const,
-          skill_level: values.skill_level,
+          contact_number: phone,
+          gender: 'choose_not_to_answer',
+          ...(phone ? { country_code: values.country_code ?? DEFAULT_COUNTRY.dial } : {}),
+          ...(values.skill_level != null ? { skill_level: values.skill_level } : {}),
         }
         const result = await createPlayerProfile(payload)
         if (!result.success) {
@@ -122,13 +142,27 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
         }
         return values
       }
+      // Edit mode: PATCH only the dirty fields. The players row exists; the
+      // server happily accepts any subset.
       const dirty = form.formState.dirtyFields
       const patch: ProfileUpdateRequest = {}
+      if (dirty.contact_number) {
+        patch.contact_number = phone
+        // H4: send country_code whenever phone is dirty so the backend stores
+        // a dial prefix even if the user never touched the dropdown (defaults
+        // to DEFAULT_COUNTRY.dial which is what the form already shows).
+        patch.country_code = values.country_code ?? DEFAULT_COUNTRY.dial
+      }
+      if (dirty.country_code && phone) {
+        // H3: only attach country_code when there is a real phone number.
+        // "phone without country_code" is malformed; "country_code without
+        // phone" the backend rejects.
+        patch.country_code = values.country_code
+      }
       if (dirty.first_name) patch.first_name = values.first_name
       if (dirty.last_name) patch.last_name = values.last_name
-      if (dirty.country_code) patch.country_code = values.country_code
-      if (dirty.contact_number) patch.contact_number = values.contact_number
       if (dirty.skill_level) patch.skill_level = values.skill_level
+      if (Object.keys(patch).length === 0) return
       const result = await updateProfile(patch)
       if (!result.success) {
         throw new Error(result.error.message ?? t('edit_profile.saveError'))
@@ -149,17 +183,43 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
 
   const onSubmit = (values: EditProfileFormValues) => {
     setStatus({ kind: 'idle' })
-    if (isCreate) {
-      if (!values.first_name || !values.last_name) return
-    } else if (Object.keys(form.formState.dirtyFields).length === 0) {
+    // Build the patch first so we know whether there's anything to save before
+    // enabling the button and before firing the mutation.
+    const phone = (values.contact_number || '').trim()
+    const dirty = form.formState.dirtyFields
+    const patch: ProfileUpdateRequest = {}
+    if (dirty.first_name) patch.first_name = values.first_name
+    if (dirty.last_name) patch.last_name = values.last_name
+    if (dirty.contact_number) patch.contact_number = phone
+    if (dirty.country_code && phone) patch.country_code = values.country_code
+    if (dirty.skill_level) patch.skill_level = values.skill_level
+    if (Object.keys(patch).length === 0) {
+      setStatus({ kind: 'idle' })
+      form.setError('first_name', { type: 'nothing_to_save', message: '' })
       return
     }
     mutation.mutate(values)
   }
 
-  const canSubmit = isCreate
-    ? form.formState.isValid && !mutation.isPending
-    : form.formState.isDirty && form.formState.isValid && !mutation.isPending
+  // form.watch() with no args subscribes to all field changes so canSubmit and
+  // the name-required hint stay reactive.
+  const values = form.watch()
+  const dirtyKeys = Object.keys(form.formState.dirtyFields)
+  // A name field that the user explicitly cleared is treated as an error — we
+  // never want to silently wipe an existing name on save.
+  const firstNameClearedByUser =
+    !!form.formState.dirtyFields.first_name && !values.first_name?.trim()
+  const lastNameClearedByUser =
+    !!form.formState.dirtyFields.last_name && !values.last_name?.trim()
+  const hasDirtyError =
+    dirtyKeys.some((k) => k in form.formState.errors) ||
+    firstNameClearedByUser ||
+    lastNameClearedByUser
+  // Re-introduce global validity check (H1): an untouched invalid field (e.g. a
+  // stored phone that violates the regex, or an out-of-range skill_level from
+  // legacy data) must block save even if the user hasn't touched it.
+  const globalInvalid = Object.keys(form.formState.errors).length > 0
+  const canSubmit = form.formState.isDirty && !hasDirtyError && !globalInvalid && !mutation.isPending
   const showSave = isCreate || form.formState.isDirty
 
   return (
@@ -176,9 +236,11 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
                 {t('edit_profile.firstName')}
               </Label>
               <Input id="first_name" {...form.register('first_name')} />
-              {form.formState.errors.first_name && (
+              {(firstNameClearedByUser || form.formState.errors.first_name) && (
                 <p className="text-sm text-red-400 mt-1">
-                  {t(form.formState.errors.first_name.message as string)}
+                  {form.formState.errors.first_name
+                    ? t(form.formState.errors.first_name.message as string)
+                    : t('edit_profile.validation.firstNameRequired')}
                 </p>
               )}
             </div>
@@ -187,9 +249,11 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
                 {t('edit_profile.lastName')}
               </Label>
               <Input id="last_name" {...form.register('last_name')} />
-              {form.formState.errors.last_name && (
+              {(lastNameClearedByUser || form.formState.errors.last_name) && (
                 <p className="text-sm text-red-400 mt-1">
-                  {t(form.formState.errors.last_name.message as string)}
+                  {form.formState.errors.last_name
+                    ? t(form.formState.errors.last_name.message as string)
+                    : t('edit_profile.validation.lastNameRequired')}
                 </p>
               )}
             </div>

@@ -212,3 +212,126 @@ describe('EditProfilePage — submit', () => {
     updateSpy.mockRestore()
   })
 })
+
+// Regression tests: the user explicitly wants "edit even 1 field and click save".
+// These cover existing profiles with various empty / invalid fields where ONLY one
+// field is touched. Touching one valid field must always enable save.
+describe('EditProfilePage — partial edits on ready profile with gaps', () => {
+  it('saves only skill_level when first_name and last_name are empty in the profile', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = {
+      ...READY_PROFILE,
+      first_name: null,
+      last_name: null,
+      contact_number: null,
+    }
+    const updateSpy = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({
+      success: true,
+      data: {},
+      meta: null,
+      error: null,
+    } as any)
+    renderPage()
+    const slider = screen.getByLabelText(/skill level slider/i) as HTMLInputElement
+    fireEvent.change(slider, { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(1)
+    })
+    expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 })
+    updateSpy.mockRestore()
+  })
+
+  it('saves only contact_number even when first/last name are empty', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = {
+      ...READY_PROFILE,
+      first_name: null,
+      last_name: null,
+      contact_number: null,
+    }
+    const updateSpy = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({
+      success: true,
+      data: {},
+      meta: null,
+      error: null,
+    } as any)
+    renderPage()
+    const phone = screen.getByLabelText(/phone number/i) as HTMLInputElement
+    await user.type(phone, '501234567')
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(1)
+    })
+    // country_code is sent alongside contact_number so the backend stores a dial prefix.
+    expect(updateSpy.mock.calls[0][0]).toMatchObject({ contact_number: '501234567', country_code: '+972' })
+    updateSpy.mockRestore()
+  })
+
+  it('saves only first_name when other fields are empty in the profile', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = {
+      ...READY_PROFILE,
+      first_name: null,
+      last_name: null,
+      contact_number: null,
+    }
+    const updateSpy = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({
+      success: true,
+      data: {},
+      meta: null,
+      error: null,
+    } as any)
+    renderPage()
+    const firstName = screen.getByLabelText(/first name/i) as HTMLInputElement
+    await user.clear(firstName)
+    await user.type(firstName, 'Dana')
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(1)
+    })
+    expect(updateSpy).toHaveBeenCalledWith({ first_name: 'Dana' })
+    updateSpy.mockRestore()
+  })
+})
+
+describe('EditProfilePage — profile_incomplete partial save', () => {
+  it('creates a profile from skill_level alone, defaulting to Player for names', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'profile_incomplete'
+    sessionState.playerProfile = null
+    const createSpy = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({
+      success: true,
+      data: { id: 'new' },
+      meta: null,
+      error: null,
+    } as any)
+    renderPage()
+    const slider = screen.getByLabelText(/skill level slider/i) as HTMLInputElement
+    fireEvent.change(slider, { target: { value: '4.5' } })
+    const save = screen.getByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledTimes(1)
+    })
+    // Names default to 'Player' (not email prefix) so social-signup users
+    // don't get leaderboard entries like "12345 12345".
+    expect(createSpy.mock.calls[0][0]).toMatchObject({
+      email: 'dana@example.com',
+      skill_level: 4.5,
+      first_name: 'Player',
+      last_name: 'Player',
+    })
+    createSpy.mockRestore()
+  })
+})
