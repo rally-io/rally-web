@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { MapPin } from 'lucide-react'
 import { useClub } from '@/hooks/useClub'
 import { useBookCourt } from '@/hooks/useBookCourt'
+import { pendingPayment } from '@/hooks/usePendingPayment'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { ClubSlotPicker, type SelectedSlot } from '@/components/clubs/ClubSlotPicker'
@@ -41,7 +42,7 @@ export default function ClubDetailPage() {
   const runBooking = async () => {
     if (!selectedSlot || !id) return
     try {
-      await bookCourt.mutateAsync({
+      const result = await bookCourt.mutateAsync({
         club_id: id,
         court_id: selectedSlot.court_id,
         booking_date: date,
@@ -50,7 +51,27 @@ export default function ClubDetailPage() {
         use_credits: false,
       })
       setSelectedSlot(null)
-      navigate('/')
+
+      // result is the raw BookingResponse (client.ts interceptor unwraps response.data)
+      const booking = result as any
+      const amount: number = booking.amount_to_pay ?? 0
+
+      if (amount >= 0.01) {
+        pendingPayment.set({
+          type: 'booking',
+          entityId: booking.id,
+          amount,
+        })
+        navigate(
+          `/payment-method?${new URLSearchParams({
+            type: 'booking',
+            entity_id: booking.id,
+            amount: String(amount),
+          }).toString()}`,
+        )
+        return
+      }
+      navigate('/my-activity')
     } catch (err: any) {
       if (err?.isUnauthorized) {
         navigate('/contact')

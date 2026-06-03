@@ -92,7 +92,11 @@ export default function TournamentDetailPage() {
   const partnerRequired = partnered && partner.phase === 'idle'
   const myReg = tr.my_registration
   const payState =
-    myReg?.status === 'payment_pending' || myReg?.status === 'approved'
+    myReg?.status === 'payment_pending' ||
+    myReg?.status === 'approved' ||
+    (myReg?.status === 'registered' &&
+      myReg?.payment_status !== 'payment_held' &&
+      myReg?.payment_status !== 'completed')
 
   const needsGate =
     !playerProfile || !playerProfile.contact_number || playerProfile.skill_level == null
@@ -104,6 +108,15 @@ export default function TournamentDetailPage() {
       return
     }
     void runRegister()
+  }
+
+  const goToSummary = () => {
+    if (!tr || !myReg) return
+    const sp = new URLSearchParams({
+      id: tr.id,
+      registration_id: myReg.id,
+    })
+    navigate(`/tournaments/summary?${sp.toString()}`)
   }
 
   return (
@@ -333,11 +346,10 @@ export default function TournamentDetailPage() {
               </div>
               {payState ? (
                 <button
-                  disabled
-                  title={t('tournament.paymentDeferredNotice')}
-                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+                  onClick={goToSummary}
+                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
                 >
-                  {t('tournament.tournamentsProceedToPay')}
+                  {t('tournament.tournamentsPayNow')}
                 </button>
               ) : myReg ? (
                 <button

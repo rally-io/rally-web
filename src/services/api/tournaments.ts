@@ -39,18 +39,23 @@ export async function searchPlayers(
   return client.get('/rally/v1/players/search', { params: { query } })
 }
 
-/**
- * Zero-amount confirm. BACKEND-CONFIRM: mobile uses
- * payments/tournament-registration/{rid}/confirm-zero-payment; the unification
- * doc exposes POST /rally/v1/tournaments/{tid}/registrations/{rid}/pay.
- * Isolated here so a later swap is a one-line change.
- */
 export async function confirmZeroPayment(
-  tournamentId: string,
+  _tournamentId: string,
   registrationId: string,
 ): Promise<ApiResponse<unknown>> {
-  return client.post(
-    `/rally/v1/tournaments/${tournamentId}/registrations/${registrationId}/pay`,
-    {},
-  )
+  try {
+    return await client.post(
+      `/rally/v1/payments/tournament-registration/${registrationId}/confirm-zero-payment`,
+      {},
+    )
+  } catch (err) {
+    return {
+      success: false,
+      error: {
+        code: 'CONFIRM_ZERO_PAYMENT_FAILED',
+        message: err instanceof Error ? err.message : 'Failed to confirm zero payment',
+        details: err,
+      },
+    }
+  }
 }

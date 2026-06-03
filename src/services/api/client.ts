@@ -22,17 +22,21 @@ const client = axios.create({
 })
 
 client.interceptors.request.use(async (config) => {
+  // Tag every web request so rally-api can redirect Grow callbacks to the
+  // web return URL instead of the mobile deep link (PAYMENT_BACKEND_DELTA.md §1).
+  config.headers = config.headers ?? {}
+  config.headers['X-Rally-Client'] = 'web'
+
   // Honor an explicit opt-out for unauthenticated endpoints (e.g. check-email).
-  if (config.headers?.['X-Skip-Auth']) {
+  if (config.headers['X-Skip-Auth']) {
     delete config.headers['X-Skip-Auth']
-    if (config.headers) delete config.headers.Authorization
+    delete config.headers.Authorization
     return config
   }
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.access_token) {
-    config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${session.access_token}`
-  } else if (config.headers) {
+  } else {
     delete config.headers.Authorization
   }
   return config
