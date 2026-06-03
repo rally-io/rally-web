@@ -89,17 +89,31 @@ export default function HomePage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-8">
-            <AppBadge
-              icon={<AppleIcon />}
-              sublabel={t('home.appStoreComingSoon')}
-              label={t('home.appStoreLabel')}
-            />
-            <AppBadge
-              icon={<GooglePlayIcon />}
-              sublabel={t('home.googlePlayComingSoon')}
-              label={t('home.googlePlayLabel')}
-            />
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <a
+              href="https://apps.apple.com/il/app/rally/id6762743900"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:scale-105 transition-transform"
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg"
+                alt="App Store"
+                className="h-11"
+              />
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=app.rallypadel&pli=1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:scale-105 transition-transform"
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                alt="Google Play"
+                className="h-11"
+              />
+            </a>
           </div>
 
           <Link
@@ -155,27 +169,6 @@ export default function HomePage() {
   )
 }
 
-function AppBadge({
-  icon,
-  sublabel,
-  label,
-}: {
-  icon: React.ReactNode
-  sublabel: string
-  label: string
-}) {
-  return (
-    <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-xl bg-black border border-white/15 hover:border-white/30 transition-colors cursor-not-allowed">
-      <span className="text-white">{icon}</span>
-      <div className="flex flex-col text-start leading-tight">
-        <span className="text-[10px] uppercase tracking-widest text-white/70">
-          {sublabel}
-        </span>
-        <span className="text-base font-bold text-white">{label}</span>
-      </div>
-    </div>
-  )
-}
 
 function CyclingPhoneMockup({
   tick,
@@ -215,45 +208,3 @@ function CyclingPhoneMockup({
   )
 }
 
-function AppleIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09M12 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-    </svg>
-  )
-}
-
-function GooglePlayIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M3.609 1.814C3.234 2.052 3 2.487 3 3.024v17.953c0 .537.234.972.609 1.21L13.794 12 3.609 1.814z"
-        fill="#00B0FF"
-      />
-      <path
-        d="M17.394 8.591L5.182 1.66a1.717 1.717 0 0 0-1.573.155l10.185 10.185 3.6-3.41z"
-        fill="#00C853"
-      />
-      <path
-        d="M3.609 22.187a1.717 1.717 0 0 0 1.573.155l12.212-6.931-3.6-3.412L3.609 22.187z"
-        fill="#FF3D00"
-      />
-      <path
-        d="M21.063 10.62l-3.668-2.029L13.794 12l3.601 3.412 3.668-2.03c1.296-.726 1.296-2.04 0-2.762z"
-        fill="#FFD600"
-      />
-    </svg>
-  )
-}
