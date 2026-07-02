@@ -279,6 +279,7 @@ export default function TournamentDetailPage() {
       <AppDownloadModal
         open={appModal !== null}
         variant={appModal ?? 'register'}
+        deepLinkPath={`/tournaments/${tr.id}`}
         onOpenChange={(o) => {
           if (!o) setAppModal(null)
         }}

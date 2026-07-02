@@ -707,7 +707,8 @@
     "title_book": "Booking continues in the app",
     "title_pay": "Payment happens in the app",
     "movedTitle": "Payments have moved to the Rally app",
-    "body": "Registrations, bookings and payments happen in the Rally app — download it and finish in minutes."
+    "body": "Registrations, bookings and payments happen in the Rally app — download it and finish in minutes.",
+    "open_in_app": "Open in the App"
   },
   "payment": {
     "confirming": "Confirming your payment…",

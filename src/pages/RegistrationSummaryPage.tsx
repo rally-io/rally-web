@@ -92,6 +92,7 @@ export default function RegistrationSummaryPage() {
       <AppDownloadModal
         open={appModalOpen}
         variant="pay"
+        deepLinkPath={id ? `/tournaments/${id}` : undefined}
         onOpenChange={setAppModalOpen}
       />
     </>
