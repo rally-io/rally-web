@@ -1,29 +1,21 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Calendar, Clock, Trophy, TrendingUp, Users,
 } from 'lucide-react'
 import { useTournament } from '@/hooks/useTournament'
-import { useRegisterTournament } from '@/hooks/useRegisterTournament'
 import { useRtl } from '@/hooks/useRtl'
-import { useAppSession } from '@/hooks/useAppSession'
-import { useAuthGate } from '@/hooks/useAuthGate'
-import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
-import { ActionGateModal } from '@/components/profile/ActionGateModal'
+import { AppDownloadModal, type AppDownloadVariant } from '@/components/app-download/AppDownloadModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
-import { PartnerSection } from '@/components/tournaments/PartnerSection'
 import {
   isRegistrationOpen, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
-  formatTournamentCardDate, formatCurrency, buildPayload,
+  formatTournamentCardDate, formatCurrency,
 } from '@/lib/tournamentHelpers'
 import { PrizesGrid } from '@/components/tournaments/PrizesGrid'
-import {
-  formatLabelKey, structureLabelKey, needsPartner,
-} from '@/lib/tournamentTheme'
-import type { PartnerSelectionState } from '@/types/api'
+import { formatLabelKey, structureLabelKey } from '@/lib/tournamentTheme'
 
 export default function TournamentDetailPage() {
   const { t } = useTranslation()
@@ -31,45 +23,7 @@ export default function TournamentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: tr, isLoading, isError } = useTournament(id!)
-  const register = useRegisterTournament()
-  const { status, playerProfile } = useAppSession()
-  const { requireSignIn } = useAuthGate()
-  const signedOut = status === 'signed_out'
-  const [partner, setPartner] = useState<PartnerSelectionState>({ phase: 'idle' })
-  const [error, setError] = useState('')
-  const [gateOpen, setGateOpen] = useState(false)
-  const partnerSectionRef = useRef<HTMLDivElement>(null)
-
-  const runRegister = async () => {
-    if (!tr) return
-    setError('')
-    try {
-      const result = await register.mutateAsync({
-        tournamentId: tr.id,
-        data: buildPayload(tr.format, partner),
-      })
-      const q = new URLSearchParams({
-        id: tr.id,
-        registration_id: String(result.id),
-        amount_to_pay: String(result.amount_to_pay ?? 0),
-        entry_fee: String(result.entry_fee ?? tr.entry_fee),
-        credits_applied: String(result.credits_applied ?? 0),
-        service_fee: String(result.service_fee ?? 0),
-        status: String(result.status),
-      })
-      navigate(`/tournaments/summary?${q.toString()}`)
-    } catch (e: any) {
-      if (e?.isProfileFieldsRequired || e?.isUnauthorized) return
-      setError(e?.message ?? t('tournament.registrationFailedMessage'))
-    }
-  }
-
-  const scrollToPartner = () => {
-    partnerSectionRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }
+  const [appModal, setAppModal] = useState<AppDownloadVariant | null>(null)
 
   if (isLoading) {
     return (
@@ -88,8 +42,6 @@ export default function TournamentDetailPage() {
 
   const open = isRegistrationOpen(tr.registration_deadline)
   const skill = parseSkillLevel(tr.skill_level)
-  const partnered = needsPartner(tr.format)
-  const partnerRequired = partnered && partner.phase === 'idle'
   const myReg = tr.my_registration
   const payState =
     myReg?.status === 'payment_pending' ||
@@ -97,27 +49,6 @@ export default function TournamentDetailPage() {
     (myReg?.status === 'registered' &&
       myReg?.payment_status !== 'payment_held' &&
       myReg?.payment_status !== 'completed')
-
-  const needsGate =
-    !playerProfile || !playerProfile.contact_number || playerProfile.skill_level == null
-
-  const handleRegister = () => {
-    setError('')
-    if (needsGate) {
-      setGateOpen(true)
-      return
-    }
-    void runRegister()
-  }
-
-  const goToSummary = () => {
-    if (!tr || !myReg) return
-    const sp = new URLSearchParams({
-      id: tr.id,
-      registration_id: myReg.id,
-    })
-    navigate(`/tournaments/summary?${sp.toString()}`)
-  }
 
   return (
     <main className="min-h-screen bg-rally-bg pb-28">
@@ -295,102 +226,62 @@ export default function TournamentDetailPage() {
             </div>
           </section>
         )}
-
-        {!signedOut && !myReg && partnered && (
-          <section ref={partnerSectionRef} className="scroll-mt-24">
-            <div className="flex items-baseline justify-between gap-3 mb-2">
-              <h2 className="font-display text-2xl md:text-3xl font-bold text-rally-text">
-                {t('tournament.partnerSectionTitle')}
-                <span className="text-rally-accent ms-1">*</span>
-              </h2>
-            </div>
-            <p className="text-xs text-rally-text-muted mb-5">
-              {t('tournament.partnerRequiredNote')}
-            </p>
-            <PartnerSection state={partner} onChange={setPartner} />
-          </section>
-        )}
-
-        {error && (
-          <p className="rounded-xl bg-rally-error/10 border border-rally-error/30 text-rally-error text-sm p-3">
-            {error}
-          </p>
-        )}
       </div>
 
       <div className="fixed bottom-0 inset-x-0 bg-rally-bg/95 backdrop-blur border-t border-rally-border">
         <div className="container mx-auto max-w-3xl px-4 py-3">
-          {signedOut ? (
-            <SignInRequiredPanel
-              message={t('auth.gate.sign_in_to_register')}
-              ctaLabel={t('auth.gate.sign_in_button')}
-              onSignIn={() => {
-                void requireSignIn().catch(() => {
-                  // USER_CANCELLED is expected; do nothing.
-                })
-              }}
-            />
-          ) : (
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
-                  {payState
-                    ? t('tournament.registrationStatus_payment_pending', {
-                        defaultValue: 'Payment pending',
-                      })
-                    : t('tournament.tournamentsEntryFee')}
-                </p>
-                <p className="text-2xl md:text-3xl font-black text-rally-accent">
-                  {formatCurrency(tr.entry_fee)}
-                </p>
-              </div>
-              {payState ? (
-                <button
-                  onClick={goToSummary}
-                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
-                >
-                  {t('tournament.tournamentsPayNow')}
-                </button>
-              ) : myReg ? (
-                <button
-                  disabled
-                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
-                >
-                  {t('tournament.tournamentDetailAlreadyRegistered')}
-                </button>
-              ) : !open ? (
-                <button
-                  disabled
-                  className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
-                >
-                  {t('tournament.tournamentDetailRegistrationClosed')}
-                </button>
-              ) : partnerRequired ? (
-                <button
-                  onClick={scrollToPartner}
-                  className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
-                >
-                  {t('tournament.ctaFillDetails')}
-                </button>
-              ) : (
-                <button
-                  disabled={register.isPending}
-                  onClick={handleRegister}
-                  className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold disabled:opacity-40 enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
-                >
-                  {t('tournament.tournamentsProceedToPay')}
-                </button>
-              )}
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
+                {payState
+                  ? t('tournament.registrationStatus_payment_pending', {
+                      defaultValue: 'Payment pending',
+                    })
+                  : t('tournament.tournamentsEntryFee')}
+              </p>
+              <p className="text-2xl md:text-3xl font-black text-rally-accent">
+                {formatCurrency(tr.entry_fee)}
+              </p>
             </div>
-          )}
+            {payState ? (
+              <button
+                onClick={() => setAppModal('pay')}
+                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+              >
+                {t('appDownload.cta_pay')}
+              </button>
+            ) : myReg ? (
+              <button
+                disabled
+                className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+              >
+                {t('tournament.tournamentDetailAlreadyRegistered')}
+              </button>
+            ) : !open ? (
+              <button
+                disabled
+                className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+              >
+                {t('tournament.tournamentDetailRegistrationClosed')}
+              </button>
+            ) : (
+              <button
+                onClick={() => setAppModal('register')}
+                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+              >
+                {t('appDownload.cta_register')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <ActionGateModal
-        open={gateOpen}
-        action="register_tournament"
-        onOpenChange={setGateOpen}
-        onConfirmed={() => void runRegister()}
+      <AppDownloadModal
+        open={appModal !== null}
+        variant={appModal ?? 'register'}
+        onOpenChange={(o) => {
+          if (!o) setAppModal(null)
+        }}
       />
     </main>
   )
