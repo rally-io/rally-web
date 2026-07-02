@@ -722,6 +722,16 @@
     "accuracy_p2": "When your level is accurate, Rally can show you players who truly match you — close enough that games are competitive, far enough that you're always learning. For club owners, accurate levels mean better organized open play, fairer draws, and players who come back because they had a great game on the court.",
     "accuracy_p3": "The more you play, the better your level will reflect your actual game — and the better Rally will be at connecting you with the right people."
   },
+  "appDownload": {
+    "cta_register": "Register in the App",
+    "cta_book": "Book in the App",
+    "cta_pay": "Complete in the App",
+    "title_register": "Registration continues in the app",
+    "title_book": "Booking continues in the app",
+    "title_pay": "Payment happens in the app",
+    "movedTitle": "Payments have moved to the Rally app",
+    "body": "Registrations, bookings and payments happen in the Rally app — download it and finish in minutes."
+  },
   "payment": {
     "title": "Payment",
     "amountDue": "Amount Due",
