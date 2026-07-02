@@ -100,15 +100,6 @@ export interface OnboardingStatus {
 }
 
 // Bookings
-export interface BookingRequest {
-  club_id: string
-  court_id: string
-  booking_date: string
-  start_time: string
-  end_time: string
-  use_credits: boolean
-}
-
 export interface BookingResponse {
   id: string
   club_id: string
@@ -171,58 +162,6 @@ export interface RegistrationDetail {
   within_cancellation_window: boolean
   /** True ⇒ pre-auth (J4/J5 hold) entity: saved-card capture is forbidden, hosted checkout only. (gap spec §2.5) */
   requires_approval_event?: boolean
-}
-
-export interface PlayerSearchResult {
-  id: string
-  first_name: string
-  last_name: string
-  avatar_url: string | null
-}
-
-/** Partner selection payload. Note: use_credits is deferred to the payment phase. */
-export type RegisterPayload =
-  | { partner_type: 'none' }
-  | { partner_type: 'existing'; partner_player_id: string }
-  | {
-      partner_type: 'invite'
-      invite_first_name: string
-      invite_last_name: string
-      invite_country_code: string
-      invite_phone: string
-    }
-
-export type SelectedPartner =
-  | { type: 'existing'; id: string; displayName: string; avatarUrl?: string | null }
-  | { type: 'invite'; firstName: string; lastName: string; countryCode: string; phone: string }
-
-export type PartnerSelectionState =
-  | { phase: 'idle' }
-  | { phase: 'selected'; partner: SelectedPartner }
-
-export interface TournamentRegistrationResponse {
-  id: string
-  tournament_id: string
-  player_1_id: string
-  player_2_id: string | null
-  player_2_name: string | null
-  guest_player_2_id: string | null
-  guest_player_2_name: string | null
-  team_name: string | null
-  status: string
-  payment_status: string | null
-  credits_applied: number
-  service_fee: number
-  amount_to_pay: number
-  amount_credited: number | null
-  entry_fee: number
-  tournament_name: string
-  tournament_club_name: string
-  image_url: string | null
-  thumb_url: string | null
-  start_date: string
-  end_date: string
-  within_cancellation_window: boolean
 }
 
 // Profile update
@@ -298,55 +237,11 @@ export interface SupabaseUserSummary {
   role: string
 }
 
-// --- Payments (PAYMENT_SPEC.md §3) ---
+// --- Payments ---
+// Web no longer initiates payments (all transactional flows live in the mobile
+// app); this type survives only for the grace-period return/confirming pages.
 
 export type PaymentEntityType =
   | 'booking'
   | 'tournament_registration'
   | 'event_participation'
-
-/**
- * Discriminator passed to initiatePayment / chargeSavedCard.
- * `use_credits` is only meaningful for tournament_registration (spec §3.2).
- */
-export type PaymentEntity =
-  | { type: 'booking'; id: string }
-  | { type: 'tournament_registration'; id: string; use_credits?: boolean }
-  | { type: 'event_participation'; id: string }
-
-export type CardBrand =
-  | 'Visa' | 'Mastercard' | 'Diners' | 'Amex' | 'Isracard' | 'Discover'
-
-export interface SavedCard {
-  id: string
-  card_last4: string
-  card_expiry: string        // 'MMYY'
-  brand: CardBrand | null
-  issuer: string | null      // Always null on Grow; HYP-legacy field, kept for response shape parity
-  is_default: boolean
-  created_at: string         // ISO 8601
-  has_token: boolean         // false → must use hosted-checkout, not server-to-server
-}
-
-export interface InitiatePaymentResponse {
-  payment_url: string        // Grow hosted-checkout URL
-}
-
-/**
- * Spec §3.2 / gap-spec §11 (G9): the three charge-saved-card endpoints normally
- * return { grow_asmachta, amount }. For a credits-cover-all tournament charge the
- * backend instead returns { confirmed, amount, credits_applied } with NO
- * grow_asmachta. Treat a missing grow_asmachta as a valid success — the
- * confirming screen already guards `asmachta && …` before rendering `#…`.
- */
-export interface ChargeSavedCardResponse {
-  grow_asmachta?: string
-  amount: number
-  confirmed?: boolean
-  credits_applied?: number
-}
-
-/** Spec §3.1: save_card is only documented on the booking initiate endpoint. */
-export interface InitiateBookingPaymentBody {
-  save_card?: boolean
-}

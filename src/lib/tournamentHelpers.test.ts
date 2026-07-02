@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   isRegistrationOpen, parseSkillLevel, formatTournamentSkillRange,
-  getSkillLevelName, formatTournamentDateRange, buildPayload, formatCurrency,
+  getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
 } from './tournamentHelpers'
-import type { PartnerSelectionState } from '@/types/api'
 
 describe('isRegistrationOpen', () => {
   it('treats empty/invalid as open', () => {
@@ -48,10 +47,11 @@ describe('getSkillLevelName', () => {
     expect(getSkillLevelName(0, 0)).toBe('All Levels')
   })
   it('buckets by average', () => {
-    expect(getSkillLevelName(1, 2)).toBe('Beginner')
-    expect(getSkillLevelName(3, 3.5)).toBe('Intermediate')
-    expect(getSkillLevelName(4, 5)).toBe('Advanced')
-    expect(getSkillLevelName(6, 6)).toBe('Pro')
+    // Without a `t` the helper returns the i18n key — assert the bucketing.
+    expect(getSkillLevelName(1, 2)).toBe('tournament.skillLevelBeginner')
+    expect(getSkillLevelName(3, 3.5)).toBe('tournament.skillLevelIntermediate')
+    expect(getSkillLevelName(4, 5)).toBe('tournament.skillLevelAdvanced')
+    expect(getSkillLevelName(6, 6)).toBe('tournament.skillLevelPro')
   })
 })
 
@@ -64,31 +64,6 @@ describe('formatTournamentDateRange', () => {
     const s = formatTournamentDateRange('2026-06-01', '2026-07-02', 'en-US')
     expect(s).toContain('Jun')
     expect(s).toContain('Jul')
-  })
-})
-
-describe('buildPayload', () => {
-  it('singles -> none', () => {
-    expect(buildPayload('singles', { phase: 'idle' })).toEqual({ partner_type: 'none' })
-  })
-  it('doubles existing', () => {
-    const st: PartnerSelectionState = {
-      phase: 'selected',
-      partner: { type: 'existing', id: 'p1', displayName: 'A' },
-    }
-    expect(buildPayload('doubles', st)).toEqual({
-      partner_type: 'existing', partner_player_id: 'p1',
-    })
-  })
-  it('mixed invite', () => {
-    const st: PartnerSelectionState = {
-      phase: 'selected',
-      partner: { type: 'invite', firstName: 'A', lastName: 'B', countryCode: '+972', phone: '501234567' },
-    }
-    expect(buildPayload('mixed', st)).toEqual({
-      partner_type: 'invite', invite_first_name: 'A', invite_last_name: 'B',
-      invite_country_code: '+972', invite_phone: '501234567',
-    })
   })
 })
 
