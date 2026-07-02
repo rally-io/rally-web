@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { APP_STORE_URL, PLAY_STORE_URL, APP_STORE_BADGE, PLAY_STORE_BADGE } from '@/lib/appLinks'
 
 export function Footer() {
   const { t } = useTranslation()
@@ -12,11 +13,11 @@ export function Footer() {
         </div>
         <nav className="flex items-center gap-6">
           <div className="flex gap-3">
-            <a href="https://apps.apple.com/il/app/rally/id6762743900" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store" className="h-7" />
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+              <img src={APP_STORE_BADGE} alt="App Store" className="h-7" />
             </a>
-            <a href="https://play.google.com/store/apps/details?id=app.rallypadel&pli=1" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" className="h-7" />
+            <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+              <img src={PLAY_STORE_BADGE} alt="Google Play" className="h-7" />
             </a>
           </div>
           <span className="w-px h-5 bg-slate-700" />

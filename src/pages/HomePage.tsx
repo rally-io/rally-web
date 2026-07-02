@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight, Sparkles } from 'lucide-react'
 import { getCountdown } from '@/lib/tournamentHelpers'
 import { cn } from '@/lib/utils'
+import { APP_STORE_URL, PLAY_STORE_URL, APP_STORE_BADGE, PLAY_STORE_BADGE } from '@/lib/appLinks'
 
 const LAUNCH_DATE = '2026-06-01T00:00:00+03:00'
 
@@ -91,28 +92,20 @@ export default function HomePage() {
 
           <div className="flex flex-wrap justify-center gap-3 mb-8">
             <a
-              href="https://apps.apple.com/il/app/rally/id6762743900"
+              href={APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:scale-105 transition-transform"
             >
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg"
-                alt="App Store"
-                className="h-11"
-              />
+              <img src={APP_STORE_BADGE} alt="App Store" className="h-11" />
             </a>
             <a
-              href="https://play.google.com/store/apps/details?id=app.rallypadel&pli=1"
+              href={PLAY_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:scale-105 transition-transform"
             >
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
-                alt="Google Play"
-                className="h-11"
-              />
+              <img src={PLAY_STORE_BADGE} alt="Google Play" className="h-11" />
             </a>
           </div>
 
