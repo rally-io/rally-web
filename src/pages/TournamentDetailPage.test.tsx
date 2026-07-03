@@ -1,12 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import i18n from '@/i18n'
 
 vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
+// window.location.assign is unforgeable in jsdom — mock the helper instead;
+// its own behavior is covered by the appLinks/AppDownloadModal tests.
+vi.mock('@/lib/appLinks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/appLinks')>()
+  return { ...actual, tryOpenInApp: vi.fn(() => false) }
+})
 
 import TournamentDetailPage from './TournamentDetailPage'
 import { useTournament } from '@/hooks/useTournament'
+import { tryOpenInApp } from '@/lib/appLinks'
+
+const mockTryOpenInApp = vi.mocked(tryOpenInApp)
 
 const mockUseTournament = vi.mocked(useTournament)
 
@@ -40,6 +49,11 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockTryOpenInApp.mockReturnValue(false)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('TournamentDetailPage CTA', () => {
@@ -73,6 +87,17 @@ describe('TournamentDetailPage CTA', () => {
         name: i18n.t('tournament.tournamentDetailRegistrationClosed'),
       }),
     ).toBeDisabled()
+  })
+
+  it('on mobile the CTA opens the tournament deep link directly, no modal', () => {
+    mockTryOpenInApp.mockReturnValue(true) // helper navigated (mobile device)
+    mockUseTournament.mockReturnValue(tr())
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    )
+    expect(mockTryOpenInApp).toHaveBeenCalledWith('/tournaments/t-1')
+    expect(screen.queryByText(i18n.t('appDownload.title_register'))).toBeNull()
   })
 
   it('paid registration shows the already-registered disabled button', () => {

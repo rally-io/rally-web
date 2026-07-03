@@ -7,6 +7,7 @@ import { useRtl } from '@/hooks/useRtl'
 import { formatTournamentDateRange } from '@/lib/tournamentHelpers'
 import { formatLabelKey } from '@/lib/tournamentTheme'
 import { AppDownloadModal } from '@/components/app-download/AppDownloadModal'
+import { tryOpenInApp } from '@/lib/appLinks'
 import {
   BookingSummaryScreen, type SummaryMode,
 } from '@/components/tournaments/BookingSummaryScreen'
@@ -84,7 +85,11 @@ export default function RegistrationSummaryPage() {
         onClose={() => navigate('/')}
         onBack={() => navigate(-1)}
         successMessage={t('tournament.tournamentRegisteredSuccessMessage')}
-        onConfirm={() => setAppModalOpen(true)}
+        onConfirm={() => {
+          // Mobile: straight to the tournament in the app; desktop: modal.
+          if (id && tryOpenInApp(`/tournaments/${id}`)) return
+          setAppModalOpen(true)
+        }}
         confirmLabel={t('appDownload.cta_pay')}
         price={entryFee}
         serviceFee={serviceFee}

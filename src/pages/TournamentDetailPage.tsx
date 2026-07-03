@@ -7,6 +7,7 @@ import {
 import { useTournament } from '@/hooks/useTournament'
 import { useRtl } from '@/hooks/useRtl'
 import { AppDownloadModal, type AppDownloadVariant } from '@/components/app-download/AppDownloadModal'
+import { tryOpenInApp } from '@/lib/appLinks'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
 import {
@@ -24,6 +25,13 @@ export default function TournamentDetailPage() {
   const navigate = useNavigate()
   const { data: tr, isLoading, isError } = useTournament(id!)
   const [appModal, setAppModal] = useState<AppDownloadVariant | null>(null)
+
+  // Mobile goes straight to the tournament in the app (OneLink handles the
+  // not-installed → store fallback); desktop gets the app-download modal.
+  const handleAppCta = (variant: AppDownloadVariant) => {
+    if (!tr || tryOpenInApp(`/tournaments/${tr.id}`)) return
+    setAppModal(variant)
+  }
 
   if (isLoading) {
     return (
@@ -245,7 +253,7 @@ export default function TournamentDetailPage() {
             </div>
             {payState ? (
               <button
-                onClick={() => setAppModal('pay')}
+                onClick={() => handleAppCta('pay')}
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
               >
                 {t('appDownload.cta_pay')}
@@ -266,7 +274,7 @@ export default function TournamentDetailPage() {
               </button>
             ) : (
               <button
-                onClick={() => setAppModal('register')}
+                onClick={() => handleAppCta('register')}
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
               >
                 {t('appDownload.cta_register')}

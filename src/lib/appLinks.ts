@@ -42,3 +42,14 @@ export function buildAppDeepLink(inAppPath: string): string {
 export function isMobileDevice(): boolean {
   return /iphone|ipad|ipod|android/i.test(navigator.userAgent)
 }
+
+/**
+ * On mobile, navigate straight to the OneLink (app opens the entity, or the
+ * store if not installed) and return true. On desktop return false so the
+ * caller can fall back to the app-download modal.
+ */
+export function tryOpenInApp(inAppPath: string): boolean {
+  if (!isMobileDevice()) return false
+  window.location.assign(buildAppDeepLink(inAppPath))
+  return true
+}
