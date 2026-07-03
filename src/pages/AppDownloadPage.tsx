@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { MapPin, BarChart2 } from 'lucide-react'
+import { APP_STORE_URL, PLAY_STORE_URL, APP_STORE_BADGE, PLAY_STORE_BADGE } from '@/lib/appLinks'
 
 export default function AppDownloadPage() {
   const { t } = useTranslation()
@@ -45,8 +46,12 @@ export default function AppDownloadPage() {
         <div className="text-center py-16 bg-slate-900 border border-white/5 rounded-3xl">
           <h3 className="text-2xl font-bold mb-8">{t('hero.cta_app')}</h3>
           <div className="flex flex-wrap justify-center gap-4 px-4">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store" className="h-12 cursor-pointer hover:scale-105 transition-transform" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" className="h-12 cursor-pointer hover:scale-105 transition-transform" />
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+              <img src={APP_STORE_BADGE} alt="App Store" className="h-12 cursor-pointer hover:scale-105 transition-transform" />
+            </a>
+            <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">
+              <img src={PLAY_STORE_BADGE} alt="Google Play" className="h-12 cursor-pointer hover:scale-105 transition-transform" />
+            </a>
           </div>
         </div>
       </section>

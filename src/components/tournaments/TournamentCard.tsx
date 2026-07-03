@@ -47,22 +47,16 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
     tr.registration_status === 'registered'
 
   const ctaLabel = payState
-    ? t('tournament.tournamentsPayNow')
+    ? t('appDownload.cta_pay')
     : tab === 'my'
     ? t('tournament.tournamentsViewDetails')
     : open
     ? t('tournament.tournamentsRegister')
     : t('tournament.tournamentsViewDetails')
 
-  // Pay-state cards must land on the summary so the user can complete payment;
-  // the summary fetches the registration's amount/credits to drive Pay Now.
-  const linkTo =
-    payState && tr.registration_id
-      ? `/tournaments/summary?${new URLSearchParams({
-          id: tr.id,
-          registration_id: tr.registration_id,
-        }).toString()}`
-      : `/tournaments/${tr.id}`
+  // Payment completion happens in the mobile app; the detail page's sticky CTA
+  // opens the app-download modal, so every card routes to the detail page.
+  const linkTo = `/tournaments/${tr.id}`
 
   return (
     <Link

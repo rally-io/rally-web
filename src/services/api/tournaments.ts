@@ -1,7 +1,7 @@
 // src/services/api/tournaments.ts
 import client from './client'
 import type {
-  ApiResponse, Tournament, TournamentDetail, RegistrationDetail, PlayerSearchResult,
+  ApiResponse, Tournament, TournamentDetail, RegistrationDetail,
 } from '@/types/api'
 
 export interface TournamentListParams {
@@ -31,31 +31,4 @@ export async function getRegistration(
   return client.get(
     `/rally/v1/tournaments/${tournamentId}/registrations/${registrationId}`,
   )
-}
-
-export async function searchPlayers(
-  query: string,
-): Promise<ApiResponse<PlayerSearchResult[]>> {
-  return client.get('/rally/v1/players/search', { params: { query } })
-}
-
-export async function confirmZeroPayment(
-  _tournamentId: string,
-  registrationId: string,
-): Promise<ApiResponse<unknown>> {
-  try {
-    return await client.post(
-      `/rally/v1/payments/tournament-registration/${registrationId}/confirm-zero-payment`,
-      {},
-    )
-  } catch (err) {
-    return {
-      success: false,
-      error: {
-        code: 'CONFIRM_ZERO_PAYMENT_FAILED',
-        message: err instanceof Error ? err.message : 'Failed to confirm zero payment',
-        details: err,
-      },
-    }
-  }
 }

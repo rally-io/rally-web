@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { useTournament } from '@/hooks/useTournament'
 import { useRegistration } from '@/hooks/useRegistration'
 import { useRtl } from '@/hooks/useRtl'
-import { formatTournamentDateRange, formatCurrency } from '@/lib/tournamentHelpers'
+import { formatTournamentDateRange } from '@/lib/tournamentHelpers'
 import { formatLabelKey } from '@/lib/tournamentTheme'
-import { confirmZeroPayment } from '@/services/api/tournaments'
+import { AppDownloadModal } from '@/components/app-download/AppDownloadModal'
+import { tryOpenInApp } from '@/lib/appLinks'
 import {
   BookingSummaryScreen, type SummaryMode,
 } from '@/components/tournaments/BookingSummaryScreen'
@@ -16,6 +17,7 @@ export default function RegistrationSummaryPage() {
   const { locale } = useRtl()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  const [appModalOpen, setAppModalOpen] = useState(false)
 
   const id = params.get('id') ?? ''
   const registrationId = params.get('registration_id') ?? ''
@@ -36,65 +38,23 @@ export default function RegistrationSummaryPage() {
   const serviceFee = params.has('service_fee')
     ? Number(params.get('service_fee'))
     : registration?.service_fee ?? 0
-  const creditsApplied = params.has('credits_applied')
-    ? Number(params.get('credits_applied'))
-    : registration?.credits_applied ?? 0
 
   const { data: tournament } = useTournament(id)
-  const [confirmed, setConfirmed] = useState(false)
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState('')
 
   const owesMoney = amountToPay >= 0.01
-  // 'payment_pending' was the pre-Grow status; 'registered' is the new status —
-  // payment is still required when the registration owes money. (gap spec §7)
+  // Payment completion moved to the mobile app: any registration that still
+  // owes money gets the "Complete in the App" CTA; zero-amount registrations
+  // are simply shown as successful.
   const isPaymentPending =
-    (status === 'payment_pending' || (status === 'registered' && owesMoney)) && !confirmed
-  const isZero = isPaymentPending && amountToPay < 0.01
+    (status === 'payment_pending' || status === 'registered') && owesMoney
 
-  const mode: SummaryMode = !isPaymentPending
-    ? 'success'
-    : isZero
-    ? 'zero_payment'
-    : 'deferred_pay'
+  const mode: SummaryMode = isPaymentPending ? 'deferred_pay' : 'success'
 
   const scheduleText = tournament
     ? formatTournamentDateRange(
         tournament.start_date, tournament.end_date, locale,
       )
     : ''
-
-  const handleZeroConfirm = async () => {
-    setError('')
-    setPending(true)
-    try {
-      const res = await confirmZeroPayment(id, registrationId)
-      if (!res.success) throw res.error
-      setConfirmed(true)
-    } catch (e: any) {
-      setError(e?.message ?? t('tournament.errorTitle'))
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const goToPaymentMethod = () => {
-    const sp = new URLSearchParams({
-      type: 'tournament_registration',
-      entity_id: registrationId,
-      amount: String(amountToPay),
-      tournament_id: id,
-      use_credits: String(creditsApplied > 0),
-      requires_approval_event: String(registration?.requires_approval_event ?? false),
-    })
-    navigate(`/payment-method?${sp.toString()}`)
-  }
-
-  const onConfirm = mode === 'zero_payment' ? handleZeroConfirm : goToPaymentMethod
-  const confirmLabel =
-    mode === 'zero_payment'
-      ? t('tournament.registrationDetailConfirmRegistration')
-      : t('payment.payNow', { amount: formatCurrency(amountToPay) })
 
   // Without query-param status (deep-link from card/detail), wait for the
   // fetch before rendering — otherwise mode resolves to "success" too early.
@@ -111,11 +71,6 @@ export default function RegistrationSummaryPage() {
 
   return (
     <>
-      {error && (
-        <div className="bg-rally-error/10 text-rally-error text-center text-sm py-2">
-          {error}
-        </div>
-      )}
       <BookingSummaryScreen
         title={t('tournament.tournamentSummaryTitle')}
         clubName={tournament?.club_name ?? ''}
@@ -130,11 +85,20 @@ export default function RegistrationSummaryPage() {
         onClose={() => navigate('/')}
         onBack={() => navigate(-1)}
         successMessage={t('tournament.tournamentRegisteredSuccessMessage')}
-        onConfirm={onConfirm}
-        confirmPending={pending}
-        confirmLabel={confirmLabel}
+        onConfirm={() => {
+          // Mobile: straight to the tournament in the app; desktop: modal.
+          if (id && tryOpenInApp(`/tournaments/${id}`)) return
+          setAppModalOpen(true)
+        }}
+        confirmLabel={t('appDownload.cta_pay')}
         price={entryFee}
         serviceFee={serviceFee}
+      />
+      <AppDownloadModal
+        open={appModalOpen}
+        variant="pay"
+        deepLinkPath={id ? `/tournaments/${id}` : undefined}
+        onOpenChange={setAppModalOpen}
       />
     </>
   )
