@@ -73,4 +73,46 @@ describe('AppDownloadModal', () => {
       screen.queryByRole('link', { name: i18n.t('appDownload.open_in_app') }),
     ).toBeNull()
   })
+
+  it('desktop with a deep link shows QR, copy button, and OneLink badges', () => {
+    render(
+      <AppDownloadModal open variant="register" onOpenChange={() => {}} deepLinkPath="/tournaments/t-1" />,
+    )
+    const link = buildAppDeepLink('/tournaments/t-1')
+    expect(screen.getByRole('img', { name: i18n.t('appDownload.qr_hint') })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: i18n.t('appDownload.copy_link') })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /app store/i })).toHaveAttribute('href', link)
+    expect(screen.getByRole('link', { name: /google play/i })).toHaveAttribute('href', link)
+  })
+
+  it('copy button writes the OneLink to the clipboard and flips to copied', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+    render(
+      <AppDownloadModal open variant="register" onOpenChange={() => {}} deepLinkPath="/tournaments/t-1" />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('appDownload.copy_link') }))
+    expect(writeText).toHaveBeenCalledWith(buildAppDeepLink('/tournaments/t-1'))
+    expect(
+      await screen.findByRole('button', { name: i18n.t('appDownload.copied') }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides QR and copy on mobile; plain store badges without a deep link', () => {
+    mockMobileUA()
+    render(
+      <AppDownloadModal open variant="register" onOpenChange={() => {}} deepLinkPath="/tournaments/t-1" />,
+    )
+    expect(screen.queryByRole('img', { name: i18n.t('appDownload.qr_hint') })).toBeNull()
+    expect(screen.queryByRole('button', { name: i18n.t('appDownload.copy_link') })).toBeNull()
+  })
+
+  it('badges keep plain store URLs when no deep link is given', () => {
+    render(<AppDownloadModal open variant="book" onOpenChange={() => {}} />)
+    expect(screen.getByRole('link', { name: /app store/i })).toHaveAttribute('href', APP_STORE_URL)
+    expect(screen.getByRole('link', { name: /google play/i })).toHaveAttribute('href', PLAY_STORE_URL)
+  })
 })

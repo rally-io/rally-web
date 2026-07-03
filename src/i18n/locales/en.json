@@ -708,7 +708,10 @@
     "title_pay": "Payment happens in the app",
     "movedTitle": "Payments have moved to the Rally app",
     "body": "Registrations, bookings and payments happen in the Rally app — download it and finish in minutes.",
-    "open_in_app": "Open in the App"
+    "open_in_app": "Open in the App",
+    "qr_hint": "Scan with your phone to open the tournament in the app",
+    "copy_link": "Copy link",
+    "copied": "Copied!"
   },
   "payment": {
     "confirming": "Confirming your payment…",
