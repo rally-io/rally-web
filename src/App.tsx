@@ -14,7 +14,6 @@ import PricingPage from './pages/PricingPage'
 import ContactPage from './pages/ContactPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
-import AppDownloadPage from './pages/AppDownloadPage'
 import ClubsPage from './pages/ClubsPage'
 import ClubDetailPage from './pages/ClubDetailPage'
 import TournamentsPage from './pages/TournamentsPage'
@@ -58,7 +57,7 @@ export default function App() {
           <Route path="/coaches" element={<CoachesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
-          <Route path="/app" element={<AppDownloadPage />} />
+          <Route path="/app" element={<DownloadRedirectPage />} />
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/clubs/:id" element={<ClubDetailPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />

@@ -40,7 +40,13 @@ const PILLARS = [
     soon: false,
   },
   { icon: Trophy, titleKey: 'home.pillar2Title', descKey: 'home.pillar2Desc', soon: false },
-  { icon: Dumbbell, titleKey: 'home.pillar3Title', descKey: 'home.pillar3Desc', soon: true },
+  {
+    icon: Dumbbell,
+    titleKey: 'home.pillar3Title',
+    descKey: 'home.pillar3Desc',
+    soon: true,
+    link: { to: '/coaches', labelKey: 'home.pillarCoachCta' },
+  },
   {
     icon: ShoppingBag,
     titleKey: 'home.pillar4Title',
@@ -199,29 +205,42 @@ export default function HomePage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 sm:gap-5">
-            {PILLARS.map(({ icon: Icon, titleKey, descKey, soon }, i) => (
-              <div
-                key={titleKey}
-                className={cn(
-                  'group relative rounded-2xl border border-rally-border bg-rally-surface/60 p-6 backdrop-blur transition-all hover:border-rally-accent/50 hover:bg-rally-surface',
-                  'w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]',
-                  i === 0 && 'ring-1 ring-rally-accent/30',
-                )}
-              >
-                {soon && (
-                  <span className="absolute top-4 end-4 px-2.5 py-1 rounded-full bg-rally-blue/15 border border-rally-blue/40 text-rally-blue text-[10px] font-bold uppercase tracking-widest">
-                    {t('home.soonLabel')}
-                  </span>
-                )}
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-rally-accent/10 text-rally-accent mb-4 transition-colors group-hover:bg-rally-accent/20">
-                  <Icon className="w-6 h-6" />
+            {PILLARS.map((pillar, i) => {
+              const { icon: Icon, titleKey, descKey, soon } = pillar
+              const link = 'link' in pillar ? pillar.link : undefined
+              return (
+                <div
+                  key={titleKey}
+                  className={cn(
+                    'group relative rounded-2xl border border-rally-border bg-rally-surface/60 p-6 backdrop-blur transition-all hover:border-rally-accent/50 hover:bg-rally-surface',
+                    'w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]',
+                    i === 0 && 'ring-1 ring-rally-accent/30',
+                  )}
+                >
+                  {soon && (
+                    <span className="absolute top-4 end-4 px-2.5 py-1 rounded-full bg-rally-blue/15 border border-rally-blue/40 text-rally-blue text-[10px] font-bold uppercase tracking-widest">
+                      {t('home.soonLabel')}
+                    </span>
+                  )}
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-rally-accent/10 text-rally-accent mb-4 transition-colors group-hover:bg-rally-accent/20">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-display text-lg font-bold mb-2 leading-tight">
+                    {t(titleKey)}
+                  </h3>
+                  <p className="text-sm text-rally-text-2 leading-relaxed">{t(descKey)}</p>
+                  {link && (
+                    <Link
+                      to={link.to}
+                      className="inline-flex items-center gap-1.5 mt-3 text-sm font-bold text-rally-accent hover:text-rally-accent-hover transition-colors"
+                    >
+                      <span>{t(link.labelKey)}</span>
+                      <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+                    </Link>
+                  )}
                 </div>
-                <h3 className="font-display text-lg font-bold mb-2 leading-tight">
-                  {t(titleKey)}
-                </h3>
-                <p className="text-sm text-rally-text-2 leading-relaxed">{t(descKey)}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
