@@ -18,7 +18,11 @@
     "working_hard": "אנחנו עובדים קשה כדי להעלות את העמוד הזה לאוויר. יש למה לחכות!",
     "back_home": "חזרה לדף הבית",
     "page_not_found": "העמוד לא נמצא",
-    "back": "חזרה"
+    "back": "חזרה",
+    "leadErrorTitle": "לא הצלחנו לשלוח את הפרטים",
+    "leadErrorMessage": "משהו השתבש אצלנו. נסו שוב, או שלחו לנו מייל ישירות לכתובת {{email}} ונחזור אליכם.",
+    "leadErrorRetry": "נסו שוב",
+    "supportEmail": "info@rallypadel.app"
   },
   "auth": {
     "welcome": "המגרש שלכם מחכה",

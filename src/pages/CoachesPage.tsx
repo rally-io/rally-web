@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { supabase } from '@/lib/supabase'
+import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { ISRAEL_REGIONS } from '@/constants/israelRegions'
 import { ISRAELI_CITIES } from '@/constants/israeliCities'
 
@@ -205,6 +206,7 @@ function CoachApplicationForm() {
   const [regionError, setRegionError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitFailed, setSubmitFailed] = useState(false)
   const [appNumber, setAppNumber] = useState('')
 
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -260,14 +262,26 @@ function CoachApplicationForm() {
       // localStorage may be unavailable — non-fatal
     }
 
-    // BACKEND-TODO (Shahaf): create Supabase table `coach_leads` (see HANDOFF.md)
-    // with INSERT policy for anon, plus email forwarding to info@rallypadel.app.
-    // Until then this insert may fail and the lead survives only in localStorage.
+    // BACKEND-TODO (Shahaf): the `coach_leads` table does not exist yet, so this
+    // insert currently always fails and the user is shown the error state below.
+    // See the Notion task for the backend work that makes this path succeed.
+    let persisted = false
     try {
       const { error } = await supabase.from('coach_leads').insert([lead])
       if (error) console.error('[coach_leads] insert failed:', error.message)
+      else persisted = true
     } catch (err) {
       console.error('[coach_leads] insert threw:', err)
+    }
+
+    // Never claim success we didn't achieve — the lead is only in localStorage.
+    if (!persisted) {
+      setSubmitFailed(true)
+      setSubmitting(false)
+      requestAnimationFrame(() => {
+        wrapperRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+      return
     }
 
     setAppNumber(`RC-${Date.now().toString(36).toUpperCase().slice(-6)}`)
@@ -280,7 +294,9 @@ function CoachApplicationForm() {
 
   return (
     <div ref={wrapperRef}>
-      {submitted ? (
+      {submitFailed ? (
+        <LeadSubmitError onRetry={() => setSubmitFailed(false)} />
+      ) : submitted ? (
         <div className="rounded-2xl bg-rally-surface border border-rally-accent/40 p-8 shadow-glow-electric text-center">
           <CheckCircle2 className="w-12 h-12 text-rally-accent mb-4 mx-auto" />
           <h3 className="font-display text-2xl sm:text-3xl font-black text-rally-text mb-3">

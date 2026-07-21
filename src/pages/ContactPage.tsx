@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { supabase } from '@/lib/supabase'
+import LeadSubmitError from '@/components/forms/LeadSubmitError'
 
 type SegmentId = 'club' | 'tournament' | 'coach' | 'sponsor' | 'partnership'
 
@@ -142,6 +143,7 @@ function ContactForm() {
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitFailed, setSubmitFailed] = useState(false)
 
   const activeSegment = SEGMENTS.find((s) => s.id === segment) ?? SEGMENTS[0]
 
@@ -169,19 +171,31 @@ function ContactForm() {
       // localStorage may be unavailable — non-fatal
     }
 
-    // BACKEND-TODO (Shahaf): create Supabase table `contact_leads` with INSERT
-    // policy for anon, plus a DB trigger / Edge Function that forwards each new
-    // row to info@rallypadel.app. Until then, this insert may fail and the
-    // lead survives only in localStorage above.
+    // BACKEND-TODO (Shahaf): the `contact_leads` table does not exist yet, so
+    // this insert currently always fails and the user is shown the error state
+    // below. See the Notion task for the backend work that makes this succeed.
+    let persisted = false
     try {
       const { error } = await supabase.from('contact_leads').insert([lead])
       if (error) console.error('[contact_leads] insert failed:', error.message)
+      else persisted = true
     } catch (err) {
       console.error('[contact_leads] insert threw:', err)
     }
 
+    // Never claim success we didn't achieve — the lead is only in localStorage.
+    if (!persisted) {
+      setSubmitFailed(true)
+      setSubmitting(false)
+      return
+    }
+
     setSubmitted(true)
     setSubmitting(false)
+  }
+
+  if (submitFailed) {
+    return <LeadSubmitError onRetry={() => setSubmitFailed(false)} />
   }
 
   if (submitted) {

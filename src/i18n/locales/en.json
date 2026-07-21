@@ -18,7 +18,11 @@
     "working_hard": "We are working hard to bring this page online. Stay tuned!",
     "back_home": "Back to Home",
     "page_not_found": "Page Not Found",
-    "back": "Back"
+    "back": "Back",
+    "leadErrorTitle": "We couldn't submit your details",
+    "leadErrorMessage": "Something went wrong on our end. Please try again, or email us directly at {{email}} and we'll get back to you.",
+    "leadErrorRetry": "Try again",
+    "supportEmail": "info@rallypadel.app"
   },
   "auth": {
     "welcome": "Your court is waiting",
