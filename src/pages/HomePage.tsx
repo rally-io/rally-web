@@ -340,12 +340,12 @@ export default function HomePage() {
                       alt=""
                       loading="lazy"
                       className={cn(
-                        'absolute inset-0 w-full h-full object-cover object-top blur-[3px] scale-105 transition-opacity duration-1000 ease-in-out',
+                        'absolute inset-0 w-full h-full object-cover object-top blur-[0.6px] scale-[1.02] transition-opacity duration-1000 ease-in-out',
                         i === phoneTick % CRM_SCREENS.length ? 'opacity-100' : 'opacity-0',
                       )}
                     />
                   ))}
-                  <div className="absolute inset-0 bg-gradient-to-t from-rally-bg/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-rally-bg/25 to-transparent" />
                 </div>
               </div>
             </div>

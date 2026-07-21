@@ -100,11 +100,18 @@ export default function TournamentsPage() {
         </div>
 
         {isError ? (
-          <div className="text-center py-16">
-            <p className="text-rally-text-2 mb-4">
-              {t('tournament.tournamentsLoadErrorTitle')}
-            </p>
-          </div>
+          <>
+            <div className="text-center py-8">
+              <p className="text-rally-text-2 mb-4">
+                {t('tournament.tournamentsLoadErrorTitle')}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {TEASER_CONFIGS.map((cfg, i) => (
+                <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
+              ))}
+            </div>
+          </>
         ) : isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -128,14 +135,21 @@ export default function TournamentsPage() {
               </Button>
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-rally-text font-semibold">
-                {t('tournament.tournamentsEmptyTitle')}
-              </p>
-              <p className="text-rally-text-2 mt-1">
-                {t('tournament.tournamentsEmptyMessage')}
-              </p>
-            </div>
+            <>
+              <div className="text-center py-8">
+                <p className="text-rally-text font-semibold">
+                  {t('tournament.tournamentsEmptyTitle')}
+                </p>
+                <p className="text-rally-text-2 mt-1">
+                  {t('tournament.tournamentsEmptyMessage')}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {TEASER_CONFIGS.map((cfg, i) => (
+                  <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
+                ))}
+              </div>
+            </>
           )
         ) : (
           <>
