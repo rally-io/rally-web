@@ -100,15 +100,6 @@ export interface OnboardingStatus {
 }
 
 // Bookings
-export interface BookingRequest {
-  club_id: string
-  court_id: string
-  booking_date: string
-  start_time: string
-  end_time: string
-  use_credits: boolean
-}
-
 export interface BookingResponse {
   id: string
   club_id: string
@@ -143,6 +134,7 @@ export interface MyRegistration {
   guest_player_2_name?: string | null
   team_name?: string | null
   status: string
+  payment_status?: string | null
 }
 
 export interface TournamentDetail extends Tournament {
@@ -168,63 +160,16 @@ export interface RegistrationDetail {
   start_date?: string | null
   end_date?: string | null
   within_cancellation_window: boolean
-}
-
-export interface PlayerSearchResult {
-  id: string
-  first_name: string
-  last_name: string
-  avatar_url: string | null
-}
-
-/** Partner selection payload. Note: use_credits is deferred to the payment phase. */
-export type RegisterPayload =
-  | { partner_type: 'none' }
-  | { partner_type: 'existing'; partner_player_id: string }
-  | {
-      partner_type: 'invite'
-      invite_first_name: string
-      invite_last_name: string
-      invite_country_code: string
-      invite_phone: string
-    }
-
-export type SelectedPartner =
-  | { type: 'existing'; id: string; displayName: string; avatarUrl?: string | null }
-  | { type: 'invite'; firstName: string; lastName: string; countryCode: string; phone: string }
-
-export type PartnerSelectionState =
-  | { phase: 'idle' }
-  | { phase: 'selected'; partner: SelectedPartner }
-
-export interface TournamentRegistrationResponse {
-  id: string
-  tournament_id: string
-  player_1_id: string
-  player_2_id: string | null
-  player_2_name: string | null
-  guest_player_2_id: string | null
-  guest_player_2_name: string | null
-  team_name: string | null
-  status: string
-  payment_status: string | null
-  credits_applied: number
-  service_fee: number
-  amount_to_pay: number
-  amount_credited: number | null
-  entry_fee: number
-  tournament_name: string
-  tournament_club_name: string
-  image_url: string | null
-  thumb_url: string | null
-  start_date: string
-  end_date: string
-  within_cancellation_window: boolean
+  /** True ⇒ pre-auth (J4/J5 hold) entity: saved-card capture is forbidden, hosted checkout only. (gap spec §2.5) */
+  requires_approval_event?: boolean
 }
 
 // Profile update
 export interface ProfileUpdateRequest {
+  first_name?: string
+  last_name?: string
   contact_number?: string
+  country_code?: string
   skill_level?: number
 }
 
@@ -261,7 +206,7 @@ export interface PlayerCreatePayload {
   last_name: string
   email: string
   contact_number: string
-  country_code: string             // ISO style — e.g. '+972'
+  country_code?: string            // ISO style — e.g. '+972'. Omit if no contact_number.
   gender: Gender
   date_of_birth?: string           // 'YYYY-MM-DD'
   skill_level?: number
@@ -291,3 +236,12 @@ export interface SupabaseUserSummary {
   email: string | null
   role: string
 }
+
+// --- Payments ---
+// Web no longer initiates payments (all transactional flows live in the mobile
+// app); this type survives only for the grace-period return/confirming pages.
+
+export type PaymentEntityType =
+  | 'booking'
+  | 'tournament_registration'
+  | 'event_participation'

@@ -9,10 +9,10 @@ import {
   Newspaper,
   Dumbbell,
 } from 'lucide-react'
-import { APP_STORE_URL, GOOGLE_PLAY_URL } from '@/constants/appLinks'
 import AvailabilityGrid from '@/components/home/AvailabilityGrid'
 import { useDevicePlatform } from '@/hooks/useDevicePlatform'
 import { cn } from '@/lib/utils'
+import { APP_STORE_URL, PLAY_STORE_URL } from '@/lib/appLinks'
 
 const APP_SCREENS = [
   '/app-screen-home-kash.jpg',
@@ -119,7 +119,7 @@ export default function HomePage() {
                   label={t('home.appStoreLabel')}
                 />
                 <AppBadge
-                  href={GOOGLE_PLAY_URL}
+                  href={PLAY_STORE_URL}
                   icon={<GooglePlayIcon />}
                   sublabel={t('home.downloadNow')}
                   label={t('home.googlePlayLabel')}
@@ -128,7 +128,7 @@ export default function HomePage() {
             ) : (
               <>
                 <a
-                  href={platform === 'android' ? GOOGLE_PLAY_URL : APP_STORE_URL}
+                  href={platform === 'android' ? PLAY_STORE_URL : APP_STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-3 w-full max-w-xs px-8 py-4 rounded-full bg-rally-accent text-rally-accent-text font-display font-black text-lg hover:bg-rally-accent-hover shadow-glow-electric transition-all active:scale-[0.98]"
@@ -151,7 +151,7 @@ export default function HomePage() {
           <a
             href={
               platform === 'android'
-                ? GOOGLE_PLAY_URL
+                ? PLAY_STORE_URL
                 : platform === 'ios'
                   ? APP_STORE_URL
                   : APP_STORE_URL
@@ -385,44 +385,6 @@ function AppBadge({
   )
 }
 
-function CyclingPhoneMockup({
-  tick,
-  offset = 0,
-  className,
-  featured,
-}: {
-  tick: number
-  offset?: number
-  className?: string
-  featured?: boolean
-}) {
-  const index = (tick + offset) % APP_SCREENS.length
-  return (
-    <div
-      className={cn(
-        'relative rounded-[1.75rem] sm:rounded-[2rem] bg-rally-surface-2 border-[5px] sm:border-[6px] border-rally-surface-2 shadow-2xl overflow-hidden',
-        'w-40 sm:w-44',
-        featured && 'md:w-52 z-10 shadow-glow-electric ring-1 ring-rally-accent/30',
-        className,
-      )}
-    >
-      {APP_SCREENS.map((src, i) => (
-        <img
-          key={src}
-          src={src}
-          alt=""
-          loading={i === offset % APP_SCREENS.length ? 'eager' : 'lazy'}
-          className={cn(
-            'block w-full h-auto transition-opacity duration-1000 ease-in-out',
-            i === 0 ? '' : 'absolute inset-0',
-            i === index ? 'opacity-100' : 'opacity-0',
-          )}
-        />
-      ))}
-    </div>
-  )
-}
-
 function AppleIcon() {
   return (
     <svg
@@ -465,3 +427,42 @@ function GooglePlayIcon() {
     </svg>
   )
 }
+
+function CyclingPhoneMockup({
+  tick,
+  offset = 0,
+  className,
+  featured,
+}: {
+  tick: number
+  offset?: number
+  className?: string
+  featured?: boolean
+}) {
+  const index = (tick + offset) % APP_SCREENS.length
+  return (
+    <div
+      className={cn(
+        'relative rounded-[1.75rem] sm:rounded-[2rem] bg-rally-surface-2 border-[5px] sm:border-[6px] border-rally-surface-2 shadow-2xl overflow-hidden',
+        'w-40 sm:w-44',
+        featured && 'md:w-52 z-10 shadow-glow-electric ring-1 ring-rally-accent/30',
+        className,
+      )}
+    >
+      {APP_SCREENS.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          loading={i === offset % APP_SCREENS.length ? 'eager' : 'lazy'}
+          className={cn(
+            'block w-full h-auto transition-opacity duration-1000 ease-in-out',
+            i === 0 ? '' : 'absolute inset-0',
+            i === index ? 'opacity-100' : 'opacity-0',
+          )}
+        />
+      ))}
+    </div>
+  )
+}
+

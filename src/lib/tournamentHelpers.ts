@@ -1,5 +1,4 @@
 // src/lib/tournamentHelpers.ts — ported 1:1 from mobile (spec §7)
-import type { PartnerSelectionState, RegisterPayload } from '@/types/api'
 
 export function isRegistrationOpen(deadline: string | null | undefined): boolean {
   if (!deadline) return true
@@ -140,25 +139,6 @@ export function formatTournamentCardDate(
   const left = isHe ? dayFmt.format(e) : dayFmt.format(s)
   const right = isHe ? dayFmt.format(s) : dayFmt.format(e)
   return `${left} – ${right}`
-}
-
-export function buildPayload(
-  format: string | null | undefined,
-  state: PartnerSelectionState,
-): RegisterPayload {
-  if (format !== 'doubles' && format !== 'mixed') return { partner_type: 'none' }
-  if (state.phase !== 'selected') return { partner_type: 'none' }
-  const p = state.partner
-  if (p.type === 'existing') {
-    return { partner_type: 'existing', partner_player_id: p.id }
-  }
-  return {
-    partner_type: 'invite',
-    invite_first_name: p.firstName,
-    invite_last_name: p.lastName,
-    invite_country_code: p.countryCode,
-    invite_phone: p.phone,
-  }
 }
 
 export function formatCurrency(value: number | string | null | undefined): string {

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { APP_STORE_URL, PLAY_STORE_URL, APP_STORE_BADGE, PLAY_STORE_BADGE } from '@/lib/appLinks'
 
 export function Footer() {
   const { t } = useTranslation()
@@ -10,7 +11,16 @@ export function Footer() {
         <div className="text-sm text-rally-text-2">
           © 2026 Rally — {t('footer.rights') || 'כל הזכויות שמורות'}
         </div>
-        <nav className="flex gap-6">
+        <nav className="flex items-center gap-6">
+          <div className="flex gap-3">
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+              <img src={APP_STORE_BADGE} alt="App Store" className="h-7" />
+            </a>
+            <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+              <img src={PLAY_STORE_BADGE} alt="Google Play" className="h-7" />
+            </a>
+          </div>
+          <span className="w-px h-5 bg-rally-border" />
           <Link to="/privacy" className="text-sm text-rally-text-2 hover:text-rally-accent transition-colors">
             {t('footer.privacy') || 'פרטיות'}
           </Link>

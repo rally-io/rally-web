@@ -136,7 +136,7 @@ export function BookingSummaryScreen(props: Props) {
         <div className="fixed bottom-0 inset-x-0 bg-rally-bg/95 border-t border-rally-border p-4">
           <div className="container mx-auto max-w-xl">
             <button
-              disabled={mode === 'deferred_pay' || confirmPending}
+              disabled={confirmPending}
               onClick={() => onConfirm?.()}
               className="w-full h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold disabled:opacity-40"
             >

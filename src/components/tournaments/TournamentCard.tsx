@@ -43,19 +43,24 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
 
   const payState =
     tr.registration_status === 'payment_pending' ||
-    tr.registration_status === 'approved'
+    tr.registration_status === 'approved' ||
+    tr.registration_status === 'registered'
 
   const ctaLabel = payState
-    ? t('tournament.tournamentsPayNow')
+    ? t('appDownload.cta_pay')
     : tab === 'my'
     ? t('tournament.tournamentsViewDetails')
     : open
     ? t('tournament.tournamentsRegister')
     : t('tournament.tournamentsViewDetails')
 
+  // Payment completion happens in the mobile app; the detail page's sticky CTA
+  // opens the app-download modal, so every card routes to the detail page.
+  const linkTo = `/tournaments/${tr.id}`
+
   return (
     <Link
-      to={`/tournaments/${tr.id}`}
+      to={linkTo}
       className="block rounded-[20px] bg-rally-surface border border-rally-border overflow-hidden hover:border-rally-accent/50 transition-colors"
     >
       <div className="relative aspect-video bg-rally-surface-2">

@@ -1,13 +1,12 @@
 import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from './components/layout/Layout'
-import { ProfileCompletionGate } from './components/profile/ProfileCompletionModal'
 import { AuthGateModal } from './components/auth/AuthGateModal'
 
 // Pages
 import HomePage from './pages/HomePage'
 import CrmPage from './pages/CrmPage'
-import DownloadRedirectPage from './pages/DownloadRedirectPage'
+import AppDownloadPage from './pages/AppDownloadPage'
 import CoachesPage from './pages/CoachesPage'
 import LevelPage from './pages/LevelPage'
 import PricingPage from './pages/PricingPage'
@@ -20,11 +19,17 @@ import TournamentsPage from './pages/TournamentsPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
 import RegistrationSummaryPage from './pages/RegistrationSummaryPage'
 import MyActivityPage from './pages/MyActivityPage'
+import EditProfilePage from './pages/EditProfilePage'
+import PaymentsMovedPage from './pages/payment/PaymentsMovedPage'
+import PaymentReturnPage from './pages/payment/PaymentReturnPage'
+import PaymentConfirmingPage from './pages/payment/PaymentConfirmingPage'
+import PaymentFailedPage from './pages/payment/PaymentFailedPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 import LoginPage from './pages/auth/LoginPage'
 import AuthCallbackPage from './pages/auth/AuthCallbackPage'
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
+import WelcomePage from './pages/auth/WelcomePage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import SetPasswordPage from './pages/auth/SetPasswordPage'
 
@@ -33,8 +38,6 @@ export default function App() {
 
   return (
     <div dir={i18n.language === 'he' ? 'rtl' : 'ltr'}>
-      {/* Mounted once — handles blocking onboarding for both proactive guards and 403 retries */}
-      <ProfileCompletionGate />
       {/* Mounted once — opens when any page calls requireSignIn() from useAuthGate */}
       <AuthGateModal />
 
@@ -43,13 +46,14 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/auth/welcome" element={<WelcomePage />} />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
 
         {/* Marketing + app shell */}
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/download" element={<DownloadRedirectPage />} />
+          <Route path="/download" element={<AppDownloadPage />} />
           <Route path="/crm" element={<CrmPage />} />
           <Route path="/level" element={<LevelPage />} />
           <Route path="/pricing" element={<PricingPage />} />
@@ -57,13 +61,18 @@ export default function App() {
           <Route path="/coaches" element={<CoachesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
-          <Route path="/app" element={<DownloadRedirectPage />} />
+          <Route path="/app" element={<AppDownloadPage />} />
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/clubs/:id" element={<ClubDetailPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/tournaments/summary" element={<RegistrationSummaryPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
           <Route path="/my-activity" element={<MyActivityPage />} />
+          <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/payment-method" element={<PaymentsMovedPage />} />
+          <Route path="/payments/return" element={<PaymentReturnPage />} />
+          <Route path="/payments/confirming" element={<PaymentConfirmingPage />} />
+          <Route path="/payments/failed" element={<PaymentFailedPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

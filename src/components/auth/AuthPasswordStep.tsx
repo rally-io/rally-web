@@ -8,16 +8,26 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
 interface AuthPasswordStepProps {
+  mode: 'signin' | 'signup'
   email: string
+  /** Informational only — used to surface the "wrong door" hint and switch link. */
   userExists: boolean
   onBack: () => void
+  onSwitchMode: () => void
   onForgotPassword: () => void
-  // Called when sign-up was successful but Supabase returned no session (email confirmations on).
+  /** Signup completed and Supabase returned a session (no email confirmation required). */
+  onSignUpSucceededWithSession: () => void
+  /** Signup completed but Supabase returned no session (email confirmations on). */
   onSignUpNeedsVerification: (email: string) => void
+  /** Signin completed and Supabase returned a session. */
+  onSignInSucceeded: () => void
 }
 
 export function AuthPasswordStep({
-  email, userExists, onBack, onForgotPassword, onSignUpNeedsVerification,
+  mode, email, userExists,
+  onBack, onSwitchMode, onForgotPassword,
+  onSignUpSucceededWithSession, onSignUpNeedsVerification,
+  onSignInSucceeded,
 }: AuthPasswordStepProps) {
   const { t } = useTranslation()
   const { signInWithEmail, signUpWithEmail } = useAuth()
@@ -26,7 +36,10 @@ export function AuthPasswordStep({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const isSignUp = !userExists
+  const isSignUp = mode === 'signup'
+  const wrongDoor =
+    (mode === 'signup' && userExists) ||
+    (mode === 'signin' && !userExists)
   const rules = passwordRules(password)
 
   const canSubmit = isSignUp
@@ -41,25 +54,21 @@ export function AuthPasswordStep({
     try {
       if (isSignUp) {
         const { hasSession } = await signUpWithEmail(email, password)
-        if (!hasSession) {
-          // Email confirmation enabled — route to the inbox screen.
+        if (hasSession) {
+          onSignUpSucceededWithSession()
+        } else {
           onSignUpNeedsVerification(email)
-          return
         }
-        // Otherwise onAuthStateChange flips the AppSession; LoginPage's effect handles redirect.
-      } else {
-        await signInWithEmail(email, password)
+        return
       }
+      await signInWithEmail(email, password)
+      onSignInSucceeded()
     } catch (e: any) {
       const msg = String(e?.message ?? '').toLowerCase()
-      if (isSignUp && /already.*registered|user.*already.*exists/.test(msg)) {
-        // Race: someone signed up between check-email and submit. Tell the user and
-        // let them try again as a sign-in (back button preserves email).
-        setError(t('auth.errors.already_registered') || 'This email is already registered. Please sign in.')
-      } else if (!isSignUp && /invalid.*login|invalid.*credentials/.test(msg)) {
+      if (!isSignUp && /invalid.*login|invalid.*credentials/.test(msg)) {
         setError(t('auth.errors.invalid_credentials') || 'Incorrect email or password')
       } else {
-        setError(e?.message ?? 'Sign-in failed')
+        setError(e?.message ?? 'Something went wrong. Please try again.')
       }
     } finally {
       setPending(false)
@@ -71,6 +80,25 @@ export function AuthPasswordStep({
       <button type="button" onClick={onBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-electric-green">
         <ArrowLeft size={16} /> {t('common.back') || 'Back'}
       </button>
+
+      {wrongDoor && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <p className="mb-2">
+            {mode === 'signup'
+              ? (t('auth.wrong_door_signup_to_signin', { email }) || `${email} already has a Rally account.`)
+              : (t('auth.wrong_door_signin_to_signup', { email }) || `We couldn't find a Rally account for ${email}.`)}
+          </p>
+          <button
+            type="button"
+            onClick={onSwitchMode}
+            className="font-semibold underline hover:text-amber-100"
+          >
+            {mode === 'signup'
+              ? (t('auth.switch_to_signin') || 'Sign in instead')
+              : (t('auth.switch_to_signup') || 'Create one instead')}
+          </button>
+        </div>
+      )}
 
       <div>
         <Label className="mb-1 block">{t('auth.email_label') || 'Email'}</Label>
@@ -113,8 +141,8 @@ export function AuthPasswordStep({
 
       <Button
         type="submit"
+        variant="accent"
         disabled={!canSubmit || pending}
-        className="w-full bg-electric-green text-slate-950 hover:bg-electric-green/90"
       >
         {pending
           ? (t('common.loading') || 'Loading...')

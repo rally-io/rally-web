@@ -68,7 +68,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
   const { session, signOut, user } = useAuth()
-  const { status, onboardingStatus, playerProfile, ensurePlayerProfile, clearSession } = useAppSession()
+  const { status, playerProfile, clearSession } = useAppSession()
   const isSignedIn = !!session
 
   const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
@@ -90,8 +90,8 @@ export function Navbar() {
     comingSoon?: boolean
   }[] = [
     { key: 'my_activity', to: '/my-activity', label: t('user_menu.my_activity'), icon: Activity },
+    { key: 'edit_profile', to: '/profile/edit', label: t('user_menu.edit_profile'), icon: UserCog },
     { key: 'my_wallet', to: null, label: t('user_menu.my_wallet'), icon: Wallet, comingSoon: true },
-    { key: 'edit_profile', to: null, label: t('user_menu.edit_profile'), icon: UserCog, comingSoon: true },
     { key: 'player_preferences', to: null, label: t('user_menu.player_preferences'), icon: SlidersHorizontal, comingSoon: true },
     { key: 'refer_and_earn', to: null, label: t('user_menu.refer_and_earn'), icon: Gift, comingSoon: true },
     { key: 'settings', to: null, label: t('user_menu.settings'), icon: Settings, comingSoon: true },
@@ -115,17 +115,6 @@ export function Navbar() {
     setMenuOpen(false)
     navigate(to)
   }
-
-  const handleCompleteProfile = async () => {
-    setMenuOpen(false)
-    try {
-      await ensurePlayerProfile()
-    } catch {
-      // USER_CANCELLED / SIGNED_OUT / PROFILE_ERROR — modal handles its own UX.
-    }
-  }
-
-  const profileIncomplete = onboardingStatus && !onboardingStatus.has_player_profile
 
   const meta = (user?.user_metadata ?? {}) as Record<string, string>
   const profileName = `${playerProfile?.first_name ?? ''} ${playerProfile?.last_name ?? ''}`.trim()
@@ -265,38 +254,24 @@ export function Navbar() {
                       </div>
                     </div>
 
-                    {/* Profile completion (if applicable) */}
-                    {profileIncomplete && (
-                      <div className="p-1.5 border-b border-white/10">
-                        <button
-                          onClick={handleCompleteProfile}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-electric-green hover:bg-electric-green/10 rounded-lg transition-colors"
-                        >
-                          <CircleUserRound size={16} />
-                          {t('user_menu.complete_profile')}
-                        </button>
-                      </div>
-                    )}
-
                     {/* Personal actions — mirrors mobile drawer */}
                     <div className="p-1.5">
                       {personalActions.map((action) => {
                         const Icon = action.icon
                         const active = action.to ? isActiveRoute(action.to) : false
                         const disabled = action.comingSoon === true || action.to === null
+                        const base = 'w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors'
+                        const stateClasses = active
+                          ? 'text-rally-accent bg-rally-accent/10 hover:bg-rally-accent/20'
+                          : disabled
+                            ? 'text-slate-500 cursor-not-allowed hover:bg-white/5'
+                            : 'text-slate-200 hover:text-rally-accent hover:bg-rally-accent/15'
                         return (
                           <button
                             key={action.key}
                             onClick={() => action.to && !disabled && handleMenuNavigate(action.to)}
                             disabled={disabled}
-                            className={cn(
-                              'w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors',
-                              active
-                                ? 'text-electric-green bg-electric-green/10'
-                                : disabled
-                                  ? 'text-slate-500 cursor-not-allowed'
-                                  : 'text-slate-200 hover:bg-slate-800',
-                            )}
+                            className={`${base} ${stateClasses}`}
                           >
                             <Icon size={16} className={active ? '' : disabled ? 'text-slate-600' : 'text-slate-400'} />
                             <span className="flex-1 text-start">{action.label}</span>
@@ -368,17 +343,6 @@ export function Navbar() {
           {isSignedIn ? (
             <>
               <div className="h-px bg-slate-800 my-1" />
-              {profileIncomplete && (
-                <button
-                  onClick={() => {
-                    setMobileOpen(false)
-                    void handleCompleteProfile()
-                  }}
-                  className="text-start text-sm text-electric-green hover:text-electric-green/80 transition-colors"
-                >
-                  {t('user_menu.complete_profile')}
-                </button>
-              )}
               {personalActions.map((action) => {
                 const disabled = action.comingSoon === true || action.to === null
                 if (disabled) {

@@ -1,12 +1,12 @@
 // src/services/api/client.ts
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError } from 'axios'
 import { supabase } from '@/lib/supabase'
 import { isAuthError } from '@/lib/auth'
 
 // Bridge to AppSessionContext — set once when the provider mounts.
 // Kept here (not React) so axios stays free of React imports.
 type ApiBridge = {
-  ensurePlayerProfile: () => Promise<void>
+  redirectToProfileEdit: () => void
   forceSignOut: () => Promise<void>
 }
 let _bridge: ApiBridge | null = null
@@ -21,21 +21,22 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Augment config so we can tag retried requests.
-type RetryableConfig = InternalAxiosRequestConfig & { __retried?: boolean }
-
 client.interceptors.request.use(async (config) => {
+  // Tag every web request so rally-api can redirect Grow callbacks to the
+  // web return URL instead of the mobile deep link (PAYMENT_BACKEND_DELTA.md §1).
+  config.headers = config.headers ?? {}
+  config.headers['X-Rally-Client'] = 'web'
+
   // Honor an explicit opt-out for unauthenticated endpoints (e.g. check-email).
-  if (config.headers?.['X-Skip-Auth']) {
+  if (config.headers['X-Skip-Auth']) {
     delete config.headers['X-Skip-Auth']
-    if (config.headers) delete config.headers.Authorization
+    delete config.headers.Authorization
     return config
   }
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.access_token) {
-    config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${session.access_token}`
-  } else if (config.headers) {
+  } else {
     delete config.headers.Authorization
   }
   return config
@@ -48,8 +49,7 @@ client.interceptors.response.use(
       return Promise.reject({ code: 'NETWORK_ERROR', message: 'Network error' })
     }
 
-    const { status, data, config } = error.response
-    const retryableConfig = config as RetryableConfig | undefined
+    const { status, data } = error.response
     const code: string | undefined = data?.error?.code
     const detailMsg: string | undefined =
       (typeof data?.error === 'string' ? data.error : data?.error?.message) ?? data?.detail
@@ -67,20 +67,14 @@ client.interceptors.response.use(
       })
     }
 
-    // --- 403 — onboarding-related, single retry path ---
+    // --- 403 — missing players row, redirect to the profile edit page ---
     const needsPlayerRow =
       code === 'PROFILE_FIELDS_REQUIRED' ||
       code === 'PLAYER_NOT_FOUND' ||
       (typeof detailMsg === 'string' && /player.*(not.*found|profile.*incomplete)/i.test(detailMsg))
 
-    if (status === 403 && needsPlayerRow && !retryableConfig?.__retried && _bridge && retryableConfig) {
-      try {
-        await _bridge.ensurePlayerProfile()
-        retryableConfig.__retried = true
-        return client.request(retryableConfig)
-      } catch {
-        // user closed/cancelled the blocking modal — fall through to normal rejection
-      }
+    if (status === 403 && needsPlayerRow) {
+      _bridge?.redirectToProfileEdit()
     }
 
     // --- generic rejection (preserves existing rejection shape) ---

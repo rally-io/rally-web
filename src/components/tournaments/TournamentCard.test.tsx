@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import '@/i18n'
+import i18n from '@/i18n'
 import { TournamentCard } from './TournamentCard'
 import type { Tournament } from '@/types/api'
 
@@ -29,9 +29,13 @@ describe('TournamentCard CTA', () => {
     expect(screen.getByRole('link', { name: /Rally Open/i })).toBeInTheDocument()
     expect(screen.getByText('Register')).toBeInTheDocument()
   })
-  it('payment_pending shows Pay Now', () => {
-    renderCard({ registration_status: 'payment_pending' })
-    expect(screen.getByText('Pay Now')).toBeInTheDocument()
+  it('payment_pending shows the complete-in-app label and links to detail', () => {
+    renderCard({ registration_status: 'payment_pending', registration_id: 'r-1' })
+    expect(screen.getByText(i18n.t('appDownload.cta_pay'))).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Rally Open/i })).toHaveAttribute(
+      'href',
+      '/tournaments/t1',
+    )
   })
   it('closed registration shows View', () => {
     renderCard({ registration_deadline: '2000-01-01' })
