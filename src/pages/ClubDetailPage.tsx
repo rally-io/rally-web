@@ -57,7 +57,7 @@ export default function ClubDetailPage() {
         setMissingFields(err.details?.missing_fields ?? [])
         setProfileModalOpen(true)
       } else if (err?.isUnauthorized) {
-        navigate('/contact')
+        navigate('/login')
       }
     }
   }

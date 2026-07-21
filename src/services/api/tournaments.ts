@@ -40,17 +40,18 @@ export async function searchPlayers(
 }
 
 /**
- * Zero-amount confirm. BACKEND-CONFIRM: mobile uses
- * payments/tournament-registration/{rid}/confirm-zero-payment; the unification
- * doc exposes POST /rally/v1/tournaments/{tid}/registrations/{rid}/pay.
- * Isolated here so a later swap is a one-line change.
+ * Confirm a tournament registration whose amount due is 0.
+ *
+ * Uses the payments endpoint, which takes no body. Do NOT switch this to
+ * POST /rally/v1/tournaments/{tid}/registrations/{rid}/pay — that route exists
+ * but its TournamentPaymentConfirmRequest requires a `payment_reference`
+ * string, so an empty body 422s every time, and it writes a revenue-ledger
+ * entry that makes no sense for a ₪0 registration.
  */
 export async function confirmZeroPayment(
-  tournamentId: string,
   registrationId: string,
 ): Promise<ApiResponse<unknown>> {
   return client.post(
-    `/rally/v1/tournaments/${tournamentId}/registrations/${registrationId}/pay`,
-    {},
+    `/rally/v1/payments/tournament-registration/${registrationId}/confirm-zero-payment`,
   )
 }

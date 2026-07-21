@@ -47,7 +47,7 @@ export default function RegistrationSummaryPage() {
     setError('')
     setPending(true)
     try {
-      const res = await confirmZeroPayment(id, registrationId)
+      const res = await confirmZeroPayment(registrationId)
       if (!res.success) throw res.error
       setConfirmed(true)
     } catch (e: any) {
