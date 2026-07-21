@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Note:** The root `README.md` is stale — it describes an earlier vanilla-HTML version of this site. The current codebase is a React + Vite SPA. Trust the code, `package.json`, `HANDOFF.md`, and `docs/` over that README.
+> **Stale docs — trust the code first.** `README.md` describes an earlier vanilla-HTML version of this site; the current codebase is a React + Vite SPA. `HANDOFF.md` is a pre-launch checklist whose §1 ("the mock toggle") is **already done** — `src/mocks/` and `VITE_USE_MOCK` no longer exist. Its §4 product decisions are still authoritative and are restated at the bottom of this file. `docs/PAYMENT_WEB_GAP_SPEC.md` describes a web payment flow that has since been removed.
 
 ## Skill discovery — do this first, every task
 
@@ -53,7 +53,9 @@ npm run test:watch   # vitest watch mode
 Run a single test file: `npx vitest run src/path/to/file.test.tsx`
 Run a single test by name: `npx vitest run -t "test name pattern"`
 
-The app crashes at module load if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing — copy `.env.example` → `.env` (or `.env.local`) and fill in real values before `npm run dev`.
+The app crashes at module load if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing (`src/lib/supabase.ts` throws) — copy `.env.example` → `.env` (or `.env.local`) and fill in real values before `npm run dev`. `VITE_API_BASE_URL` is optional and defaults to `http://localhost:8080`.
+
+Deployment is Vercel; `vercel.json` rewrites every path to `/index.html` so SPA deep links work.
 
 ## Path alias
 
@@ -72,35 +74,36 @@ The order matters. `AppSessionProvider` reads from `AuthProvider`; `AuthGateProv
 ### Three-context session model
 
 - **`AuthContext`** (`src/contexts/AuthContext.tsx`) — Thin wrapper around Supabase auth. Owns `session`/`user`, exposes `signIn*`, `signUp*`, `signOut`, `requestPasswordReset`, `updatePassword`. Uses Supabase `flowType: 'implicit'` to match the mobile app's token shape; storage key is `rally-web.supabase.auth`. `signOut` uses `flushSync` so React 18 doesn't defer the `session=null` update and render a stale navbar.
-- **`AppSessionContext`** (`src/contexts/AppSessionContext.tsx`) — Composite "is the user ready to use the app?" state. Fetches `onboarding-status` and `player-profile-me` via React Query, derives a single `status` enum (`loading | signed_out | profile_error | profile_incomplete | ready`). **Also wires the axios bridge** (see below) so the API client can navigate/sign-out from outside React.
+- **`AppSessionContext`** (`src/contexts/AppSessionContext.tsx`) — Composite "is the user ready to use the app?" state. Fetches `onboarding-status` and `player-profile-me` via React Query, derives a single `status` enum (`loading | signed_out | profile_error | profile_incomplete | ready`). Also exposes `ensurePlayerProfile()` (resolves once a `players` row exists, rejects if the user cancels), `clearSession()` (drop cached profile queries *before* `signOut` to avoid a stale-data flash), and `__setBlockingHandlers` (how `ProfileCompletionModal` registers its imperative opener). **Also wires the axios bridge** (see below) so the API client can create a profile / sign out from outside React.
 - **`AuthGateContext`** (`src/contexts/AuthGateContext.tsx`) — Imperative `requireSignIn()` returning a `Promise<void>`. Any page can `await requireSignIn()` before a guarded action; the `<AuthGateModal/>` mounted in `App.tsx` resolves the promise when the user signs in, rejects with `USER_CANCELLED` on dismiss.
 
 ### API layer (`src/services/api/`)
 
 - **`client.ts`** — Axios instance with two interceptors:
-  - **Request:** stamps `X-Rally-Client: web` on every call (the backend reads this to redirect Grow payment callbacks to the web return URL instead of the mobile `app.rallypadel://` deep link — see `docs/PAYMENT_BACKEND_DELTA.md` §1). Attaches Supabase access token unless `X-Skip-Auth` header is set.
-  - **Response:** rejects on non-2xx. On 401 with a recognizable auth-error message, calls `_bridge.forceSignOut()`. On 403 with `PROFILE_FIELDS_REQUIRED`/`PLAYER_NOT_FOUND`, calls `_bridge.redirectToProfileEdit()`. The `_bridge` is set by `AppSessionContext` via `__setApiBridge()` — this keeps axios free of React imports.
-- **Per-resource modules** (`auth.ts`, `bookings.ts`, `tournaments.ts`, `payments.ts`, `clubs.ts`, `events.ts`, `profile.ts`) — All exported functions return `ApiResponse<T>` (`{success: true, data} | {success: false, error: {code, message, details}}`). They wrap the axios call in try/catch and **normalize thrown rejections into the failure shape**, so UI callers can use `if (!r.success)` uniformly without try/catch.
+  - **Request:** attaches the Supabase access token, unless the caller sets an `X-Skip-Auth` header (used by unauthenticated endpoints like `check-email`); the header is stripped before the request goes out.
+  - **Response:** unwraps `response.data` on 2xx. On non-2xx it **rejects** with a plain object — `{status, code, message, details}`, plus `isUnauthorized` on 401 and `isNotFound` on 404. On 401 with a recognizable auth-error message it calls `_bridge.forceSignOut()`. On 403 with `PROFILE_FIELDS_REQUIRED` / `PLAYER_NOT_FOUND` it calls `_bridge.ensurePlayerProfile()` (which opens the blocking profile modal) and then **retries the original request once**, tagged via a `__retried` flag. The `_bridge` is set by `AppSessionContext` via `__setApiBridge()` — this keeps axios free of React imports.
+- **Per-resource modules** (`auth.ts`, `bookings.ts`, `clubs.ts`, `profile.ts`, `tournaments.ts`) — thin wrappers typed as `ApiResponse<T>` (`{success: true, data} | {success: false, error: {code, message, details}}`).
+
+  **They do _not_ try/catch.** A non-2xx response rejects the promise, so `if (!r.success)` only covers a 2xx body that reports failure — it will never run on an HTTP error. Every current caller is a React Query `queryFn`/`mutationFn`, which catches the throw and surfaces it as `error`. If you call one of these outside React Query, handle the rejection yourself.
+
+  Gotcha: `registerTournament` lives in `profile.ts`, not `tournaments.ts`.
 
 ### Routing (`src/App.tsx`)
 
 Two route groups:
-- **Bare auth screens** (no `Layout`): `/login`, `/auth/callback`, `/auth/verify-email`, `/auth/welcome`, `/auth/forgot-password`, `/set-password`.
-- **App shell** (wrapped in `<Layout/>`): everything else, including marketing pages, tournaments, clubs, profile, and payment routes.
+- **Bare auth screens** (no `Layout`): `/login`, `/auth/callback`, `/auth/verify-email`, `/auth/forgot-password`, `/set-password`.
+- **App shell** (wrapped in `<Layout/>`): marketing (`/`, `/crm`, `/level`, `/pricing`, `/contact`, `/coaches`, `/privacy`, `/terms`), store redirects (`/download`, `/app` — both `DownloadRedirectPage`), clubs (`/clubs`, `/clubs/:id`), tournaments (`/tournaments`, `/tournaments/summary`, `/tournaments/:id`), `/my-activity`, and a `*` catch-all.
 
-`AuthGateModal` is mounted once at the top of `App` so any page can trigger it.
+Two modals are mounted once at the top of `App` so any page can trigger them: `<AuthGateModal/>` (sign-in gate) and `<ProfileCompletionGate/>` (blocking onboarding, used by both proactive guards and the 403 retry path above).
 
-### Payments
+### Payments — removed from the web
 
-Grow (Meshulam) hosted checkout. Authoritative source is the server webhook, never the browser.
+There is no web checkout. Payment pages, `services/api/payments.ts`, `events.ts`, and `useEntityPolling` were deleted; tournament money flows happen in the mobile app. Web tournament registration is view-and-register only, and store links / deep links push users to the app.
 
-- API wrappers in `src/services/api/payments.ts` cover §3 of `docs/PAYMENT_SPEC.md`. Notable details:
-  - `save_card` is forwarded only on `booking` initiate; silently dropped for other entities.
-  - `use_credits` is forwarded only for `tournament_registration`.
-  - 402 declines from `chargeSavedCard` are normalized to `{code: 'PAYMENT_DECLINED', details: {status: 402}}`.
-- Pages (`src/pages/payment/`): `PaymentMethodPage`, `PaymentReturnPage`, `PaymentConfirmingPage`, `PaymentFailedPage`.
-- `useEntityPolling` (`src/hooks/useEntityPolling.ts`) polls the entity status every 3s for up to 10 attempts on the confirming screen; falls back to "confirmed" if the entity disappears after first being seen (handles transient backend errors).
-- `docs/PAYMENT_SPEC.md` (full flow) and `docs/PAYMENT_BACKEND_DELTA.md` (rally-api side contract) are the source of truth — read these before touching payments.
+- `src/constants/appLinks.ts` holds the App Store and Google Play URLs.
+- `useDevicePlatform()` (`src/hooks/useDevicePlatform.ts`) returns `ios | android | desktop` so download CTAs target the right store (desktop shows both).
+- `confirmZeroPayment` still exists in `tournaments.ts` for free tournaments — it carries a `BACKEND-CONFIRM` comment because mobile and the unification doc disagree on the endpoint. Keep it isolated so a swap stays one line.
+- `docs/PAYMENT_WEB_GAP_SPEC.md` is historical context for what the web used to do; it does not describe current behavior.
 
 ### i18n
 
@@ -108,16 +111,23 @@ Grow (Meshulam) hosted checkout. Authoritative source is the server webhook, nev
 - `<App/>` flips `dir="rtl"` when `i18n.language === 'he'`. All visible UI text must go through `t('key.path')` — no hardcoded HE/EN in JSX. RTL layouts must be mirrored correctly.
 - Test setup forces English (`src/test-setup.ts` calls `i18n.changeLanguage('en')` in `beforeAll`).
 
-### UI
+### UI and the design system
 
-- Tailwind v4 via the `@tailwindcss/vite` plugin (no `tailwind.config.js`).
-- Component primitives in `src/components/ui/` — Radix-based building blocks (button, dialog, sheet, tabs, toast, etc.).
+- Tailwind v4 via the `@tailwindcss/vite` plugin. There is **no `tailwind.config.js`** — design tokens live in the `@theme` block at the top of `src/App.css`, which is where you add or change them.
+- The site is **dark by default**. Use the `rally-*` tokens rather than raw Tailwind palette colors so pages stay consistent:
+  - Surfaces `rally-bg` / `rally-surface` / `rally-surface-2`; text `rally-text` / `rally-text-2` / `rally-text-muted` (`rally-text-on-light` on light backgrounds).
+  - Accents: electric lime `rally-accent` (`#ccff00`, primary CTA) and brand blue `rally-blue` (`#0055ff`), each with `-hover` and `-dim` variants.
+  - Borders `rally-border-subtle` / `rally-border` / `rally-border-strong`; functional `rally-success|warning|error|info`; `shadow-glow-electric` / `shadow-glow-blue` for accent glows.
+  - `electric-green` is a **legacy alias** mapped to the lime so older components still render — prefer `rally-accent` in new code.
+- Fonts: `font-display` (Rubik) for headings, `font-body`/`font-sans` (Heebo) for body — both chosen for Hebrew support.
+- Component primitives in `src/components/ui/` — Radix-based building blocks (button, card, dialog, sheet, tabs, toast, badge, skeleton, etc.).
 - Toast system: `useToast` + `<Toaster/>` (already mounted in `Layout`).
 
 ### Testing
 
-- Vitest + jsdom + Testing Library. Setup file: `src/test-setup.ts`.
-- Mocking axios responses: tests under `src/services/api/*.test.ts` mock the `./client` default export. Tests under `src/pages/**/*.test.tsx` mock the per-resource API modules.
+- Vitest + jsdom + Testing Library. Setup file: `src/test-setup.ts` (forces English).
+- Coverage is currently partial and lives next to the code it tests: `src/components/{auth,tournaments}/*.test.tsx`, `src/contexts/AuthGateContext.test.tsx`, and `src/lib/*.test.ts`. There are no API-layer or page-level test suites yet.
+- When adding tests: mock the per-resource module (`@/services/api/tournaments`) for component/page tests, or the `./client` default export when testing an API module directly.
 
 ## Product rules baked into the UI (do not undo)
 
