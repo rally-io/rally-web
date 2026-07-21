@@ -739,6 +739,12 @@
     "accuracy_title": "Why Accuracy Matters",
     "accuracy_p1": "Your level is the main signal Rally uses to recommend suitable partners and opponents.",
     "accuracy_p2": "When your level is accurate, Rally can show you players who truly match you — close enough that games are competitive, far enough that you're always learning. For club owners, accurate levels mean better organized open play, fairer draws, and players who come back because they had a great game on the court.",
-    "accuracy_p3": "The more you play, the better your level will reflect your actual game — and the better Rally will be at connecting you with the right people."
+    "accuracy_p3": "The more you play, the better your level will reflect your actual game — and the better Rally will be at connecting you with the right people.",
+    "table_tier": "Tier",
+    "table_range": "Range",
+    "table_meaning": "What it means",
+    "table_matches": "Matches played",
+    "table_influence": "Influence of match results",
+    "table_influence_0": "0% — pure questionnaire"
   }
 }
