@@ -303,6 +303,8 @@
     "tournamentsEmptyTitle": "No tournaments yet",
     "tournamentsEmptyMessage": "Check back soon for upcoming tournaments.",
     "tournamentsLoadErrorTitle": "Could not load tournaments",
+    "tournamentsWorkingTitle": "We're working on the next tournaments 🎾",
+    "tournamentsWorkingMessage": "Registration opens soon — stay tuned.",
     "tournamentsRetry": "Retry",
     "tournamentDetailBack": "Back",
     "tournamentDetailLoadErrorTitle": "Could not load tournament",

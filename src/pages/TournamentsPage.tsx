@@ -102,8 +102,11 @@ export default function TournamentsPage() {
         {isError ? (
           <>
             <div className="text-center py-8">
-              <p className="text-rally-text-2 mb-4">
-                {t('tournament.tournamentsLoadErrorTitle')}
+              <p className="font-display text-xl sm:text-2xl font-bold text-rally-text mb-2">
+                {t('tournament.tournamentsWorkingTitle')}
+              </p>
+              <p className="text-rally-text-2">
+                {t('tournament.tournamentsWorkingMessage')}
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -303,6 +303,8 @@
     "tournamentsEmptyTitle": "אין כרגע טורנירים",
     "tournamentsEmptyMessage": "תחזרו בקרוב — טורנירים חדשים בדרך.",
     "tournamentsLoadErrorTitle": "לא הצלחנו לטעון את הטורנירים",
+    "tournamentsWorkingTitle": "אנחנו עובדים על הטורנירים הבאים 🎾",
+    "tournamentsWorkingMessage": "עוד רגע נפתחת ההרשמה — שווה להישאר מעודכנים.",
     "tournamentsRetry": "נסו שוב",
     "tournamentDetailBack": "חזרה",
     "tournamentDetailLoadErrorTitle": "לא הצלחנו לטעון את הטורניר",
