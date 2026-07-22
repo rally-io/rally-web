@@ -81,19 +81,30 @@ create table public.coach_leads (
   source           text              -- always 'coach_application'
 );
 
+-- Tournament-update subscribers (popup on /tournaments)
+create table public.update_leads (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+  email       text,               -- at least one of email/phone enforced client-side
+  phone       text,
+  source      text                -- always 'tournament_updates'
+);
+
 -- RLS — allow anonymous INSERT only (public lead capture)
 alter table public.crm_leads     enable row level security;
 alter table public.contact_leads enable row level security;
 alter table public.coach_leads   enable row level security;
+alter table public.update_leads  enable row level security;
 
 create policy "anon insert crm"     on public.crm_leads     for insert to anon with check (true);
 create policy "anon insert contact" on public.contact_leads for insert to anon with check (true);
 create policy "anon insert coach"   on public.coach_leads   for insert to anon with check (true);
+create policy "anon insert updates" on public.update_leads  for insert to anon with check (true);
 ```
 
 ### Email forwarding — REQUIRED
 
-Each new row in any of the three tables (`crm_leads`, `contact_leads`, `coach_leads`) needs to be emailed to **`info@rallypadel.app`**. Options:
+Each new row in any of the four tables (`crm_leads`, `contact_leads`, `coach_leads`, `update_leads`) needs to be emailed to **`info@rallypadel.app`**. Options:
 - **Supabase Edge Function** triggered by `db.insert` webhook
 - **DB trigger** that calls `net.http_post()` to a transactional email provider (Resend/Sendgrid)
 - Or any other workflow you prefer

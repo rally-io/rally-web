@@ -305,6 +305,7 @@
     "tournamentsLoadErrorTitle": "Could not load tournaments",
     "tournamentsWorkingTitle": "We're working on the next tournaments 🎾",
     "tournamentsWorkingMessage": "Registration opens soon — stay tuned.",
+    "tournamentsUpdatesHint": "Want to be first to hear about new tournaments?",
     "tournamentsRetry": "Retry",
     "tournamentDetailBack": "Back",
     "tournamentDetailLoadErrorTitle": "Could not load tournament",
@@ -629,6 +630,18 @@
     "successAppLabel": "Application #{{number}} · in review",
     "successMessage": "The Rally team personally reviews every application. Once approved — you're in the roster, players can find you, and inquiries start arriving. Get ready.",
     "footnote": "No cost, no commitment. Questions?"
+  },
+  "updates": {
+    "trigger": "Notify me about new tournaments",
+    "title": "Want to be first?",
+    "subtitle": "Leave an email or phone number — we'll ping you the moment a new tournament opens or something big happens at Rally.",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Phone number",
+    "atLeastOne": "Leave at least an email or a phone number",
+    "cta": "Notify me",
+    "submitting": "Sending…",
+    "successTitle": "You're on the list 🎾",
+    "successMessage": "We'll let you know the moment registration opens for a new tournament. See you on court."
   },
   "privacy": {
     "title": "Privacy Policy",

@@ -305,6 +305,7 @@
     "tournamentsLoadErrorTitle": "לא הצלחנו לטעון את הטורנירים",
     "tournamentsWorkingTitle": "אנחנו עובדים על הטורנירים הבאים 🎾",
     "tournamentsWorkingMessage": "עוד רגע נפתחת ההרשמה — שווה להישאר מעודכנים.",
+    "tournamentsUpdatesHint": "רוצים לדעת ראשונים על טורנירים חדשים?",
     "tournamentsRetry": "נסו שוב",
     "tournamentDetailBack": "חזרה",
     "tournamentDetailLoadErrorTitle": "לא הצלחנו לטעון את הטורניר",
@@ -629,6 +630,18 @@
     "successAppLabel": "בקשה מס׳ {{number}} · בבדיקה",
     "successMessage": "צוות Rally עובר אישית על כל בקשה. ברגע שתאושרו — תיכנסו למאגר, השחקנים יוכלו למצוא אתכם, והפניות יתחילו להגיע. שווה להתכונן.",
     "footnote": "ללא עלות וללא התחייבות. שאלות?"
+  },
+  "updates": {
+    "trigger": "עדכנו אותי על טורנירים חדשים",
+    "title": "רוצים לדעת ראשונים?",
+    "subtitle": "השאירו אימייל או טלפון — ונעדכן אתכם ברגע שנפתח טורניר חדש או שמשהו גדול קורה ב-Rally.",
+    "emailPlaceholder": "אימייל",
+    "phonePlaceholder": "מספר טלפון",
+    "atLeastOne": "השאירו לפחות אימייל או מספר טלפון",
+    "cta": "עדכנו אותי",
+    "submitting": "שולח…",
+    "successTitle": "אתם ברשימה 🎾",
+    "successMessage": "נעדכן אתכם ברגע שנפתחת הרשמה לטורניר חדש. נתראה על המגרש."
   },
   "privacy": {
     "title": "מדיניות פרטיות",
