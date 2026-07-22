@@ -194,8 +194,7 @@ interface TeaserConfig {
 
 const TEASER_CONFIGS: TeaserConfig[] = [
   {
-    bgImage:
-      'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?auto=format&fit=crop&w=1200&q=80',
+    bgImage: '/padel-court-home.jpg',
     name: 'Spring Padel Classic',
     skill: '3.5 - 4.0 (B1)',
     date: 'יום שבת, 15 באוגוסט',
@@ -204,8 +203,7 @@ const TEASER_CONFIGS: TeaserConfig[] = [
     price: '₪750',
   },
   {
-    bgImage:
-      'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=1200&q=80',
+    bgImage: '/padel-community-bw.jpg',
     name: 'Premier League Cup',
     skill: '2.0 - 2.5 (C3)',
     date: 'יום א׳, 23 באוגוסט',
