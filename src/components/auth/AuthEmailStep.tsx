@@ -35,7 +35,7 @@ export function AuthEmailStep({ mode, initialEmail = '', onBack, onContinue, onF
     try {
       const exists = await checkEmailExists(email)
       onContinue(email.trim().toLowerCase(), exists)
-    } catch (e: any) {
+    } catch {
       // CRITICAL: do not assume sign-up branch on error. Surface and let user retry.
       setError(t('auth.errors.check_email_failed') || "Couldn't verify the email. Try again.")
     } finally {

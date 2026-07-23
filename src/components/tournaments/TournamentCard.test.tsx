@@ -46,3 +46,37 @@ describe('TournamentCard CTA', () => {
     expect(screen.getByText('View')).toBeInTheDocument()
   })
 })
+
+function renderPast(t: Partial<Tournament> = {}) {
+  return render(
+    <MemoryRouter>
+      <TournamentCard tournament={{ ...base, ...t }} variant="past" />
+    </MemoryRouter>,
+  )
+}
+
+describe('TournamentCard past variant', () => {
+  it('shows the ended badge and ghost view CTA instead of Register', () => {
+    renderPast()
+    expect(screen.getByText(i18n.t('clubs.endedBadge'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('clubs.viewDetails'))).toBeInTheDocument()
+    expect(screen.queryByText('Register')).not.toBeInTheDocument()
+  })
+
+  it('suppresses urgency chrome (last-spots flame and countdown)', () => {
+    renderPast() // base has a far-future deadline that would show both by default
+    expect(
+      screen.queryByText(i18n.t('tournament.tournamentsLastSpots')),
+    ).not.toBeInTheDocument()
+    // en value is "{{count}} days left to register" — match the stable suffix
+    expect(screen.queryByText(/left to register/)).not.toBeInTheDocument()
+  })
+
+  it('still links to the tournament detail page', () => {
+    renderPast()
+    expect(screen.getByRole('link', { name: /Rally Open/i })).toHaveAttribute(
+      'href',
+      '/tournaments/t1',
+    )
+  })
+})

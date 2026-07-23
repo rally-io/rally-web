@@ -35,19 +35,17 @@ export interface Club {
   court_types: ('indoor' | 'outdoor')[]
   amenities: string[]
   description: string
-  booking_ahead_limit: number
-  setup_complete: boolean
-  available_slots: TimeSlot[]
-}
-
-export interface TimeSlot {
-  start_time: string
-  end_time: string
-  available: boolean
-  price: number
-  service_fee: number
-  duration: number
-  available_courts: { id: string; name: string; type: string }[]
+  // Detail-only, optional (feature-detected — absent on the list payload and
+  // on clubs whose data isn't filled in yet):
+  images?: string[]
+  contact_number?: string | null
+  opening_time?: string | null
+  closing_time?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  website_url?: string | null
+  instagram_url?: string | null
+  facebook_url?: string | null
 }
 
 // Tournaments
@@ -88,6 +86,35 @@ export interface Sponsor {
   name: string
   image_url: string
   website_url: string
+}
+
+// Club events / classes (rally-api MobileEventListItem)
+export interface EventParticipantPreview {
+  player_id: string
+  first_name: string | null
+  last_name: string | null
+  avatar_url: string | null
+  rating: number | null
+}
+
+export interface ClubEvent {
+  id: string
+  club_id: string
+  club_name: string
+  type: string
+  name: string
+  coach_name: string | null
+  start_at: string
+  end_at: string
+  price: number
+  seats_left: number
+  max_participants: number
+  skill_level_min: number | null
+  skill_level_max: number | null
+  image_url: string | null
+  thumb_url: string | null
+  joined: boolean
+  participants_preview: EventParticipantPreview[]
 }
 
 // Onboarding

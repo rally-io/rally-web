@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/clubs/:id", "destination": "/api/club-og?id=:id" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

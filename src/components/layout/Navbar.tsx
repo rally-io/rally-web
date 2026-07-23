@@ -14,6 +14,7 @@ import {
   Medal,
   ChevronDown,
   Home,
+  MapPin,
   Trophy,
   LayoutDashboard,
   Mail,
@@ -74,6 +75,7 @@ export function Navbar() {
   const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
     { to: '/', label: t('nav.app'), icon: Home },
     { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
+    { to: '/clubs', label: t('nav.clubs'), icon: MapPin },
     { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
     { to: '/contact', label: t('nav.contact'), icon: Mail },
     { to: '/coaches', label: t('nav.coaches'), icon: Dumbbell },

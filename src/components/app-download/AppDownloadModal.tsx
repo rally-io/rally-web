@@ -12,7 +12,7 @@ import {
   buildAppDeepLink, isMobileDevice,
 } from '@/lib/appLinks'
 
-export type AppDownloadVariant = 'register' | 'book' | 'pay'
+export type AppDownloadVariant = 'register' | 'book' | 'pay' | 'join'
 
 interface Props {
   open: boolean

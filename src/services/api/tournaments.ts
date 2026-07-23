@@ -6,10 +6,12 @@ import type {
 
 export interface TournamentListParams {
   type?: 'upcoming' | 'my'
+  scope?: 'open' | 'past'
   cursor?: string
   limit?: number
   search?: string
   show_cancelled?: boolean
+  club_id?: string
 }
 
 export async function getTournaments(
