@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
-import { supabase } from '@/lib/supabase'
+import { submitLead } from '@/services/api/leads'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 
 type SegmentId = 'club' | 'tournament' | 'coach' | 'sponsor' | 'partnership'
@@ -171,20 +171,18 @@ function ContactForm() {
       // localStorage may be unavailable — non-fatal
     }
 
-    // BACKEND-TODO (Shahaf): the `contact_leads` table does not exist yet, so
-    // this insert currently always fails and the user is shown the error state
-    // below. See the Notion task for the backend work that makes this succeed.
-    let persisted = false
+    // Forward to the Google Sheet via the /api/lead proxy. Never claim success
+    // we didn't achieve — on failure show the retry state (the lead is still in
+    // localStorage above).
+    let delivered = false
     try {
-      const { error } = await supabase.from('contact_leads').insert([lead])
-      if (error) console.error('[contact_leads] insert failed:', error.message)
-      else persisted = true
+      await submitLead(lead)
+      delivered = true
     } catch (err) {
-      console.error('[contact_leads] insert threw:', err)
+      console.error('[contact lead] submit failed:', err)
     }
 
-    // Never claim success we didn't achieve — the lead is only in localStorage.
-    if (!persisted) {
+    if (!delivered) {
       setSubmitFailed(true)
       setSubmitting(false)
       return

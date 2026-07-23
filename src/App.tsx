@@ -15,6 +15,8 @@ import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import ClubsPage from './pages/ClubsPage'
 import ClubDetailPage from './pages/ClubDetailPage'
+import ClubTournamentsPage from './pages/ClubTournamentsPage'
+import ClubEventsPage from './pages/ClubEventsPage'
 import TournamentsPage from './pages/TournamentsPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
 import RegistrationSummaryPage from './pages/RegistrationSummaryPage'
@@ -64,6 +66,8 @@ export default function App() {
           <Route path="/app" element={<AppDownloadPage />} />
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/clubs/:id" element={<ClubDetailPage />} />
+          <Route path="/clubs/:id/tournaments" element={<ClubTournamentsPage />} />
+          <Route path="/clubs/:id/events" element={<ClubEventsPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/tournaments/summary" element={<RegistrationSummaryPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
