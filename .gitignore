@@ -46,3 +46,5 @@ skills-lock.json
 server.log
 docs/
 CLAUDE.md
+# TypeScript incremental build cache
+*.tsbuildinfo

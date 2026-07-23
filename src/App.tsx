@@ -6,12 +6,13 @@ import { AuthGateModal } from './components/auth/AuthGateModal'
 // Pages
 import HomePage from './pages/HomePage'
 import CrmPage from './pages/CrmPage'
+import AppDownloadPage from './pages/AppDownloadPage'
+import CoachesPage from './pages/CoachesPage'
 import LevelPage from './pages/LevelPage'
 import PricingPage from './pages/PricingPage'
 import ContactPage from './pages/ContactPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
-import AppDownloadPage from './pages/AppDownloadPage'
 import ClubsPage from './pages/ClubsPage'
 import ClubDetailPage from './pages/ClubDetailPage'
 import TournamentsPage from './pages/TournamentsPage'
@@ -52,10 +53,12 @@ export default function App() {
         {/* Marketing + app shell */}
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/download" element={<AppDownloadPage />} />
           <Route path="/crm" element={<CrmPage />} />
           <Route path="/level" element={<LevelPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/coaches" element={<CoachesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/app" element={<AppDownloadPage />} />

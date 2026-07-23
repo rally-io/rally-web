@@ -1,9 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Sparkles, Zap, Layers, TrendingUp, CheckCircle2, ChevronDown } from 'lucide-react'
+import {
+  Sparkles,
+  Zap,
+  Layers,
+  TrendingUp,
+  CheckCircle2,
+  ChevronDown,
+  Users,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { supabase } from '@/lib/supabase'
+import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { ISRAELI_CITIES } from '@/constants/israeliCities'
 
 const CRM_SCREENS = [
@@ -70,21 +79,26 @@ export default function CrmPage() {
               {t('crm.teaseHint')}
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             <TeaseCard
-              icon={<Zap className="w-6 h-6" />}
+              icon={<Layers className="w-6 h-6" />}
               title={t('crm.card1Title')}
               desc={t('crm.card1Desc')}
             />
             <TeaseCard
-              icon={<Layers className="w-6 h-6" />}
+              icon={<TrendingUp className="w-6 h-6" />}
               title={t('crm.card2Title')}
               desc={t('crm.card2Desc')}
             />
             <TeaseCard
-              icon={<TrendingUp className="w-6 h-6" />}
+              icon={<Zap className="w-6 h-6" />}
               title={t('crm.card3Title')}
               desc={t('crm.card3Desc')}
+            />
+            <TeaseCard
+              icon={<Users className="w-6 h-6" />}
+              title={t('crm.card4Title')}
+              desc={t('crm.card4Desc')}
             />
           </div>
         </div>
@@ -241,6 +255,7 @@ function LeadCaptureForm() {
   const [city, setCity] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitFailed, setSubmitFailed] = useState(false)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -266,19 +281,31 @@ function LeadCaptureForm() {
       // localStorage may be unavailable — non-fatal
     }
 
-    // BACKEND-TODO (Shahaf): create Supabase table `crm_leads` with INSERT
-    // policy for anon, plus a DB trigger / Edge Function that forwards each
-    // new row to info@rallypadel.app. Until then, this insert may fail and
-    // the lead survives only in localStorage above.
+    // BACKEND-TODO (Shahaf): the `crm_leads` table does not exist yet, so this
+    // insert currently always fails and the user is shown the error state below.
+    // See the Notion task for the backend work that makes this path succeed.
+    let persisted = false
     try {
       const { error } = await supabase.from('crm_leads').insert([lead])
       if (error) console.error('[crm_leads] insert failed:', error.message)
+      else persisted = true
     } catch (err) {
       console.error('[crm_leads] insert threw:', err)
     }
 
+    // Never claim success we didn't achieve — the lead is only in localStorage.
+    if (!persisted) {
+      setSubmitFailed(true)
+      setSubmitting(false)
+      return
+    }
+
     setSubmitted(true)
     setSubmitting(false)
+  }
+
+  if (submitFailed) {
+    return <LeadSubmitError onRetry={() => setSubmitFailed(false)} />
   }
 
   if (submitted) {

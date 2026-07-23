@@ -17,6 +17,7 @@ import {
   Trophy,
   LayoutDashboard,
   Mail,
+  Dumbbell,
   type LucideIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -72,9 +73,10 @@ export function Navbar() {
 
   const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
     { to: '/', label: t('nav.app'), icon: Home },
-    { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
     { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
+    { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
     { to: '/contact', label: t('nav.contact'), icon: Mail },
+    { to: '/coaches', label: t('nav.coaches'), icon: Dumbbell },
   ]
 
   // Mirrors the mobile drawer (AppDrawerItems). Items without a web route are

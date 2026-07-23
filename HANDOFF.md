@@ -66,17 +66,45 @@ create table public.contact_leads (
   source       text
 );
 
+-- Coach applications (from /coaches)
+create table public.coach_leads (
+  id               uuid primary key default gen_random_uuid(),
+  created_at       timestamptz default now(),
+  first_name       text not null,
+  last_name        text not null,
+  email            text not null,
+  phone            text not null,
+  regions          text[] not null,  -- values from src/constants/israelRegions.ts
+  cities           text[],           -- optional; values from src/constants/israeliCities.ts
+  level_preference text,             -- beginners | advanced | all
+  about            text,
+  source           text              -- always 'coach_application'
+);
+
+-- Tournament-update subscribers (popup on /tournaments)
+create table public.update_leads (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz default now(),
+  email       text,               -- at least one of email/phone enforced client-side
+  phone       text,
+  source      text                -- always 'tournament_updates'
+);
+
 -- RLS — allow anonymous INSERT only (public lead capture)
 alter table public.crm_leads     enable row level security;
 alter table public.contact_leads enable row level security;
+alter table public.coach_leads   enable row level security;
+alter table public.update_leads  enable row level security;
 
 create policy "anon insert crm"     on public.crm_leads     for insert to anon with check (true);
 create policy "anon insert contact" on public.contact_leads for insert to anon with check (true);
+create policy "anon insert coach"   on public.coach_leads   for insert to anon with check (true);
+create policy "anon insert updates" on public.update_leads  for insert to anon with check (true);
 ```
 
 ### Email forwarding — REQUIRED
 
-Each new row in either table needs to be emailed to **`info@rallypadel.app`**. Options:
+Each new row in any of the four tables (`crm_leads`, `contact_leads`, `coach_leads`, `update_leads`) needs to be emailed to **`info@rallypadel.app`**. Options:
 - **Supabase Edge Function** triggered by `db.insert` webhook
 - **DB trigger** that calls `net.http_post()` to a transactional email provider (Resend/Sendgrid)
 - Or any other workflow you prefer
@@ -94,6 +122,7 @@ The user explicitly required: leads must be saved **AND** forwarded by email.
 | `/tournaments/:id` | `src/pages/TournamentDetailPage.tsx` | Redesigned hero, date strip with days-remaining pill, fact cards (no scarcity per product), prizes with 🥇🥈🥉, sponsor logo support, partner flow invite-first, sticky CTA with state-driven label |
 | `/crm` | `src/pages/CrmPage.tsx` | Club CRM lead capture (waitlist). Animated background blobs, 3 stacked browser-window mockups with lightly-blurred CRM screens cycling, value props (vague — no feature reveal per product), lead form |
 | `/contact` | `src/pages/ContactPage.tsx` | Segmented contact form (5 personas: clubs / tournament managers / coaches / sponsors / partnerships). Segment-specific open question, plus optional message. Right column: "what happens after you hit send" + direct mailto link |
+| `/coaches` | `src/pages/CoachesPage.tsx` | Coach membership application (mobile-first). FOMO hero, 3 value props, numbered-section form (personal / regions+cities / level+about), cosmetic application number on success. Writes to `coach_leads` + localStorage `rallyCoachLeads` |
 | `/login` | `src/pages/auth/LoginPage.tsx` | Back arrow added (browser history → `/` fallback). Subtitle copy. Centered logo inside card. Email button styling matches social buttons. |
 
 ### New components

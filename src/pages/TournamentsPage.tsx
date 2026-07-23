@@ -5,6 +5,10 @@ import { Search, Lock, Calendar, MapPin } from 'lucide-react'
 import { useTournaments } from '@/hooks/useTournaments'
 import { useAppSession } from '@/hooks/useAppSession'
 import { TournamentCard } from '@/components/tournaments/TournamentCard'
+import {
+  TournamentUpdatesModal,
+  TournamentUpdatesTrigger,
+} from '@/components/tournaments/TournamentUpdatesModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Tournament } from '@/types/api'
@@ -45,6 +49,8 @@ export default function TournamentsPage() {
 
   const tournaments: Tournament[] =
     enabled ? data?.pages.flatMap((p) => p?.items ?? []) ?? [] : []
+
+  const [updatesOpen, setUpdatesOpen] = useState(false)
 
   return (
     <main className="relative pt-32 pb-24 min-h-screen overflow-hidden">
@@ -100,11 +106,22 @@ export default function TournamentsPage() {
         </div>
 
         {isError ? (
-          <div className="text-center py-16">
-            <p className="text-rally-text-2 mb-4">
-              {t('tournament.tournamentsLoadErrorTitle')}
-            </p>
-          </div>
+          <>
+            <div className="text-center py-8">
+              <p className="font-display text-xl sm:text-2xl font-bold text-rally-text mb-2">
+                {t('tournament.tournamentsWorkingTitle')}
+              </p>
+              <p className="text-rally-text-2 mb-5">
+                {t('tournament.tournamentsWorkingMessage')}
+              </p>
+              <TournamentUpdatesTrigger onClick={() => setUpdatesOpen(true)} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {TEASER_CONFIGS.map((cfg, i) => (
+                <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
+              ))}
+            </div>
+          </>
         ) : isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -128,14 +145,22 @@ export default function TournamentsPage() {
               </Button>
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-rally-text font-semibold">
-                {t('tournament.tournamentsEmptyTitle')}
-              </p>
-              <p className="text-rally-text-2 mt-1">
-                {t('tournament.tournamentsEmptyMessage')}
-              </p>
-            </div>
+            <>
+              <div className="text-center py-8">
+                <p className="text-rally-text font-semibold">
+                  {t('tournament.tournamentsEmptyTitle')}
+                </p>
+                <p className="text-rally-text-2 mt-1 mb-5">
+                  {t('tournament.tournamentsEmptyMessage')}
+                </p>
+                <TournamentUpdatesTrigger onClick={() => setUpdatesOpen(true)} />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {TEASER_CONFIGS.map((cfg, i) => (
+                  <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
+                ))}
+              </div>
+            </>
           )
         ) : (
           <>
@@ -161,8 +186,18 @@ export default function TournamentsPage() {
                 </Button>
               </div>
             )}
+            {tab === 'upcoming' && (
+              <div className="text-center mt-10">
+                <p className="text-sm text-rally-text-2 mb-3">
+                  {t('tournament.tournamentsUpdatesHint')}
+                </p>
+                <TournamentUpdatesTrigger onClick={() => setUpdatesOpen(true)} />
+              </div>
+            )}
           </>
         )}
+
+        <TournamentUpdatesModal open={updatesOpen} onOpenChange={setUpdatesOpen} />
       </section>
     </main>
   )
@@ -180,21 +215,19 @@ interface TeaserConfig {
 
 const TEASER_CONFIGS: TeaserConfig[] = [
   {
-    bgImage:
-      'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?auto=format&fit=crop&w=1200&q=80',
+    bgImage: '/padel-court-home.jpg',
     name: 'Spring Padel Classic',
     skill: '3.5 - 4.0 (B1)',
-    date: 'יום שבת, 15 ביוני',
+    date: 'יום שבת, 15 באוגוסט',
     venue: 'מועדון בקרוב',
     format: 'זוגות',
     price: '₪750',
   },
   {
-    bgImage:
-      'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?auto=format&fit=crop&w=1200&q=80',
+    bgImage: '/padel-community-bw.jpg',
     name: 'Premier League Cup',
     skill: '2.0 - 2.5 (C3)',
-    date: 'יום א׳, 22 ביוני',
+    date: 'יום א׳, 23 באוגוסט',
     venue: 'מועדון בקרוב',
     format: 'זוגות',
     price: '₪450',
