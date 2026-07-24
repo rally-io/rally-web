@@ -66,6 +66,8 @@ describe('ClubDetailPage', () => {
     expect(screen.getByText('A great club')).toBeInTheDocument()
     expect(screen.queryByText(i18n.t('clubs.sectionTournaments'))).toBeNull()
     expect(screen.queryByText(i18n.t('clubs.sectionEvents'))).toBeNull()
+    expect(await screen.findByText(i18n.t('clubs.noActivitiesTitle'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('clubs.noActivitiesBody'))).toBeInTheDocument()
   })
 
   it('renders the tournaments/events sections and the info card when data exists', async () => {
@@ -80,9 +82,35 @@ describe('ClubDetailPage', () => {
 
     expect(await screen.findByText(i18n.t('clubs.sectionTournaments'))).toBeInTheDocument()
     expect(await screen.findByText(i18n.t('clubs.sectionEvents'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('clubs.noActivitiesTitle'))).toBeNull()
     // ClubInfoCard is rendered twice (mobile-inline + desktop sidebar), both
     // present in the DOM regardless of the lg:hidden/hidden lg:block classes
     // jsdom doesn't evaluate — assert at least one is present.
     expect(screen.getAllByText(i18n.t('clubs.infoTitle')).length).toBeGreaterThan(0)
+  })
+
+  it('caps the sections at one row: 3 events and 2 tournaments', async () => {
+    const tournaments = Array.from({ length: 3 }, (_, i) => ({
+      ...tournament, id: `t${i + 1}`, name: `Tournament ${i + 1}`,
+    }))
+    const events = Array.from({ length: 4 }, (_, i) => ({
+      ...event, id: `e${i + 1}`, name: `Event ${i + 1}`,
+    }))
+    vi.spyOn(tournamentsApi, 'getTournaments').mockResolvedValue({
+      success: true, data: { items: tournaments, next_cursor: null }, meta: null, error: null,
+    })
+    vi.spyOn(eventsApi, 'getEvents').mockResolvedValue({
+      success: true, data: { items: events, count: events.length }, meta: null, error: null,
+    })
+
+    renderPage()
+
+    expect(await screen.findByText('Tournament 1')).toBeInTheDocument()
+    expect(screen.getByText('Tournament 2')).toBeInTheDocument()
+    expect(screen.queryByText('Tournament 3')).toBeNull()
+    expect(await screen.findByText('Event 1')).toBeInTheDocument()
+    expect(screen.getByText('Event 2')).toBeInTheDocument()
+    expect(screen.getByText('Event 3')).toBeInTheDocument()
+    expect(screen.queryByText('Event 4')).toBeNull()
   })
 })

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CalendarDays } from 'lucide-react'
 import { useClub } from '@/hooks/useClub'
 import { useClubTournaments } from '@/hooks/useClubTournaments'
 import { useClubEvents } from '@/hooks/useClubEvents'
@@ -14,7 +14,8 @@ import { AppDownloadModal } from '@/components/app-download/AppDownloadModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { tryOpenInApp } from '@/lib/appLinks'
 
-const EVENTS_ON_PAGE = 6
+const EVENTS_ON_PAGE = 3
+const TOURNAMENTS_ON_PAGE = 2
 
 export default function ClubDetailPage() {
   const { t } = useTranslation()
@@ -24,14 +25,16 @@ export default function ClubDetailPage() {
   const [appModal, setAppModal] = useState(false)
 
   const { data: club, isLoading, isError } = useClub(clubId)
-  const { data: tPages } = useClubTournaments(clubId)
-  const { data: events } = useClubEvents(clubId)
+  const { data: tPages, isLoading: tournamentsLoading } = useClubTournaments(clubId)
+  const { data: events, isLoading: eventsLoading } = useClubEvents(clubId)
 
   const tournaments = useMemo(
     () => tPages?.pages.flatMap((p) => (p && 'items' in p ? p.items : [])) ?? [],
     [tPages],
   )
   const shownEvents = (events ?? []).slice(0, EVENTS_ON_PAGE)
+  const showActivitiesEmpty =
+    !tournamentsLoading && !eventsLoading && tournaments.length === 0 && shownEvents.length === 0
 
   const images = useMemo(() => {
     if (club?.images?.length) return club.images
@@ -139,7 +142,7 @@ export default function ClubDetailPage() {
                   seeAllTo={`/clubs/${clubId}/tournaments`}
                 />
                 <div className="grid gap-5 sm:grid-cols-2">
-                  {tournaments.slice(0, 6).map((tr) => (
+                  {tournaments.slice(0, TOURNAMENTS_ON_PAGE).map((tr) => (
                     <TournamentCard key={tr.id} tournament={tr} />
                   ))}
                 </div>
@@ -157,6 +160,24 @@ export default function ClubDetailPage() {
                     <EventCard key={e.id} event={e} />
                   ))}
                 </div>
+              </section>
+            )}
+
+            {showActivitiesEmpty && (
+              <section className="rounded-2xl bg-rally-surface border border-rally-border px-6 py-12 text-center">
+                <CalendarDays className="w-10 h-10 mx-auto text-rally-text-muted" aria-hidden />
+                <h2 className="mt-4 font-display text-xl font-bold text-rally-text">
+                  {t('clubs.noActivitiesTitle')}
+                </h2>
+                <p className="mt-2 text-rally-text-2 max-w-md mx-auto">
+                  {t('clubs.noActivitiesBody')}
+                </p>
+                <button
+                  onClick={openApp}
+                  className="mt-6 h-11 px-6 rounded-full bg-rally-accent text-rally-accent-text font-bold hover:bg-rally-accent-hover transition-colors"
+                >
+                  {t('clubs.openInApp')}
+                </button>
               </section>
             )}
 
