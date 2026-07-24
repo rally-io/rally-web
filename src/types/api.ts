@@ -35,9 +35,6 @@ export interface Club {
   court_types: ('indoor' | 'outdoor')[]
   amenities: string[]
   description: string
-  booking_ahead_limit: number
-  setup_complete: boolean
-  available_slots: TimeSlot[]
   // Detail-only, optional (feature-detected — absent on the list payload and
   // on clubs whose data isn't filled in yet):
   images?: string[]
@@ -49,16 +46,6 @@ export interface Club {
   website_url?: string | null
   instagram_url?: string | null
   facebook_url?: string | null
-}
-
-export interface TimeSlot {
-  start_time: string
-  end_time: string
-  available: boolean
-  price: number
-  service_fee: number
-  duration: number
-  available_courts: { id: string; name: string; type: string }[]
 }
 
 // Tournaments

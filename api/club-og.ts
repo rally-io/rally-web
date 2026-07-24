@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!id) return sendHtml(baseHtml)
 
   try {
-    const r = await fetch(`${API_BASE}/rally/v1/clubs/${encodeURIComponent(id)}`)
+    const r = await fetch(`${API_BASE}/rally/v1/clubs/${encodeURIComponent(id)}?view=web`)
     if (!r.ok) return sendHtml(baseHtml)
     const body = await r.json()
     const club = body?.data

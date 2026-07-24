@@ -13,8 +13,7 @@ const club: Club = {
   id: 'c1', name: 'Padel Time', city: 'Ramat Gan', address_line1: 'HaRokmim 26',
   image_url: null, thumb_url: null, distance_km: null, starts_from: 120,
   has_availability: true, court_types: ['indoor'], amenities: ['parking'],
-  description: 'A great club', booking_ahead_limit: 14, setup_complete: true,
-  available_slots: [],
+  description: 'A great club',
 }
 
 const tournament: Tournament = {
