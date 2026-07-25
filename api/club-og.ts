@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { injectClubOg } from '../src/lib/clubOg'
+// package.json sets "type": "module", so this function runs as ESM on Vercel
+// and Node's resolver demands an explicit extension on relative imports. The
+// extensionless form crashes the module at load with ERR_MODULE_NOT_FOUND,
+// taking down every /clubs/:id request before the handler runs.
+import { injectClubOg } from '../src/lib/clubOg.js'
 
 const API_BASE = (
   process.env.API_BASE_URL ??
