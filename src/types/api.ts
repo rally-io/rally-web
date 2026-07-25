@@ -76,6 +76,10 @@ export interface Tournament {
 
 export interface Prize {
   id: string
+  // Finishing place this prize is awarded for. Not contiguous — a club can
+  // define prizes for places 1, 2 and 5 — so never infer it from list order.
+  // Optional: servers predating the field omit it.
+  position?: number
   title: string
   description: string
   image_url: string | null
