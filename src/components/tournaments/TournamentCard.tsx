@@ -14,9 +14,15 @@ import { StatusBadge } from './StatusBadge'
 interface Props {
   tournament: Tournament
   tab?: 'upcoming' | 'my'
+  variant?: 'default' | 'past'
 }
 
-export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
+export function TournamentCard({
+  tournament: tr,
+  tab = 'upcoming',
+  variant = 'default',
+}: Props) {
+  const isPast = variant === 'past'
   const { t } = useTranslation()
   const { locale } = useRtl()
   const open = isRegistrationOpen(tr.registration_deadline)
@@ -63,7 +69,11 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
       to={linkTo}
       className="block rounded-[20px] bg-rally-surface border border-rally-border overflow-hidden hover:border-rally-accent/50 transition-colors"
     >
-      <div className="relative aspect-video bg-rally-surface-2">
+      <div
+        className={`relative aspect-video bg-rally-surface-2${
+          isPast ? ' grayscale opacity-75' : ''
+        }`}
+      >
         {img ? (
           <img src={img} alt={tr.name} className="w-full h-full object-cover" />
         ) : (
@@ -71,12 +81,20 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
             <Calendar className="w-10 h-10 opacity-30" />
           </div>
         )}
-        {tr.registration_status && (
+        {isPast ? (
           <div className="absolute bottom-3 start-3">
-            <StatusBadge status={tr.registration_status} />
+            <span className="inline-flex items-center rounded-full bg-black/70 backdrop-blur px-2.5 py-1 text-[11px] font-extrabold text-rally-text-2 border border-rally-border">
+              {t('clubs.endedBadge')}
+            </span>
           </div>
+        ) : (
+          tr.registration_status && (
+            <div className="absolute bottom-3 start-3">
+              <StatusBadge status={tr.registration_status} />
+            </div>
+          )
         )}
-        {open && (
+        {open && !isPast && (
           <div className="absolute top-3 end-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rally-warning text-rally-text-on-light text-[11px] font-black uppercase tracking-wider shadow-md animate-pulse">
             <Flame className="w-3.5 h-3.5" />
             <span>{t('tournament.tournamentsLastSpots')}</span>
@@ -103,7 +121,7 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
           <MapPin className="w-4 h-4 shrink-0" />
           <span className="line-clamp-1">{tr.club_name}</span>
         </p>
-        {countdownText && (
+        {countdownText && !isPast && (
           <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rally-blue/15 text-rally-blue text-xs font-semibold">
             <Clock className="w-3.5 h-3.5" />
             <span>{countdownText}</span>
@@ -119,17 +137,29 @@ export function TournamentCard({ tournament: tr, tab = 'upcoming' }: Props) {
             <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
               {t('tournament.tournamentsEntryFee')}
             </p>
-            <p className="text-2xl font-black text-rally-accent">
+            <p
+              className={
+                isPast
+                  ? 'text-lg font-black text-rally-text-muted'
+                  : 'text-2xl font-black text-rally-accent'
+              }
+            >
               {formatCurrency(tr.entry_fee)}
             </p>
           </div>
-          <span
-            className={`inline-flex items-center justify-center min-w-[120px] h-10 rounded-full bg-rally-accent text-rally-accent-text font-bold ${
-              payState ? 'shadow-[0_0_20px_rgba(204,255,0,0.5)]' : ''
-            }`}
-          >
-            {ctaLabel}
-          </span>
+          {isPast ? (
+            <span className="inline-flex items-center justify-center min-w-[120px] h-10 px-4 rounded-full border border-rally-border text-rally-text-2 font-bold">
+              {t('clubs.viewDetails')}
+            </span>
+          ) : (
+            <span
+              className={`inline-flex items-center justify-center min-w-[120px] h-10 rounded-full bg-rally-accent text-rally-accent-text font-bold ${
+                payState ? 'shadow-[0_0_20px_rgba(204,255,0,0.5)]' : ''
+              }`}
+            >
+              {ctaLabel}
+            </span>
+          )}
         </div>
       </div>
     </Link>

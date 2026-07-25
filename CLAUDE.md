@@ -55,7 +55,7 @@ Run a single test by name: `npx vitest run -t "test name pattern"`
 
 The app crashes at module load if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing (`src/lib/supabase.ts` throws) — copy `.env.example` → `.env` (or `.env.local`) and fill in real values before `npm run dev`. `VITE_API_BASE_URL` is optional and defaults to `http://localhost:8080`.
 
-Deployment is Vercel; `vercel.json` rewrites every path to `/index.html` so SPA deep links work.
+Deployment is Vercel; `vercel.json` rewrites every path to `/index.html` so SPA deep links work. The `/clubs/:id` route is server-rendered for share previews by `api/club-og.ts`, which needs `API_BASE_URL` (falls back to `VITE_API_BASE_URL`) set in the Vercel project.
 
 ## Path alias
 

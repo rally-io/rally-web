@@ -1,6 +1,6 @@
 // src/services/api/events.ts
 import client from './client'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, ClubEvent } from '@/types/api'
 
 /**
  * Minimal event shape we need for payment polling
@@ -14,6 +14,19 @@ export interface EventDetail {
 
 export async function getEvent(eventId: string): Promise<ApiResponse<EventDetail>> {
   return client.get(`/rally/v1/events/${eventId}`)
+}
+
+export interface ClubEventsParams {
+  club_id?: string
+  date_from?: string
+  date_to?: string
+  type?: string
+}
+
+export async function getEvents(
+  params: ClubEventsParams = {},
+): Promise<ApiResponse<{ items: ClubEvent[]; count: number }>> {
+  return client.get('/rally/v1/events/', { params })
 }
 
 export async function releaseEvent(
