@@ -359,6 +359,7 @@
     "prizeFirst": "1st Place",
     "prizeSecond": "2nd Place",
     "prizeThird": "3rd Place",
+    "prizePlace": "Place {{position}}",
     "ctaMissingPartner": "← Choose a partner first",
     "partnerSelectedPrefix": "✓ Partner selected:",
     "daysRemainingToTournament": "{{count}} days to tournament",

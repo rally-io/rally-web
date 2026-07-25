@@ -363,6 +363,7 @@
     "prizeFirst": "מקום ראשון",
     "prizeSecond": "מקום שני",
     "prizeThird": "מקום שלישי",
+    "prizePlace": "מקום {{position}}",
     "ctaMissingPartner": "← בחרו שותף לפני ההרשמה",
     "partnerSelectedPrefix": "✓ שותף נבחר:",
     "daysRemainingToTournament": "עוד {{count}} ימים לטורניר",

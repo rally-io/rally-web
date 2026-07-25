@@ -1,45 +1,82 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Prize } from '@/types/api'
 
 interface Props {
   prizes: Prize[]
 }
 
-const PRIZE_STYLES = [
-  {
+// Keyed by finishing place, not by list order: a club can award prizes for
+// places 1, 2 and 5, and the 5th-place card must not wear a bronze medal.
+const MEDAL_STYLES: Record<number, PrizeStyle> = {
+  1: {
     emoji: '🥇',
+    labelKey: 'tournament.prizeFirst',
     bg: 'from-amber-400/20 via-amber-500/10 to-transparent',
     border: 'border-amber-400/40',
     glow: 'hover:shadow-[0_0_24px_rgba(251,191,36,0.25)]',
     ring: 'ring-amber-400/40',
   },
-  {
+  2: {
     emoji: '🥈',
+    labelKey: 'tournament.prizeSecond',
     bg: 'from-slate-300/20 via-slate-400/10 to-transparent',
     border: 'border-slate-300/40',
     glow: 'hover:shadow-[0_0_24px_rgba(203,213,225,0.20)]',
     ring: 'ring-slate-300/40',
   },
-  {
+  3: {
     emoji: '🥉',
+    labelKey: 'tournament.prizeThird',
     bg: 'from-orange-500/20 via-orange-600/10 to-transparent',
     border: 'border-orange-500/40',
     glow: 'hover:shadow-[0_0_24px_rgba(249,115,22,0.25)]',
     ring: 'ring-orange-500/40',
   },
-]
+}
 
-type PrizeStyle = (typeof PRIZE_STYLES)[number]
+// Places past the podium get no medal — just the number, on neutral chrome.
+const PLAIN_STYLE: PrizeStyle = {
+  emoji: null,
+  labelKey: null,
+  bg: 'from-rally-surface-2/80 via-rally-surface-2/30 to-transparent',
+  border: 'border-rally-border',
+  glow: 'hover:shadow-[0_0_24px_rgba(255,255,255,0.06)]',
+  ring: 'ring-rally-border-strong',
+}
 
-function PrizeCard({ prize, style }: { prize: Prize; style: PrizeStyle }) {
+interface PrizeStyle {
+  emoji: string | null
+  labelKey: string | null
+  bg: string
+  border: string
+  glow: string
+  ring: string
+}
+
+function PrizeCard({ prize, fallbackPlace }: { prize: Prize; fallbackPlace: number }) {
+  const { t } = useTranslation()
+
   // Prize photos are club uploads: any aspect ratio, any background. A failed
   // URL must degrade to the medal rather than leave a broken-image hole.
   const [imageFailed, setImageFailed] = useState(false)
   const showImage = Boolean(prize.image_url) && !imageFailed
 
+  // Servers predating `position` send nothing, so fall back to list order for
+  // the medal — but never claim a place we are only guessing at.
+  const place = prize.position
+  const style = MEDAL_STYLES[place ?? fallbackPlace] ?? PLAIN_STYLE
+  const placeLabel =
+    place == null
+      ? null
+      : style.labelKey
+        ? t(style.labelKey)
+        : t('tournament.prizePlace', { position: place })
+
   // Clubs frequently paste the same text into title and description; printing
   // it twice reads as a bug.
-  const label = prize.description && prize.title !== prize.description ? prize.title : null
+  const showTitle = Boolean(prize.description) && prize.title !== prize.description
+  const subLabel = [placeLabel, showTitle ? prize.title : null].filter(Boolean).join(' · ')
   const headline = prize.description || prize.title
 
   return (
@@ -65,7 +102,7 @@ function PrizeCard({ prize, style }: { prize: Prize; style: PrizeStyle }) {
             <div
               className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${style.bg}`}
             >
-              <span className="text-6xl">{style.emoji}</span>
+              <span className="text-6xl">{style.emoji ?? place ?? fallbackPlace}</span>
             </div>
           )}
           {/* Fade the photo into the card body so it doesn't end on a hard edge. */}
@@ -74,15 +111,16 @@ function PrizeCard({ prize, style }: { prize: Prize; style: PrizeStyle }) {
             className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-rally-surface to-transparent"
           />
           <span
-            className={`absolute top-3 start-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-rally-bg/70 text-xl ring-1 ${style.ring} backdrop-blur-sm`}
+            title={placeLabel ?? undefined}
+            className={`absolute top-3 start-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-rally-bg/70 text-xl font-black text-rally-text ring-1 ${style.ring} backdrop-blur-sm`}
           >
-            {style.emoji}
+            {style.emoji ?? place ?? fallbackPlace}
           </span>
         </div>
         <div className="p-6 pt-2">
-          {label && (
+          {subLabel && (
             <p className="text-[11px] uppercase tracking-wider text-rally-text-muted mb-1">
-              {label}
+              {subLabel}
             </p>
           )}
           <p className="text-rally-accent text-2xl md:text-3xl font-black">{headline}</p>
@@ -93,14 +131,18 @@ function PrizeCard({ prize, style }: { prize: Prize; style: PrizeStyle }) {
 }
 
 export function PrizesGrid({ prizes }: Props) {
-  const count = Math.min(prizes.length, 3)
+  // Best place first. Prizes without a position keep their server order and
+  // sort last, so a mixed or legacy payload still renders sensibly.
+  const ordered = [...prizes].sort(
+    (a, b) => (a.position ?? Number.POSITIVE_INFINITY) - (b.position ?? Number.POSITIVE_INFINITY),
+  )
   const cols =
-    count === 1 ? 'md:grid-cols-1' : count === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'
+    ordered.length === 1 ? 'md:grid-cols-1' : ordered.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'
 
   return (
     <div className={`grid grid-cols-1 ${cols} gap-4`}>
-      {prizes.slice(0, 3).map((p, i) => (
-        <PrizeCard key={p.id} prize={p} style={PRIZE_STYLES[i] ?? PRIZE_STYLES[0]} />
+      {ordered.map((p, i) => (
+        <PrizeCard key={p.id} prize={p} fallbackPlace={i + 1} />
       ))}
     </div>
   )
