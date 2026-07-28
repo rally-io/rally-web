@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/clubs/:id", "destination": "/api/club-og?id=:id" },
+    { "source": "/tournaments/:id", "destination": "/api/tournament-og?id=:id" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

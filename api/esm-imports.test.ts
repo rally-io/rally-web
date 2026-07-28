@@ -5,7 +5,7 @@
  * module load — before a single line of the handler runs, so every request to
  * that route 500s.
  *
- * This shipped once: `import { injectClubOg } from '../src/lib/clubOg'` took
+ * This shipped once: `import { injectOg } from '../src/lib/og'` took
  * down every /clubs/:id page in production. `npm run build`, `npm run test`
  * and `npm run lint` all passed, because none of them resolve modules the way
  * the Node runtime does. Hence this guard.
