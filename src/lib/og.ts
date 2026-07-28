@@ -66,10 +66,12 @@ function dropImageDimensions(html: string): string {
 
 /** Rewrite the document title + OG/Twitter tags for a specific entity. */
 export function injectOg(html: string, tags: OgTags): string {
-  const fullTitle = `${escapeHtml(tags.title)} · Rally`
-  // Descriptions come from free-text DB columns; a raw newline inside an
-  // attribute value trips up some scrapers, so flatten to one line first.
-  const desc = escapeHtml(tags.description.replace(/\s+/g, ' ').trim())
+  // Titles and descriptions alike come from free-text sources — DB columns, or
+  // a config value carrying a newline to force a heading line break. A raw
+  // newline inside an attribute value trips up some scrapers, so flatten both.
+  const flatten = (s: string) => escapeHtml(s.replace(/\s+/g, ' ').trim())
+  const fullTitle = `${flatten(tags.title)} · Rally`
+  const desc = flatten(tags.description)
   const url = escapeHtml(tags.url)
 
   let out = html.replace(/<title>[^<]*<\/title>/i, () => `<title>${fullTitle}</title>`)
