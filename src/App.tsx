@@ -26,6 +26,7 @@ import PaymentsMovedPage from './pages/payment/PaymentsMovedPage'
 import PaymentReturnPage from './pages/payment/PaymentReturnPage'
 import PaymentConfirmingPage from './pages/payment/PaymentConfirmingPage'
 import PaymentFailedPage from './pages/payment/PaymentFailedPage'
+import CorporateSignupPage from './pages/CorporateSignupPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 import LoginPage from './pages/auth/LoginPage'
@@ -51,6 +52,10 @@ export default function App() {
         <Route path="/auth/welcome" element={<WelcomePage />} />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
+
+        {/* Unlisted closed-event signup. Bare on purpose: employees get a
+            private link to sign up and nothing else — no nav, no app prompt. */}
+        <Route path="/join/:slug" element={<CorporateSignupPage />} />
 
         {/* Marketing + app shell */}
         <Route element={<Layout />}>

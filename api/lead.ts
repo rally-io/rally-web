@@ -21,6 +21,19 @@ const ALLOWED_SOURCES = new Set([
   'crm_waitlist',
 ])
 
+// Closed corporate tournament signups (src/constants/corporateEvents.ts). The
+// Apps Script names the Sheet tab after `source` verbatim, so each client gets
+// its own tab by having its own source. Pattern-matched rather than enumerated
+// so onboarding the next client is a frontend config change only — but kept
+// strict and prefixed, so a stray POST can neither shadow one of the fixed
+// sources above nor put anything strange in a sheet name.
+const CORPORATE_SOURCE_PATTERN = /^corporate_[a-z0-9_]{1,40}$/
+
+export function isAllowedSource(source: unknown): source is string {
+  if (typeof source !== 'string') return false
+  return ALLOWED_SOURCES.has(source) || CORPORATE_SOURCE_PATTERN.test(source)
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
@@ -36,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // so they don't learn they were caught, but never forward the row.
   if (body._hp) return res.status(200).json({ ok: true })
 
-  if (!ALLOWED_SOURCES.has(body.source)) {
+  if (!isAllowedSource(body.source)) {
     return res.status(400).json({ ok: false, error: 'invalid_source' })
   }
 
