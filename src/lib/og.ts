@@ -1,3 +1,11 @@
+/**
+ * Server-side OG/meta rewriting for the serverless functions under api/.
+ *
+ * The SPA sets document.title client-side, but link crawlers (WhatsApp, Slack,
+ * iMessage, Facebook) do not run JavaScript — they read the HTML as served. So
+ * any route wanting a bespoke link preview must have its head tags rewritten
+ * before the shell goes out.
+ */
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -11,6 +19,12 @@ export interface OgTags {
   description: string
   image: string | null
   url: string
+  /**
+   * Adds robots noindex,nofollow. For unlisted pages whose links get forwarded
+   * around but should never surface in search. Does not affect link unfurling —
+   * scrapers still render the card.
+   */
+  noindex?: boolean
 }
 
 /**
@@ -28,6 +42,13 @@ function replaceMeta(html: string, key: string, content: string): string {
     'i',
   )
   return html.replace(re, (_match, open: string, close: string) => open + content + close)
+}
+
+/** replaceMeta, but inserts a `name=` tag into <head> when it isn't there. */
+function upsertNamedMeta(html: string, key: string, content: string): string {
+  const next = replaceMeta(html, key, content)
+  if (next !== html) return next
+  return html.replace(/<head>/i, (head) => `${head}\n    <meta name="${key}" content="${content}" />`)
 }
 
 /**
@@ -65,5 +86,19 @@ export function injectOg(html: string, tags: OgTags): string {
     out = dropImageDimensions(out)
   }
 
+  if (tags.noindex) {
+    out = upsertNamedMeta(out, 'robots', 'noindex, nofollow')
+  }
+
   return out
+}
+
+/**
+ * Absolutise a possibly root-relative asset path. Club and tournament images
+ * arrive as absolute Supabase/CDN URLs, but assets served from public/ do not,
+ * and crawlers do not resolve relative image URLs.
+ */
+export function absoluteUrl(pathOrUrl: string, origin: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
+  return `${origin.replace(/\/$/, '')}/${pathOrUrl.replace(/^\//, '')}`
 }
