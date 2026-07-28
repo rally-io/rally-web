@@ -49,13 +49,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // slugs exist beyond what the page already shows.
   if (!event) return sendHtml(baseHtml)
 
-  // The heading honours newlines in tournamentName; a title tag must not.
-  const name = event.tournamentName.replace(/\s+/g, ' ').trim()
-
+  // injectOg appends " · Rally", so the company goes in the description rather
+  // than the title — otherwise the card reads "… · Samsung · Rally".
+  // injectOg also flattens whitespace, so the newline that forces a heading
+  // line break in tournamentName is handled there.
   return sendHtml(
     injectOg(baseHtml, {
-      title: `${name} · ${event.company}`,
-      description: `${event.dateLabel} · ${event.timeLabel} · ${event.clubName}`,
+      title: event.tournamentName,
+      description: `${event.company} · ${event.dateLabel} · ${event.timeLabel} · ${event.clubName}`,
+      // Unlike club/tournament banners, this one is served from public/ and is
+      // root-relative — crawlers will not resolve that.
       image: absoluteUrl(event.heroImage, origin),
       url: `${origin}/join/${slug}`,
       // Belt-and-braces: the page also sets this client-side, but a crawler

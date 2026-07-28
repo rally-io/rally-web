@@ -1,12 +1,11 @@
 /**
  * Server-side OG/meta rewriting for the serverless functions under api/.
  *
- * The SPA sets document.title client-side, but link crawlers (WhatsApp,
- * Slack, iMessage, Facebook) do not run JavaScript — they read the HTML as
- * served. So any route that wants a bespoke link preview has to have its tags
- * rewritten before the shell goes out.
+ * The SPA sets document.title client-side, but link crawlers (WhatsApp, Slack,
+ * iMessage, Facebook) do not run JavaScript — they read the HTML as served. So
+ * any route wanting a bespoke link preview must have its head tags rewritten
+ * before the shell goes out.
  */
-
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -16,75 +15,89 @@ export function escapeHtml(s: string): string {
 }
 
 export interface OgTags {
-  /** Used verbatim as <title> and og:title — callers add any suffix. */
   title: string
   description: string
-  /** Must be absolute: crawlers do not resolve relative image URLs. */
   image: string | null
   url: string
-  /** Adds robots noindex,nofollow. Does not affect link unfurling. */
+  /**
+   * Adds robots noindex,nofollow. For unlisted pages whose links get forwarded
+   * around but should never surface in search. Does not affect link unfurling —
+   * scrapers still render the card.
+   */
   noindex?: boolean
 }
 
 /**
- * Replace an existing meta tag's content, matched on either `property=`
- * (Open Graph) or `name=` (Twitter, description, robots). No-op when the tag
- * is absent — use upsertMeta when it must exist.
+ * Rewrite one <meta> tag's content. Matches both the `property="og:*"` and
+ * `name="twitter:*"` spellings, and tolerates the attribute pair being split
+ * across lines (index.html wraps the long description tags).
+ *
+ * The replacement is a function, not a template string: `String.replace` treats
+ * `$&`, `$1` and friends as backreferences inside a string replacement, so a
+ * title like "Win $500" would otherwise inject the matched tag back into itself.
  */
-export function replaceMeta(
-  html: string,
-  key: string,
-  content: string,
-  attr: 'property' | 'name' = 'property',
-): string {
-  // \s+ spans newlines, so this matches index.html's multi-line meta blocks.
-  const re = new RegExp(`(<meta\\s+${attr}="${key}"\\s+content=")[^"]*("\\s*/?>)`, 'i')
-  return html.replace(re, `$1${content}$2`)
+function replaceMeta(html: string, key: string, content: string): string {
+  const re = new RegExp(
+    `(<meta\\s+(?:property|name)="${key}"\\s+content=")[^"]*("\\s*/?>)`,
+    'i',
+  )
+  return html.replace(re, (_match, open: string, close: string) => open + content + close)
 }
 
-/** replaceMeta, but inserts the tag into <head> when it isn't already there. */
-export function upsertMeta(
-  html: string,
-  key: string,
-  content: string,
-  attr: 'property' | 'name' = 'property',
-): string {
-  const next = replaceMeta(html, key, content, attr)
+/** replaceMeta, but inserts a `name=` tag into <head> when it isn't there. */
+function upsertNamedMeta(html: string, key: string, content: string): string {
+  const next = replaceMeta(html, key, content)
   if (next !== html) return next
-  return html.replace(/<head>/i, `<head>\n    <meta ${attr}="${key}" content="${content}" />`)
+  return html.replace(/<head>/i, (head) => `${head}\n    <meta name="${key}" content="${content}" />`)
 }
 
-/** Rewrite title + OG + Twitter tags on the built index.html shell. */
+/**
+ * The shell hardcodes og:image:width/height for the 1200x630 default card. A
+ * club photo or tournament banner is any aspect ratio, and advertising the
+ * wrong dimensions makes scrapers crop or drop the image — so remove the tags
+ * whenever the default image is replaced with a real one.
+ */
+function dropImageDimensions(html: string): string {
+  return html.replace(
+    /\n?[ \t]*<meta\s+property="og:image:(?:width|height)"\s+content="[^"]*"\s*\/?>/gi,
+    '',
+  )
+}
+
+/** Rewrite the document title + OG/Twitter tags for a specific entity. */
 export function injectOg(html: string, tags: OgTags): string {
-  const title = escapeHtml(tags.title)
-  const desc = escapeHtml(tags.description)
+  const fullTitle = `${escapeHtml(tags.title)} · Rally`
+  // Descriptions come from free-text DB columns; a raw newline inside an
+  // attribute value trips up some scrapers, so flatten to one line first.
+  const desc = escapeHtml(tags.description.replace(/\s+/g, ' ').trim())
+  const url = escapeHtml(tags.url)
 
-  let out = html.replace(/<title>[^<]*<\/title>/i, `<title>${title}</title>`)
-  out = replaceMeta(out, 'description', desc, 'name')
-
-  out = replaceMeta(out, 'og:title', title)
+  let out = html.replace(/<title>[^<]*<\/title>/i, () => `<title>${fullTitle}</title>`)
+  out = replaceMeta(out, 'og:title', fullTitle)
   out = replaceMeta(out, 'og:description', desc)
-  out = replaceMeta(out, 'og:url', escapeHtml(tags.url))
-
-  // Twitter's tags use name=, not property=, and fall back to OG only when
-  // absent entirely — a stale twitter:title would otherwise win on X/Slack.
-  out = replaceMeta(out, 'twitter:title', title, 'name')
-  out = replaceMeta(out, 'twitter:description', desc, 'name')
+  out = replaceMeta(out, 'og:url', url)
+  out = replaceMeta(out, 'twitter:title', fullTitle)
+  out = replaceMeta(out, 'twitter:description', desc)
 
   if (tags.image) {
     const image = escapeHtml(tags.image)
     out = replaceMeta(out, 'og:image', image)
-    out = replaceMeta(out, 'twitter:image', image, 'name')
+    out = replaceMeta(out, 'twitter:image', image)
+    out = dropImageDimensions(out)
   }
 
   if (tags.noindex) {
-    out = upsertMeta(out, 'robots', 'noindex, nofollow', 'name')
+    out = upsertNamedMeta(out, 'robots', 'noindex, nofollow')
   }
 
   return out
 }
 
-/** Absolutise a possibly-root-relative asset path. Crawlers need absolute. */
+/**
+ * Absolutise a possibly root-relative asset path. Club and tournament images
+ * arrive as absolute Supabase/CDN URLs, but assets served from public/ do not,
+ * and crawlers do not resolve relative image URLs.
+ */
 export function absoluteUrl(pathOrUrl: string, origin: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl
   return `${origin.replace(/\/$/, '')}/${pathOrUrl.replace(/^\//, '')}`
