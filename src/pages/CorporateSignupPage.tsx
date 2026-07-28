@@ -127,11 +127,13 @@ export default function CorporateSignupPage() {
             className="absolute inset-0 bg-gradient-to-b from-rally-bg/70 via-transparent to-rally-bg"
           />
 
-          <div className="relative h-full container mx-auto px-4 max-w-xl flex flex-col">
-            <div className="pt-6 sm:pt-8">
-              <RallyWordmark />
-            </div>
+          {/* Pinned to the hero itself rather than the max-w-xl content column,
+              so it sits in the page's own corner instead of floating mid-width
+              on a wide screen. `start` is the logical edge: the visual right in
+              Hebrew, and still the reading-start corner if anyone flips to EN. */}
+          <RallyWordmark className="absolute top-4 start-4 sm:top-6 sm:start-6 z-10" />
 
+          <div className="relative h-full container mx-auto px-4 max-w-xl flex flex-col">
             <div className="mt-auto pb-8 sm:pb-24">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-rally-accent/40 bg-rally-accent/10 text-rally-accent text-xs font-bold backdrop-blur mb-4">
                 <Lock className="w-3.5 h-3.5" />
@@ -406,6 +408,11 @@ function AppDownloadFooter() {
   return (
     <footer className="border-t border-rally-border px-4 py-10">
       <div className="mx-auto w-full max-w-xl text-center">
+        <p className="inline-flex items-center gap-2 text-sm text-rally-text-2 mb-7">
+          <img src="/rally-logo.jpg" alt="" aria-hidden className="h-5 w-auto rounded" />
+          {t('corporate.managedBy')}
+        </p>
+
         <p className="font-display font-bold text-rally-text">{t('corporate.appTitle')}</p>
         <p className="text-sm text-rally-text-2 mt-2 leading-relaxed">
           {t('corporate.appBody')}
@@ -502,7 +509,7 @@ function RallyWordmark({ className }: { className?: string }) {
     <img
       src="/rally-logo.jpg"
       alt="Rally"
-      className={cn('h-9 w-auto rounded-md', className)}
+      className={cn('h-12 sm:h-14 w-auto rounded-lg shadow-md', className)}
     />
   )
 }
