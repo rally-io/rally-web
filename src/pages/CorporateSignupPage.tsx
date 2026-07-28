@@ -86,7 +86,9 @@ export default function CorporateSignupPage() {
     const isContain = event.heroFit === 'contain'
     return (
       <header className="relative">
-        <div className="relative h-[300px] sm:h-[380px] overflow-hidden">
+        {/* Taller on mobile than on desktop: the heading wraps to three lines
+            in a narrow column, and it has to clear the artwork above it. */}
+        <div className="relative h-[430px] sm:h-[380px] overflow-hidden">
           {/* Blurred, over-scaled copy of the same image fills the band edge
               to edge. It means a logo card, a square asset or an odd aspect
               ratio all still produce a full-bleed header — and it supplies the
@@ -108,7 +110,7 @@ export default function CorporateSignupPage() {
                `left` edge rather than `right`, pinning it to the corner. */
             className={cn(
               'absolute inset-x-0 top-0 w-full',
-              isContain ? 'h-[50%] object-contain' : 'h-full object-cover',
+              isContain ? 'h-[36%] sm:h-[50%] object-contain' : 'h-full object-cover',
             )}
           />
           {/* Two stacked scrims: one to sink the image so white type stays
@@ -130,7 +132,7 @@ export default function CorporateSignupPage() {
               <RallyWordmark />
             </div>
 
-            <div className="mt-auto pb-20 sm:pb-24">
+            <div className="mt-auto pb-8 sm:pb-24">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-rally-accent/40 bg-rally-accent/10 text-rally-accent text-xs font-bold backdrop-blur mb-4">
                 <Lock className="w-3.5 h-3.5" />
                 <span className="tracking-wide">{t('corporate.eyebrow')}</span>
@@ -150,9 +152,11 @@ export default function CorporateSignupPage() {
           </div>
         </div>
 
-        {/* Lifted so the chips straddle the seam between photo and page. The
-            hero reserves matching bottom padding, so nothing is covered. */}
-        <div className="container mx-auto px-4 max-w-xl -mt-12 relative">
+        {/* On desktop the chips are one row, lifted to straddle the seam
+            between photo and page (the hero reserves matching bottom padding).
+            On mobile they stack into a tall column, so the same lift would
+            drive them straight through the heading — they just sit below. */}
+        <div className="container mx-auto px-4 max-w-xl mt-4 sm:-mt-12 relative">
           <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <DetailChip
               icon={<CalendarDays className="w-4 h-4" />}

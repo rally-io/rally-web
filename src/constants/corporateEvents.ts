@@ -49,7 +49,6 @@ export interface CorporateEvent {
 
 export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
   // Private link: /join/samsung-fold8
-  // TODO(shahaf): dateLabel + timeLabel are still placeholders.
   'samsung-fold8': {
     slug: 'samsung-fold8',
     // → Google Sheet tab "corporate_samsung".
@@ -68,8 +67,8 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // turns up, drop it in and switch this to 'cover'.
     heroImage: '/club-a-padel-cover.jpeg',
     heroFit: 'contain',
-    dateLabel: 'יום חמישי, 20 באוגוסט 2026',
-    timeLabel: '17:00–21:00',
+    dateLabel: 'יום רביעי, 5 באוגוסט 2026',
+    timeLabel: '18:00–22:00',
   },
 }
 
