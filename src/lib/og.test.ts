@@ -83,6 +83,14 @@ describe('og', () => {
     expect(out).not.toContain('content="old desc"')
   })
 
+  it('flattens newlines in a free-text title', () => {
+    const out = injectOg(HTML, {
+      title: 'Line one\nline two', description: 'y', image: null, url: 'u',
+    })
+    expect(out).toContain('<title>Line one line two · Rally</title>')
+    expect(out).toContain('<meta property="og:title" content="Line one line two · Rally" />')
+  })
+
   it('flattens newlines in a free-text description', () => {
     const out = injectOg(HTML, {
       title: 'X', description: 'line one\n\n  line two ', image: null, url: 'u',
@@ -156,7 +164,10 @@ describe('injectOg noindex', () => {
 // vitest/globals to keep Node globals out of browser code.
 describe('injectOg against the real index.html', () => {
   const out = injectOg(REAL_SHELL, {
-    title: 'טורניר פאדל Samsung Galaxy Z Fold8',
+    // The newline is deliberate: it is exactly what corporateEvents.ts stores
+    // to force a line break in the hero heading. Passing a pre-flattened title
+    // here is what let a raw newline reach the live og:title.
+    title: 'טורניר פאדל\nSamsung Galaxy Z Fold8',
     description: 'Samsung · יום רביעי, 5 באוגוסט 2026 · 18:00–22:00 · A.Padel סביון',
     image: 'https://rallypadel.app/club-a-padel-cover.jpeg',
     url: 'https://rallypadel.app/join/samsung-fold8',
@@ -166,8 +177,14 @@ describe('injectOg against the real index.html', () => {
   const content = (key: string) =>
     out.match(new RegExp(`<meta\\s+(?:property|name)="${key}"\\s+content="([^"]*)"`, 'i'))?.[1]
 
-  it('rewrites the title', () => {
+  it('rewrites the title, flattening the heading line break', () => {
     expect(out).toContain('<title>טורניר פאדל Samsung Galaxy Z Fold8 · Rally</title>')
+  })
+
+  it('leaves no raw newline in any preview tag', () => {
+    for (const key of ['og:title', 'og:description', 'twitter:title']) {
+      expect(content(key)).not.toMatch(/[\r\n]/)
+    }
   })
 
   it('rewrites og:title, og:description and og:url', () => {
