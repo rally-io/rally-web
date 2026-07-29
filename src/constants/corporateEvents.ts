@@ -60,12 +60,11 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // eyeball before the link goes out.
     clubName: 'A.Padel סביון',
     clubAddress: 'קאנטרי קלאב סביון 1, סביון',
-    // The club's own image, copied from the `clubs.image_url` row above (it
-    // lives on WePlay's CDN; self-hosted here so the page doesn't break if
-    // they move or delete it). It's a logo card on flat rust, not a photo of
-    // the courts — hence 'contain'. If a real photo of the Savyon courts ever
-    // turns up, drop it in and switch this to 'cover'.
-    heroImage: '/club-a-padel-cover.jpeg',
+    // Samsung × A.Padel campaign banner supplied by the client. It's artwork
+    // with type and two logos running to the edges, so it must not be cropped
+    // — hence 'contain'. At 1600x500 (3.2:1) it is far wider than the hero
+    // band, so 'cover' would eat both the Samsung wordmark and the club logo.
+    heroImage: '/samsung-fold8-cover.jpeg',
     heroFit: 'contain',
     dateLabel: 'יום רביעי, 5 באוגוסט 2026',
     timeLabel: '18:00–22:00',
