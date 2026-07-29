@@ -84,6 +84,89 @@ export default function CorporateSignupPage() {
   function EventHero() {
     if (!event) return null
     const isContain = event.heroFit === 'contain'
+
+    /* Badge, company, title and host club. Identical in both hero shapes below,
+       so it is written once here rather than twice. */
+    const titleBlock = (
+      <>
+        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-rally-accent/40 bg-rally-accent/10 text-rally-accent text-xs font-bold backdrop-blur mb-4">
+          <Lock className="w-3.5 h-3.5" />
+          <span className="tracking-wide">{t('corporate.eyebrow')}</span>
+        </span>
+
+        <p className="font-display text-sm sm:text-base font-bold text-rally-accent mb-1">
+          {event.company}
+        </p>
+        <h1 className="font-display text-3xl sm:text-4xl font-black tracking-tight leading-[1.1] text-rally-text whitespace-pre-line">
+          {event.tournamentName}
+        </h1>
+
+        <p className="text-sm sm:text-base text-rally-text-2 mt-2">
+          {t('corporate.hostedAt')} {event.clubName}
+        </p>
+      </>
+    )
+
+    const detailChips = (
+      <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <DetailChip
+          icon={<CalendarDays className="w-4 h-4" />}
+          label={t('corporate.detailsDate')}
+          value={event.dateLabel}
+        />
+        <DetailChip
+          icon={<Clock className="w-4 h-4" />}
+          label={t('corporate.detailsTime')}
+          value={event.timeLabel}
+        />
+        <DetailChip
+          icon={<MapPin className="w-4 h-4" />}
+          label={t('corporate.detailsLocation')}
+          value={event.clubAddress}
+        />
+      </dl>
+    )
+
+    /* 'contain' means the asset's own edges matter — a client campaign banner
+       or a logo card, with type and logos running edge to edge. Laying the
+       title over that collides with real artwork (the Samsung banner put the
+       closed-event badge straight on top of the club's logo), so this mode
+       gets a clean strip with everything stacked underneath it instead.
+       'cover' keeps the overlay below: a photo of the courts wants the crop
+       and reads better with the title sitting on it. */
+    if (isContain) {
+      return (
+        <header className="relative">
+          {/* Full-bleed strip, never cropped. A blurred, over-scaled copy fills
+              the sides when the asset is narrower than the viewport, so an odd
+              aspect ratio still produces a full-width band rather than bars. */}
+          <div className="relative overflow-hidden">
+            <img
+              src={event.heroImage}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover scale-125 blur-2xl"
+            />
+            <img
+              src={event.heroImage}
+              alt={event.clubName}
+              className="relative mx-auto block w-full max-h-[220px] sm:max-h-[300px] object-contain"
+            />
+            {/* Pinned to the page's own top corner. `start` is the logical edge:
+                the visual right in Hebrew, and still the reading-start corner if
+                anyone flips to EN. */}
+            <RallyWordmark className="absolute top-4 start-4 sm:top-6 sm:start-6 z-10" />
+          </div>
+
+          <div className="container mx-auto px-4 max-w-xl pt-6 sm:pt-8">
+            {titleBlock}
+          </div>
+
+          <div className="container mx-auto px-4 max-w-xl mt-6">{detailChips}</div>
+        </header>
+      )
+    }
+
     return (
       <header className="relative">
         {/* Taller on mobile than on desktop: the heading wraps to three lines
@@ -134,23 +217,7 @@ export default function CorporateSignupPage() {
           <RallyWordmark className="absolute top-4 start-4 sm:top-6 sm:start-6 z-10" />
 
           <div className="relative h-full container mx-auto px-4 max-w-xl flex flex-col">
-            <div className="mt-auto pb-8 sm:pb-24">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-rally-accent/40 bg-rally-accent/10 text-rally-accent text-xs font-bold backdrop-blur mb-4">
-                <Lock className="w-3.5 h-3.5" />
-                <span className="tracking-wide">{t('corporate.eyebrow')}</span>
-              </span>
-
-              <p className="font-display text-sm sm:text-base font-bold text-rally-accent mb-1">
-                {event.company}
-              </p>
-              <h1 className="font-display text-3xl sm:text-4xl font-black tracking-tight leading-[1.1] text-rally-text whitespace-pre-line">
-                {event.tournamentName}
-              </h1>
-
-              <p className="text-sm sm:text-base text-rally-text-2 mt-2">
-                {t('corporate.hostedAt')} {event.clubName}
-              </p>
-            </div>
+            <div className="mt-auto pb-8 sm:pb-24">{titleBlock}</div>
           </div>
         </div>
 
@@ -159,23 +226,7 @@ export default function CorporateSignupPage() {
             On mobile they stack into a tall column, so the same lift would
             drive them straight through the heading — they just sit below. */}
         <div className="container mx-auto px-4 max-w-xl mt-4 sm:-mt-12 relative">
-          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <DetailChip
-              icon={<CalendarDays className="w-4 h-4" />}
-              label={t('corporate.detailsDate')}
-              value={event.dateLabel}
-            />
-            <DetailChip
-              icon={<Clock className="w-4 h-4" />}
-              label={t('corporate.detailsTime')}
-              value={event.timeLabel}
-            />
-            <DetailChip
-              icon={<MapPin className="w-4 h-4" />}
-              label={t('corporate.detailsLocation')}
-              value={event.clubAddress}
-            />
-          </dl>
+          {detailChips}
         </div>
       </header>
     )
