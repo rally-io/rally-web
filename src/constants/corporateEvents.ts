@@ -64,7 +64,7 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // with type and two logos running to the edges, so it must not be cropped
     // — hence 'contain'. At 1600x500 (3.2:1) it is far wider than the hero
     // band, so 'cover' would eat both the Samsung wordmark and the club logo.
-    heroImage: '/samsung-fold8-cover.jpeg',
+    heroImage: '/samsung-fold8-hero.jpeg',
     heroFit: 'contain',
     dateLabel: 'יום רביעי, 5 באוגוסט 2026',
     timeLabel: '18:00–22:00',
