@@ -27,7 +27,10 @@
       property="og:description"
       content="זמינות כל המגרשים בזמן אמת · טורנירים · מאמנים · ציוד — הורידו עכשיו"
     />
-    <meta property="og:image" content="/og-image.jpg" />
+    <!-- Absolute, not root-relative: WhatsApp/Facebook do not reliably resolve a
+         relative og:image against the page URL, and this is the card players see
+         when a rallypadel.app link is pasted into a chat. -->
+    <meta property="og:image" content="https://rallypadel.app/og-logo.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="https://rallypadel.app" />
@@ -41,7 +44,7 @@
       name="twitter:description"
       content="Real-time availability of every court · Tournaments · Coaches · Gear — download now"
     />
-    <meta name="twitter:image" content="/og-image.jpg" />
+    <meta name="twitter:image" content="https://rallypadel.app/og-logo.jpg" />
 
     <!-- Meta Pixel Code -->
     <script>
