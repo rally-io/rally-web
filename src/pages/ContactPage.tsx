@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
+import { trackLead } from '@/lib/metaPixel'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 
 type SegmentId = 'club' | 'tournament' | 'coach' | 'sponsor' | 'partnership'
@@ -187,6 +188,10 @@ function ContactForm() {
       setSubmitting(false)
       return
     }
+
+    // Only report a Lead to Meta once the lead was actually delivered —
+    // ad campaigns optimize on this event, so it must not fire on failures.
+    trackLead({ segment, email: lead.email, phone: lead.phone })
 
     setSubmitted(true)
     setSubmitting(false)
