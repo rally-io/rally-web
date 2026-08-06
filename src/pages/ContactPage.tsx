@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
+import { trackMetaLead } from '@/lib/metaPixel'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 
 type SegmentId = 'club' | 'tournament' | 'coach' | 'sponsor' | 'partnership'
@@ -188,6 +189,7 @@ function ContactForm() {
       return
     }
 
+    trackMetaLead('contact')
     setSubmitted(true)
     setSubmitting(false)
   }

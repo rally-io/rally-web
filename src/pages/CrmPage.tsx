@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
+import { trackMetaLead } from '@/lib/metaPixel'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { ISRAELI_CITIES } from '@/constants/israeliCities'
 
@@ -298,6 +299,7 @@ function LeadCaptureForm() {
       return
     }
 
+    trackMetaLead('crm_waitlist')
     setSubmitted(true)
     setSubmitting(false)
   }
