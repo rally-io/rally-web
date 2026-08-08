@@ -1,0 +1,144 @@
+import { describe, it, expect } from 'vitest';
+import type { PublicBracketData, PublicMatch, PublicRound } from '../../types';
+import { getRotationPhase, getRotationViews } from '../useViewMode';
+
+function makeMatch(hasPlayer: boolean): PublicMatch {
+    return {
+        id: 'm1',
+        match_label: null,
+        team_a: hasPlayer ? { team_name: null, player_1: { id: 'p1', first_name: null, last_name: null, skill_level: null, is_guest: null }, player_2: null } : null,
+        team_b: null,
+        sets: [],
+        winner_team: null,
+        next_match_id: null,
+        status: 'scheduled',
+        court_name: null,
+        scheduled_at: null,
+    };
+}
+
+function makeRound(hasPlayer: boolean): PublicRound {
+    return { round_number: 1, round_name: 'Round 1', matches: [makeMatch(hasPlayer)] };
+}
+
+function makeBracket(overrides: Partial<PublicBracketData>): PublicBracketData {
+    return {
+        tournament_id: 't1',
+        tournament_name: 'Test Cup',
+        structure: 'group_then_knockout',
+        club_name: null,
+        club_logo_url: null,
+        sponsors: [],
+        knockout_rounds: [],
+        plate_rounds: [],
+        league_standings: null,
+        groups: null,
+        third_place_match: null,
+        ...overrides,
+    };
+}
+
+describe('getRotationPhase', () => {
+    it('defaults to the group phase when there is no bracket yet', () => {
+        expect(getRotationPhase(null)).toBe('group');
+    });
+
+    it('is the group phase while no knockout match holds a real player', () => {
+        const bracket = makeBracket({ knockout_rounds: [makeRound(false)] });
+        expect(getRotationPhase(bracket)).toBe('group');
+    });
+
+    it('flips to the knockout phase once any knockout match holds a real player', () => {
+        const bracket = makeBracket({ knockout_rounds: [makeRound(false), makeRound(true)] });
+        expect(getRotationPhase(bracket)).toBe('knockout');
+    });
+});
+
+describe('getRotationViews', () => {
+    it('has a single view in the group phase, regardless of the plate', () => {
+        // The TV board embeds its own standings, so the group stage has nothing to rotate to.
+        expect(getRotationViews('group', true)).toEqual(['groups']);
+        expect(getRotationViews('group', false)).toEqual(['groups']);
+    });
+
+    it('knockout phase rotates knockout -> plate -> groups when a plate bracket exists', () => {
+        expect(getRotationViews('knockout', true)).toEqual(['knockout', 'plate', 'groups']);
+    });
+
+    it('knockout phase rotates knockout <-> groups when there is no plate', () => {
+        expect(getRotationViews('knockout', false)).toEqual(['knockout', 'groups']);
+    });
+
+    it('keeps the group tables reachable in every phase', () => {
+        // The final group standings live inside the group board, and they are what players look
+        // for long after the last group match — the knockout starting must not hide them.
+        for (const views of [
+            getRotationViews('group', false),
+            getRotationViews('group', true),
+            getRotationViews('knockout', false),
+            getRotationViews('knockout', true),
+        ]) {
+            expect(views).toContain('groups');
+        }
+    });
+
+    it('never lists a view twice, so a full cycle visits every entry', () => {
+        // The hook advances with `(i + 1) % views.length`; a duplicate would make the screen
+        // appear to stall on the repeated view.
+        for (const views of [
+            getRotationViews('group', false),
+            getRotationViews('knockout', false),
+            getRotationViews('knockout', true),
+        ]) {
+            expect(new Set(views).size).toBe(views.length);
+        }
+    });
+
+    it('marks the single-view phase so the Auto-rotate toggle can be hidden', () => {
+        // `useViewMode` derives `canAutoRotate` from this length. At length 1, `(i + 1) % 1` is
+        // the identity: offering the toggle would leave it reading as on with nothing moving.
+        expect(getRotationViews('group', false).length > 1).toBe(false);
+        expect(getRotationViews('knockout', false).length > 1).toBe(true);
+    });
+});
+
+describe('phase transition', () => {
+    it('lands on the new phase list\'s first view instead of carrying over a stale index', () => {
+        // Mid-rotation in the knockout phase, sitting on the third view ("groups").
+        const knockoutViews = getRotationViews('knockout', true);
+        const staleIndex = 2;
+        expect(knockoutViews[staleIndex]).toBe('groups');
+
+        // The hook resets its index to 0 on any phase change
+        // (see the `useEffect(() => setRotateIndex(0), [phase])` in the hook).
+        expect(getRotationViews('group', true)[0]).toBe('groups');
+        expect(knockoutViews[0]).toBe('knockout');
+    });
+
+    it('a stale index from the knockout phase would fall outside the group phase list', () => {
+        // Group phase has one entry, so carrying index 2 over would read `undefined`.
+        expect(getRotationViews('group', true)[2]).toBeUndefined();
+        expect(getRotationViews('group', true)[0]).toBe('groups');
+    });
+});
+
+describe('plate fallback', () => {
+    // `useViewMode` resolves a manually-selected 'plate' that has lost its plate
+    // bracket to the stage default rather than a hard-coded 'groups'. Asserted on
+    // the same predicate the hook uses, since the hook itself needs a React
+    // renderer and vitest here runs in a node environment with no .tsx pickup.
+    const stageDefault = (bracket: PublicBracketData): 'knockout' | 'groups' =>
+        getRotationPhase(bracket) === 'knockout' ? 'knockout' : 'groups';
+
+    it('falls back to the knockout while the knockout is being played', () => {
+        // The plate is disabled from the CRM during the finals: the venue screen
+        // must stay on the match on court, not jump to the group tables.
+        const bracket = makeBracket({ knockout_rounds: [makeRound(true)], plate_rounds: [] });
+        expect(stageDefault(bracket)).toBe('knockout');
+    });
+
+    it('falls back to the groups before the knockout has any teams', () => {
+        const bracket = makeBracket({ knockout_rounds: [makeRound(false)], plate_rounds: [] });
+        expect(stageDefault(bracket)).toBe('groups');
+    });
+});

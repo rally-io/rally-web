@@ -1,7 +1,12 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from './components/layout/Layout'
 import { AuthGateModal } from './components/auth/AuthGateModal'
+
+// Lazy on purpose: this feature ships its own theme stylesheet, which @imports the
+// Karantina display face. A static import would make every marketing page fetch it.
+const LiveTournamentPage = lazy(() => import('./features/publicTournament'))
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -56,6 +61,18 @@ export default function App() {
         {/* Unlisted closed-event signup. Bare on purpose: employees get a
             private link to sign up and nothing else — no nav, no app prompt. */}
         <Route path="/join/:slug" element={<CorporateSignupPage />} />
+
+        {/* Public live tournament results. Bare on purpose: this is a spectator screen
+            shown on club TVs and phones — Navbar/Footer would eat the vertical space the
+            bracket's auto-paging depends on. It owns its own theming and dir. */}
+        <Route
+          path="/live/:token"
+          element={
+            <Suspense fallback={<div className="min-h-screen bg-rally-bg" />}>
+              <LiveTournamentPage />
+            </Suspense>
+          }
+        />
 
         {/* Marketing + app shell */}
         <Route element={<Layout />}>

@@ -67,6 +67,18 @@ export interface Tournament {
   registration_id: string | null
   registration_status: string | null
   available_seats: number
+  /**
+   * Lifecycle status (`registration_open | in_progress | completed | …`).
+   * Feature-detected: absent on API builds predating the field, so never
+   * branch on it without a date-based fallback.
+   */
+  status?: string
+  /**
+   * Public spectator token. Live results live at `/live/<share_token>` on this
+   * site — the same URL the CRM hands out. Null when the tournament has no
+   * token, absent on API builds predating the field.
+   */
+  share_token?: string | null
   description?: string
   max_participants?: number
   prizes?: Prize[]

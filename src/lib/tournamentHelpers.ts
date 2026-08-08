@@ -20,6 +20,45 @@ export function getCountdown(
   return { days, hours, expired: false }
 }
 
+/** Statuses that end a tournament — a date window can't overrule them. */
+const FINISHED_STATUSES = ['completed', 'cancelled', 'rejected']
+
+/**
+ * Is this tournament being played right now?
+ *
+ * The date window decides, with `status` as a veto only. Deliberately *not*
+ * "status === in_progress ⇒ live": that status means a bracket was published,
+ * which a club often does the night before, and it is never cleared if nobody
+ * marks the tournament completed — so trusting it alone would badge a
+ * not-yet-started tournament as LIVE, and keep badging one that finished
+ * months ago. A window that has closed fails loudly (badge disappears);
+ * a status that was never updated fails silently forever.
+ *
+ * Both fields are feature-detected: an API build that omits `status` still
+ * gets correct date-based behaviour.
+ */
+export function isTournamentLive(tr: {
+  start_date: string
+  end_date: string
+  status?: string | null
+}): boolean {
+  if (tr.status && FINISHED_STATUSES.includes(tr.status)) return false
+  const start = parseFlexibleDate(tr.start_date ?? '').getTime()
+  const end = parseFlexibleDate(tr.end_date ?? '').getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return false
+  const now = Date.now()
+  return start <= now && now <= end
+}
+
+/**
+ * Path to the public live-results screen. Mirrors the CRM's
+ * `buildLiveResultsUrl()`, which shares `<site>/live/<token>` links with
+ * players — keep the two in step.
+ */
+export function liveResultsPath(shareToken: string): string {
+  return `/live/${shareToken}`
+}
+
 export function parseSkillLevel(
   str: string | null | undefined,
 ): { range: string | null; level: string | null } {

@@ -11,6 +11,7 @@ import {
 } from '@/components/tournaments/TournamentUpdatesModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { isTournamentLive } from '@/lib/tournamentHelpers'
 import type { Tournament } from '@/types/api'
 
 type TournamentsTab = 'upcoming' | 'my'
@@ -47,8 +48,16 @@ export default function TournamentsPage() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
     useTournaments(enabled ? filters : { type: 'upcoming' })
 
-  const tournaments: Tournament[] =
+  const loaded: Tournament[] =
     enabled ? data?.pages.flatMap((p) => p?.items ?? []) ?? [] : []
+  // Anything being played right now goes first: a player checking the site
+  // mid-tournament is looking for the scoreboard, not next month's draw.
+  // Server order is preserved within each group, so "load more" only ever
+  // appends.
+  const tournaments: Tournament[] = [
+    ...loaded.filter(isTournamentLive),
+    ...loaded.filter((tr) => !isTournamentLive(tr)),
+  ]
 
   const [updatesOpen, setUpdatesOpen] = useState(false)
 

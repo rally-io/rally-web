@@ -1,9 +1,74 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isRegistrationOpen, parseSkillLevel, formatTournamentSkillRange,
+  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
+  formatTournamentSkillRange,
   getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
 } from './tournamentHelpers'
+
+/** ISO-ish local timestamp `offsetHours` from now, in the API's format. */
+function hoursFromNow(offsetHours: number): string {
+  const d = new Date(Date.now() + offsetHours * 3_600_000)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T` +
+    `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
+
+describe('isTournamentLive', () => {
+  it('live while now sits inside the date window', () => {
+    expect(isTournamentLive({
+      start_date: hoursFromNow(-2), end_date: hoursFromNow(2),
+    })).toBe(true)
+  })
+  it('not live before it starts or after it ends', () => {
+    expect(isTournamentLive({
+      start_date: hoursFromNow(2), end_date: hoursFromNow(4),
+    })).toBe(false)
+    expect(isTournamentLive({
+      start_date: hoursFromNow(-4), end_date: hoursFromNow(-2),
+    })).toBe(false)
+  })
+  it('in_progress alone does not make it live — a bracket can be published early', () => {
+    expect(isTournamentLive({
+      start_date: hoursFromNow(2), end_date: hoursFromNow(4),
+      status: 'in_progress',
+    })).toBe(false)
+    // …and a tournament left on in_progress forever stops being live on time.
+    expect(isTournamentLive({
+      start_date: hoursFromNow(-30), end_date: hoursFromNow(-25),
+      status: 'in_progress',
+    })).toBe(false)
+  })
+
+  it('is live when in_progress and inside the window', () => {
+    expect(isTournamentLive({
+      start_date: hoursFromNow(-1), end_date: hoursFromNow(3),
+      status: 'in_progress',
+    })).toBe(true)
+  })
+  it('completed or cancelled is never live, whatever the dates say', () => {
+    for (const status of ['completed', 'cancelled', 'rejected']) {
+      expect(isTournamentLive({
+        start_date: hoursFromNow(-2), end_date: hoursFromNow(2), status,
+      })).toBe(false)
+    }
+  })
+  it('falls back to the window when status is absent (older API)', () => {
+    expect(isTournamentLive({
+      start_date: hoursFromNow(-1), end_date: hoursFromNow(1),
+      status: undefined,
+    })).toBe(true)
+  })
+  it('is not live on unparseable dates', () => {
+    expect(isTournamentLive({ start_date: '', end_date: '' })).toBe(false)
+  })
+})
+
+describe('liveResultsPath', () => {
+  it('matches the CRM share-link shape', () => {
+    expect(liveResultsPath('abc123')).toBe('/live/abc123')
+  })
+})
 
 describe('isRegistrationOpen', () => {
   it('treats empty/invalid as open', () => {

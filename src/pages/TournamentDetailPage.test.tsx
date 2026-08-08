@@ -112,3 +112,71 @@ describe('TournamentDetailPage CTA', () => {
     ).toBeDisabled()
   })
 })
+
+/** A tournament that is being played right now, with a live-results token. */
+function liveTr(over: Record<string, unknown> = {}) {
+  const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString()
+  return tr({
+    start_date: hours(-1),
+    end_date: hours(3),
+    registration_deadline: hours(-48),
+    share_token: 'abc123',
+    status: 'in_progress',
+    ...over,
+  })
+}
+
+describe('TournamentDetailPage live results', () => {
+  it('links to the live screen in a new tab while the tournament runs', () => {
+    mockUseTournament.mockReturnValue(liveTr())
+    renderPage()
+    const link = screen.getByTestId('live-results-link')
+    expect(link).toHaveAttribute('href', '/live/abc123')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(screen.getAllByText(i18n.t('tournament.liveBadge')).length).toBeGreaterThan(0)
+  })
+
+  it('replaces the dead registration-closed button with the live CTA', () => {
+    mockUseTournament.mockReturnValue(liveTr())
+    renderPage()
+    expect(screen.getByTestId('live-results-sticky-link')).toHaveAttribute(
+      'href',
+      '/live/abc123',
+    )
+    expect(
+      screen.queryByText(i18n.t('tournament.tournamentDetailRegistrationClosed')),
+    ).toBeNull()
+  })
+
+  it('shows no live link when the tournament has no share token', () => {
+    mockUseTournament.mockReturnValue(liveTr({ share_token: null }))
+    renderPage()
+    expect(screen.queryByTestId('live-results-link')).toBeNull()
+    expect(screen.queryByTestId('live-results-sticky-link')).toBeNull()
+    // Still flagged as live — only the link is missing.
+    expect(screen.getAllByText(i18n.t('tournament.liveBadge')).length).toBeGreaterThan(0)
+  })
+
+  it('does not go live for a tournament that has not started', () => {
+    mockUseTournament.mockReturnValue(tr({ share_token: 'abc123' }))
+    renderPage()
+    expect(screen.queryByTestId('live-results-link')).toBeNull()
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).toBeNull()
+  })
+
+  it('leaves a pending payment CTA alone', () => {
+    mockUseTournament.mockReturnValue(
+      liveTr({
+        my_registration: { id: 'r-1', status: 'payment_pending', payment_status: 'pending' },
+      }),
+    )
+    renderPage()
+    expect(
+      screen.getByRole('button', { name: i18n.t('appDownload.cta_pay') }),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('live-results-sticky-link')).toBeNull()
+    // The in-page call-out still offers the scoreboard.
+    expect(screen.getByTestId('live-results-link')).toBeInTheDocument()
+  })
+})
