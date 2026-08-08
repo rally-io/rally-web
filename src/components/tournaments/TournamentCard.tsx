@@ -5,11 +5,13 @@ import type { Tournament } from '@/types/api'
 import { useRtl } from '@/hooks/useRtl'
 import {
   isRegistrationOpen,
+  isTournamentLive,
   formatCurrency,
   formatTournamentCardDate,
 } from '@/lib/tournamentHelpers'
 import { formatLabelKey } from '@/lib/tournamentTheme'
 import { StatusBadge } from './StatusBadge'
+import { LiveBadge } from './LiveBadge'
 
 interface Props {
   tournament: Tournament
@@ -26,6 +28,7 @@ export function TournamentCard({
   const { t } = useTranslation()
   const { locale } = useRtl()
   const open = isRegistrationOpen(tr.registration_deadline)
+  const live = !isPast && isTournamentLive(tr)
   const img = tr.thumb_url ?? tr.image_url
   const dateLine = formatTournamentCardDate(tr.start_date, tr.end_date, locale)
 
@@ -94,11 +97,19 @@ export function TournamentCard({
             </div>
           )
         )}
-        {open && !isPast && (
-          <div className="absolute top-3 end-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rally-warning text-rally-text-on-light text-[11px] font-black uppercase tracking-wider shadow-md animate-pulse">
-            <Flame className="w-3.5 h-3.5" />
-            <span>{t('tournament.tournamentsLastSpots')}</span>
+        {/* A tournament in play takes the badge slot: urging registration on
+            something already under way would read as a mistake. */}
+        {live ? (
+          <div className="absolute top-3 end-3">
+            <LiveBadge />
           </div>
+        ) : (
+          open && !isPast && (
+            <div className="absolute top-3 end-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rally-warning text-rally-text-on-light text-[11px] font-black uppercase tracking-wider shadow-md animate-pulse">
+              <Flame className="w-3.5 h-3.5" />
+              <span>{t('tournament.tournamentsLastSpots')}</span>
+            </div>
+          )
         )}
       </div>
       <div className="p-4">
@@ -121,7 +132,7 @@ export function TournamentCard({
           <MapPin className="w-4 h-4 shrink-0" />
           <span className="line-clamp-1">{tr.club_name}</span>
         </p>
-        {countdownText && !isPast && (
+        {countdownText && !isPast && !live && (
           <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rally-blue/15 text-rally-blue text-xs font-semibold">
             <Clock className="w-3.5 h-3.5" />
             <span>{countdownText}</span>

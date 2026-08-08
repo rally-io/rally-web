@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  ArrowLeft, Calendar, Clock, Trophy, TrendingUp, Users,
+  ArrowLeft, Calendar, Clock, ExternalLink, Trophy, TrendingUp, Users,
 } from 'lucide-react'
 import { useTournament } from '@/hooks/useTournament'
 import { useRtl } from '@/hooks/useRtl'
@@ -11,11 +11,12 @@ import { tryOpenInApp } from '@/lib/appLinks'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
 import {
-  isRegistrationOpen, parseSkillLevel,
+  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
   formatTournamentCardDate, formatCurrency,
 } from '@/lib/tournamentHelpers'
 import { PrizesGrid } from '@/components/tournaments/PrizesGrid'
+import { LiveBadge } from '@/components/tournaments/LiveBadge'
 import { formatLabelKey, structureLabelKey } from '@/lib/tournamentTheme'
 
 export default function TournamentDetailPage() {
@@ -49,6 +50,9 @@ export default function TournamentDetailPage() {
   }
 
   const open = isRegistrationOpen(tr.registration_deadline)
+  const live = isTournamentLive(tr)
+  // No token ⇒ nothing to link to. Never render a dead "watch live" button.
+  const liveHref = tr.share_token ? liveResultsPath(tr.share_token) : null
   const skill = parseSkillLevel(tr.skill_level)
   const myReg = tr.my_registration
   const payState =
@@ -78,9 +82,12 @@ export default function TournamentDetailPage() {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
         <div className="absolute bottom-6 md:bottom-12 start-4 end-4 md:start-10 md:end-10 text-white">
-          <span className="inline-block rounded-full bg-rally-accent/20 text-rally-accent px-4 py-1.5 md:px-5 md:py-2 text-sm md:text-base font-semibold">
-            {tr.club_name}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {live && <LiveBadge size="md" />}
+            <span className="inline-block rounded-full bg-rally-accent/20 text-rally-accent px-4 py-1.5 md:px-5 md:py-2 text-sm md:text-base font-semibold">
+              {tr.club_name}
+            </span>
+          </div>
           <h1 className="font-display mt-3 md:mt-5 text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05]">
             {tr.name}
           </h1>
@@ -99,7 +106,11 @@ export default function TournamentDetailPage() {
               {formatTournamentCardDate(tr.start_date, tr.end_date, locale, true)}
             </span>
           </div>
-          {(() => {
+          {live ? (
+            // Being played right now — "ended" (what the day count below would
+            // say for a multi-day tournament that started yesterday) is wrong.
+            <LiveBadge size="md" />
+          ) : (() => {
             const startMs = new Date(tr.start_date).getTime()
             if (!Number.isFinite(startMs)) return null
             const days = Math.ceil((startMs - Date.now()) / 86_400_000)
@@ -132,6 +143,32 @@ export default function TournamentDetailPage() {
             )
           })()}
         </section>
+
+        {/* First thing under the fold while the tournament is on: a spectator
+            watching from the stands wants the scoreboard, not the prize list.
+            New tab on purpose — players come back to this page for the draw. */}
+        {live && liveHref && (
+          <a
+            href={liveHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="live-results-link"
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-error/50 bg-rally-error/10 p-5 transition-colors hover:border-rally-error hover:bg-rally-error/15"
+          >
+            <div className="min-w-0">
+              <p className="font-display text-lg md:text-xl font-bold text-rally-text">
+                {t('tournament.liveResultsTitle')}
+              </p>
+              <p className="mt-1 text-sm text-rally-text-2">
+                {t('tournament.liveResultsSubtitle')}
+              </p>
+            </div>
+            <span className="shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-error text-white font-bold">
+              {t('tournament.liveResultsCta')}
+              <ExternalLink className="w-4 h-4" />
+            </span>
+          </a>
+        )}
 
         <section>
           <h2 className="font-display text-2xl md:text-3xl font-bold text-rally-text mb-4">
@@ -258,6 +295,20 @@ export default function TournamentDetailPage() {
               >
                 {t('appDownload.cta_pay')}
               </button>
+            ) : live && liveHref && (myReg || !open) ? (
+              // Where the bar would otherwise sit dead ("already registered" /
+              // "registration closed"), hand the player the live scoreboard
+              // instead — sticky CTA is action-first, never blocking.
+              <a
+                href={liveHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="live-results-sticky-link"
+                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-error text-white font-bold inline-flex items-center justify-center gap-2 hover:brightness-110 transition-all"
+              >
+                {t('tournament.liveResultsCta')}
+                <ExternalLink className="w-4 h-4" />
+              </a>
             ) : myReg ? (
               <button
                 disabled

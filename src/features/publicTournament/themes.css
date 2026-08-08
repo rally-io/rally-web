@@ -1,0 +1,152 @@
+/* Design tokens for the public tournament page — one component set, three skins. */
+@import url('https://fonts.googleapis.com/css2?family=Karantina:wght@700&display=swap');
+
+[data-bracket-theme] {
+    --pb-live: #f43f5e;
+}
+/* Condensed display face for the tournament title and group glyphs (Hebrew + Latin). */
+.pb-display {
+    font-family: 'Karantina', system-ui, sans-serif;
+    font-weight: 700;
+}
+/* Per-group accent hues — bright set for the dark/gradient grounds, darkened for light. */
+[data-bracket-theme] .pb-ga-0 { --pb-ga: #d9f45b; }
+[data-bracket-theme] .pb-ga-1 { --pb-ga: #7ea6ff; }
+[data-bracket-theme] .pb-ga-2 { --pb-ga: #ffb454; }
+[data-bracket-theme] .pb-ga-3 { --pb-ga: #ff7a9e; }
+[data-bracket-theme='gradient'] .pb-ga-1 { --pb-ga: #bfdcff; }
+[data-bracket-theme='light'] .pb-ga-0 { --pb-ga: #99bf00; }
+[data-bracket-theme='light'] .pb-ga-1 { --pb-ga: #0055ff; }
+[data-bracket-theme='light'] .pb-ga-2 { --pb-ga: #d97706; }
+[data-bracket-theme='light'] .pb-ga-3 { --pb-ga: #db2777; }
+[data-bracket-theme='dark'] {
+    --pb-surface: #0b0e14;
+    --pb-card: #12161f;
+    --pb-card-raised: #171e2c;
+    --pb-card-header: #0e1219;
+    --pb-border: #232a38;
+    --pb-text: #f1f5f9;
+    --pb-text-muted: #8b97a8;
+    --pb-text-faint: #5b6678;
+    --pb-accent: #7ea6ff;
+    --pb-accent-bg: #1a2233;
+    --pb-highlight: #d9f45b;
+    --pb-highlight-contrast: #0b0e14;
+    --pb-winner-bg: rgb(217 244 91 / 0.07);
+    --pb-glow: rgb(217 244 91 / 0.25);
+}
+[data-bracket-theme='light'] {
+    --pb-surface: #f8fafc;
+    --pb-card: #ffffff;
+    --pb-card-raised: #f1f5f9;
+    --pb-card-header: #f8fafc;
+    --pb-border: #e2e8f0;
+    --pb-text: #0f172a;
+    --pb-text-muted: #64748b;
+    --pb-text-faint: #94a3b8;
+    --pb-accent: #0055ff;
+    --pb-accent-bg: #eef2ff;
+    --pb-highlight: #99bf00;
+    --pb-highlight-contrast: #ffffff;
+    --pb-winner-bg: #f8ffd9;
+    --pb-glow: rgb(153 191 0 / 0.3);
+}
+[data-bracket-theme='gradient'] {
+    --pb-surface: linear-gradient(160deg, #0033a0 0%, #0055ff 55%, #003d7a 100%);
+    --pb-card: rgb(255 255 255 / 0.1);
+    --pb-card-raised: rgb(255 255 255 / 0.09);
+    --pb-card-header: rgb(255 255 255 / 0.06);
+    --pb-border: rgb(255 255 255 / 0.22);
+    --pb-text: #ffffff;
+    --pb-text-muted: rgb(255 255 255 / 0.65);
+    --pb-text-faint: rgb(255 255 255 / 0.45);
+    --pb-accent: #dbe7ff;
+    --pb-accent-bg: rgb(10 30 90 / 0.35);
+    --pb-highlight: #d9f45b;
+    --pb-highlight-contrast: #0b0e14;
+    --pb-winner-bg: rgb(217 244 91 / 0.12);
+    --pb-glow: rgb(217 244 91 / 0.35);
+}
+
+@keyframes pb-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+@keyframes pb-score-flash {
+    0% { background-color: var(--pb-glow); }
+    100% { background-color: transparent; }
+}
+@keyframes pb-ticker-ltr {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+@keyframes pb-ticker-rtl {
+    from { transform: translateX(0); }
+    to { transform: translateX(50%); }
+}
+/* Pulsing frame + tint that marks a live match — reads from across a room. */
+@keyframes pb-live-frame {
+    0%, 100% {
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pb-live) 72%, transparent);
+        background-color: color-mix(in srgb, var(--pb-live) 9%, transparent);
+    }
+    50% {
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pb-live) 22%, transparent);
+        background-color: color-mix(in srgb, var(--pb-live) 20%, transparent);
+    }
+}
+/* Auto-paging on the unattended TV cards: a filling bar shows when the page will turn. */
+@keyframes pb-page-fill {
+    from { width: 0; }
+    to { width: 100%; }
+}
+@keyframes pb-page-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+.pb-page-bar { animation: pb-page-fill linear forwards; }
+.pb-page-in { animation: pb-page-in 0.4s ease-out; }
+
+/* A live game inside a board card: a steady tint + edge, with only the dot animating.
+   The full pulsing frame is too loud when the same match is already held big in the live bar. */
+.pb-live-row {
+    background-color: color-mix(in srgb, var(--pb-live) 10%, transparent);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pb-live) 45%, transparent);
+}
+
+/* A live game inside a board card: a steady tint + edge, with only the dot animating.
+   The full pulsing frame is too loud when the same match is already held big in the live bar. */
+.pb-live-row {
+    background-color: color-mix(in srgb, var(--pb-live) 10%, transparent);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pb-live) 45%, transparent);
+}
+
+/* Short screens — a laptop, or a TV smaller than 1080p. The standings stay pinned and COMPLETE:
+   they only give up vertical rhythm, never information. Ratings and the W/± header are inline, so
+   hiding them buys no height at all — it would drop what a viewer asked to see for nothing. What
+   doesn't fit is handled by paging the games, not by deleting content. Doubled selectors outrank
+   the single-class Tailwind utilities they override without needing !important. */
+@media (max-height: 940px) {
+    .pb-board-row.pb-board-row { min-height: 1.6rem; padding-block: 0.0625rem; }
+    .pb-board-qualify.pb-board-qualify { padding-block: 0.0625rem; }
+}
+
+.pb-live-frame { animation: pb-live-frame 1.8s ease-in-out infinite; }
+.pb-live-dot { animation: pb-pulse 1.6s ease-in-out infinite; }
+.pb-score-flash { animation: pb-score-flash 1.2s ease-out 1; }
+.pb-ticker-track {
+    display: inline-flex;
+    white-space: nowrap;
+    animation: pb-ticker-ltr 30s linear infinite;
+}
+[dir='rtl'] .pb-ticker-track { animation-name: pb-ticker-rtl; }
+@media (prefers-reduced-motion: reduce) {
+    .pb-live-dot, .pb-score-flash, .pb-ticker-track, .pb-page-in { animation: none !important; }
+    /* Pages still turn — that is content access, not decoration — but without the sweeping bar. */
+    .pb-page-bar { animation: none !important; width: 100%; }
+    .pb-live-frame {
+        animation: none !important;
+        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pb-live) 55%, transparent);
+        background-color: color-mix(in srgb, var(--pb-live) 14%, transparent);
+    }
+}

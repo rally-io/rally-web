@@ -80,3 +80,30 @@ describe('TournamentCard past variant', () => {
     )
   })
 })
+
+describe('TournamentCard live badge', () => {
+  const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString()
+  const running = { start_date: hours(-1), end_date: hours(3) }
+
+  it('flags a tournament being played right now', () => {
+    renderCard(running)
+    expect(screen.getByText(i18n.t('tournament.liveBadge'))).toBeInTheDocument()
+  })
+
+  it('drops the last-spots flame while live — registering is moot', () => {
+    renderCard({ ...running, registration_deadline: '2999-05-25' })
+    expect(
+      screen.queryByText(i18n.t('tournament.tournamentsLastSpots')),
+    ).not.toBeInTheDocument()
+  })
+
+  it('stays off for a scheduled tournament', () => {
+    renderCard({})
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).not.toBeInTheDocument()
+  })
+
+  it('stays off in the past variant even inside the date window', () => {
+    renderPast(running)
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).not.toBeInTheDocument()
+  })
+})
