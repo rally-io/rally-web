@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rally · משימות צוות</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#18181b">
+<meta property="og:title" content="Rally · משימות צוות">
+<meta property="og:description" content="הרשימה המשותפת של אלמוג, מור ושחף">
+<meta property="og:image" content="https://rallypadel.app/og-home.jpg">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,500;0,700;0,800;1,800&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #18181b;
+    --surface: #232328;
+    --surface-2: #2e2e33;
+    --text: #ffffff;
+    --text-2: #a1a1aa;
+    --text-muted: #71717a;
+    --border: #3a3a40;
+    --accent: #ccff00;
+    --accent-dim: rgba(204, 255, 0, .12);
+    --blue: #0055ff;
+    --blue-bright: #4d8aff;
+    --amber: #f59e0b;
+    --error: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Heebo', system-ui, sans-serif;
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 96px; }
+
+  header { padding: 28px 0 4px; display: flex; align-items: baseline; justify-content: space-between; }
+  .brand { font-family: 'Rubik', sans-serif; font-weight: 800; font-style: italic; font-size: 22px; color: var(--accent); letter-spacing: -.02em; }
+  .brand span { font-style: normal; color: var(--text); font-weight: 700; margin-inline-start: 8px; font-size: 19px; }
+  .who-chip {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+    border-radius: 999px; padding: 5px 12px; font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+  .who-chip b { font-weight: 700; }
+  .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+
+  .add-row {
+    position: sticky; top: 0; z-index: 5;
+    background: linear-gradient(var(--bg) 78%, transparent);
+    padding: 10px 0 16px; display: flex; gap: 10px;
+  }
+  .add-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 14px; padding: 13px 16px; font-size: 16px; font-family: inherit; outline: none;
+    transition: border-color .15s;
+  }
+  .add-row input::placeholder { color: var(--text-muted); }
+  .add-row input:focus { border-color: var(--accent); }
+  .add-btn {
+    width: 48px; min-width: 48px; height: 48px; border-radius: 14px; border: none; cursor: pointer;
+    background: var(--accent); color: #18181b; font-size: 26px; font-weight: 700; line-height: 1;
+    display: grid; place-items: center; transition: transform .1s;
+  }
+  .add-btn:active { transform: scale(.92); }
+
+  ul { list-style: none; }
+  .task {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 4px; border-bottom: 1px solid rgba(255,255,255,.06);
+    animation: rise .18s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+
+  .ball { background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0; margin-top: 1px; }
+  .ball svg { display: block; }
+  .ball .rim { fill: none; stroke: var(--text-muted); stroke-width: 2; transition: stroke .15s; }
+  .ball:hover .rim { stroke: var(--accent); }
+  .ball .fill, .ball .seam { opacity: 0; transition: opacity .15s; }
+  .task.done .ball .fill { opacity: 1; }
+  .task.done .ball .seam { opacity: 1; }
+  .task.done .ball .rim { stroke: var(--accent); }
+  .task.done .ball svg { animation: pop .25s ease; }
+  @keyframes pop { 50% { transform: scale(1.25); } }
+
+  .task-main { flex: 1; min-width: 0; }
+  .task-title { font-size: 16px; line-height: 1.45; overflow-wrap: break-word; }
+  .task.done .task-title { color: var(--text-muted); text-decoration: line-through; text-decoration-color: rgba(204,255,0,.5); }
+  .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11.5px; font-weight: 500; border-radius: 999px; padding: 2px 9px;
+    background: var(--accent-dim); color: var(--accent);
+  }
+  .byline { font-size: 12px; color: var(--text-muted); }
+
+  .avatar {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
+    display: grid; place-items: center; font-size: 11.5px; font-weight: 700;
+  }
+  .del {
+    background: none; border: none; color: var(--text-muted); cursor: pointer; flex-shrink: 0;
+    font-size: 17px; line-height: 1; padding: 4px 2px; margin-top: 2px; border-radius: 6px;
+    opacity: .45; transition: opacity .15s, color .15s;
+  }
+  .task:hover .del, .del:focus-visible { opacity: 1; }
+  .del:hover { color: var(--error); }
+
+  .empty { text-align: center; color: var(--text-muted); padding: 44px 0 28px; font-size: 15px; }
+  .empty .big { font-size: 34px; margin-bottom: 10px; }
+
+  .done-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 30px; padding-top: 8px;
+  }
+  .done-toggle {
+    background: none; border: none; color: var(--text-2); font-family: inherit; font-size: 14px;
+    font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 7px; padding: 6px 0;
+  }
+  .done-toggle .arrow { transition: transform .15s; font-size: 11px; display: inline-block; }
+  .done-open .done-toggle .arrow { transform: rotate(90deg); }
+  .count { background: var(--surface-2); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--text-2); }
+  .clear-done {
+    background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 999px;
+    padding: 4px 12px; font-size: 12.5px; font-family: inherit; cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .clear-done:hover { color: var(--error); border-color: var(--error); }
+  #done-list { display: none; }
+  .done-open #done-list { display: block; }
+
+  .banner {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; font-size: 14px; color: var(--text-2); margin: 14px 0; line-height: 1.6;
+  }
+  .banner b { color: var(--text); }
+  .banner.err { border-color: rgba(239,68,68,.5); }
+
+  #toast {
+    position: fixed; bottom: calc(20px + env(safe-area-inset-bottom)); right: 50%; transform: translateX(50%);
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 999px; padding: 10px 18px; font-size: 14px; display: none; align-items: center; gap: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.45); z-index: 20; max-width: calc(100vw - 32px);
+  }
+  #toast.show { display: flex; }
+  #toast button { background: none; border: none; color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+  #who-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.72); backdrop-filter: blur(6px);
+    display: none; place-items: center; z-index: 30; padding: 20px;
+  }
+  #who-overlay.show { display: grid; }
+  .who-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 28px 24px; width: 100%; max-width: 340px; text-align: center;
+  }
+  .who-card h2 { font-family: 'Rubik', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .who-card p { color: var(--text-muted); font-size: 13.5px; margin-bottom: 20px; }
+  .who-opts { display: grid; gap: 10px; }
+  .who-opt {
+    display: flex; align-items: center; gap: 12px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 14px; padding: 12px 16px;
+    color: var(--text); font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .who-opt:hover { border-color: var(--accent); }
+
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Rally<span>משימות צוות</span></div>
+    <button class="who-chip" id="who-chip" title="החלפת משתמש"></button>
+  </header>
+  <div class="sub">רשימה משותפת · אלמוג, מור ושחף · מתעדכן אצל כולם בזמן אמת</div>
+
+  <div class="add-row">
+    <input id="new-task" type="text" placeholder="הוספת משימה…" autocomplete="off" enterkeyhint="done" maxlength="500">
+    <button class="add-btn" id="add-btn" aria-label="הוספת משימה">+</button>
+  </div>
+
+  <div id="banner"></div>
+  <ul id="open-list"></ul>
+  <div id="empty" class="empty" style="display:none">
+    <div class="big">🎾</div>
+    הכל סגור! מוסיפים משימה למעלה.
+  </div>
+
+  <section id="done-section" style="display:none">
+    <div class="done-head">
+      <button class="done-toggle" id="done-toggle" aria-expanded="false">
+        <span class="arrow">◀</span> הושלמו <span class="count" id="done-count">0</span>
+      </button>
+      <button class="clear-done" id="clear-done">ניקוי הרשימה</button>
+    </div>
+    <ul id="done-list"></ul>
+  </section>
+</div>
+
+<div id="toast" role="status"></div>
+
+<div id="who-overlay">
+  <div class="who-card">
+    <h2>מי כאן? 👋</h2>
+    <p>כדי שכולם יראו מי הוסיף ומי סגר כל משימה</p>
+    <div class="who-opts" id="who-opts"></div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://isiulqwfaamgacptelkt.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6ssH-9Hul6BKW3aJjy1slw_tj-eLcHN';
+const DEMO = new URLSearchParams(location.search).has('demo');
+
+const PEOPLE = {
+  'אלמוג': { bg: '#ccff00', fg: '#18181b' },
+  'מור':   { bg: '#4d8aff', fg: '#ffffff' },
+  'שחף':  { bg: '#f59e0b', fg: '#18181b' },
+};
+
+const $ = (id) => document.getElementById(id);
+let tasks = [];
+let me = localStorage.getItem('rally-tasks-who') || '';
+let lastDeleted = null;
+let toastTimer = null;
+
+const supabase = DEMO ? null : createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+
+/* ---------- identity ---------- */
+function renderWho() {
+  $('who-chip').innerHTML = me ? `אני: <b>${esc(me)}</b>` : 'מי אני?';
+  const opts = $('who-opts');
+  opts.innerHTML = '';
+  for (const name of Object.keys(PEOPLE)) {
+    const b = document.createElement('button');
+    b.className = 'who-opt';
+    b.innerHTML = `${avatarHtml(name)} ${esc(name)}`;
+    b.onclick = () => { me = name; localStorage.setItem('rally-tasks-who', name); $('who-overlay').classList.remove('show'); renderWho(); $('new-task').focus(); };
+    opts.appendChild(b);
+  }
+}
+$('who-chip').onclick = () => $('who-overlay').classList.add('show');
+
+/* ---------- render ---------- */
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+function avatarHtml(name) {
+  const p = PEOPLE[name];
+  if (!p) return '';
+  return `<span class="avatar" style="background:${p.bg};color:${p.fg}" title="${esc(name)}">${esc(name[0])}</span>`;
+}
+
+const BALL_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+  <circle class="fill" cx="12" cy="12" r="10.5" fill="#ccff00"/>
+  <circle class="rim" cx="12" cy="12" r="10.5"/>
+  <path class="seam" d="M4.2 5.6 C 9.4 9.4, 9.4 14.6, 4.2 18.4" fill="none" stroke="#18181b" stroke-width="1.7"/>
+  <path class="seam" d="M19.8 5.6 C 14.6 9.4, 14.6 14.6, 19.8 18.4" fill="none" stroke="#18181b" stroke-width="1.7"/>
+</svg>`;
+
+function taskRow(t) {
+  const li = document.createElement('li');
+  li.className = 'task' + (t.is_done ? ' done' : '');
+  li.dataset.id = t.id;
+
+  const ball = document.createElement('button');
+  ball.className = 'ball';
+  ball.setAttribute('aria-label', t.is_done ? 'החזרה לרשימה' : 'סימון כבוצע');
+  ball.innerHTML = BALL_SVG;
+  ball.onclick = () => toggleTask(t);
+
+  const main = document.createElement('div');
+  main.className = 'task-main';
+  const meta = [];
+  if (t.tag === 'tournament') meta.push('<span class="chip">🏆 טורניר</span>');
+  if (t.is_done && t.done_by) meta.push(`<span class="byline">נסגר ע״י ${esc(t.done_by)}</span>`);
+  else if (!t.is_done && t.added_by) meta.push(`<span class="byline">נוסף ע״י ${esc(t.added_by)}</span>`);
+  main.innerHTML = `<div class="task-title">${esc(t.title)}</div>` +
+    (meta.length ? `<div class="task-meta">${meta.join('')}</div>` : '');
+
+  const del = document.createElement('button');
+  del.className = 'del';
+  del.setAttribute('aria-label', 'מחיקת משימה');
+  del.textContent = '✕';
+  del.onclick = () => deleteTask(t);
+
+  li.append(ball, main);
+  const who = t.is_done ? t.done_by : t.added_by;
+  if (who && PEOPLE[who]) {
+    const av = document.createElement('span');
+    av.innerHTML = avatarHtml(who);
+    li.appendChild(av.firstChild);
+  }
+  li.appendChild(del);
+  return li;
+}
+
+function render() {
+  const open = tasks.filter(t => !t.is_done).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const done = tasks.filter(t => t.is_done).sort((a, b) => (b.done_at || '').localeCompare(a.done_at || ''));
+
+  const openList = $('open-list');
+  openList.innerHTML = '';
+  open.forEach(t => openList.appendChild(taskRow(t)));
+  $('empty').style.display = open.length ? 'none' : 'block';
+
+  const doneList = $('done-list');
+  doneList.innerHTML = '';
+  done.forEach(t => doneList.appendChild(taskRow(t)));
+  $('done-section').style.display = done.length ? 'block' : 'none';
+  $('done-count').textContent = done.length;
+}
+
+/* ---------- toast ---------- */
+function toast(msg, undoFn) {
+  const el = $('toast');
+  el.innerHTML = esc(msg) + (undoFn ? ' <button id="undo-btn">ביטול</button>' : '');
+  el.classList.add('show');
+  if (undoFn) $('undo-btn').onclick = () => { undoFn(); el.classList.remove('show'); };
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+/* ---------- data ops ---------- */
+function needWho() {
+  if (!me) { $('who-overlay').classList.add('show'); return true; }
+  return false;
+}
+
+async function addTask() {
+  const input = $('new-task');
+  const title = input.value.trim();
+  if (!title) return;
+  if (needWho()) return;
+  input.value = '';
+  input.focus();
+  const temp = { id: 'temp-' + Math.random().toString(36).slice(2), title, tag: null, added_by: me, is_done: false, done_by: null, done_at: null, created_at: new Date().toISOString() };
+  tasks.push(temp);
+  render();
+  if (DEMO) return;
+  const { data, error } = await supabase.from('team_tasks').insert({ title, added_by: me }).select().single();
+  tasks = tasks.filter(t => t.id !== temp.id);
+  if (error) { toast('ההוספה נכשלה, נסו שוב'); input.value = title; }
+  else if (!tasks.some(t => t.id === data.id)) tasks.push(data);
+  render();
+}
+
+async function toggleTask(t) {
+  if (needWho()) return;
+  const to = !t.is_done;
+  Object.assign(t, { is_done: to, done_by: to ? me : null, done_at: to ? new Date().toISOString() : null });
+  render();
+  if (DEMO) return;
+  const { error } = await supabase.from('team_tasks')
+    .update({ is_done: to, done_by: t.done_by, done_at: t.done_at }).eq('id', t.id);
+  if (error) { Object.assign(t, { is_done: !to }); render(); toast('העדכון נכשל, נסו שוב'); }
+}
+
+async function deleteTask(t) {
+  tasks = tasks.filter(x => x.id !== t.id);
+  lastDeleted = t;
+  render();
+  toast('המשימה נמחקה', async () => {
+    if (!lastDeleted) return;
+    const { id, ...rest } = lastDeleted;
+    tasks.push(lastDeleted); render();
+    if (!DEMO) {
+      const { data } = await supabase.from('team_tasks').insert(rest).select().single();
+      if (data) { tasks = tasks.filter(x => x.id !== id); if (!tasks.some(x => x.id === data.id)) tasks.push(data); render(); }
+    }
+    lastDeleted = null;
+  });
+  if (!DEMO) {
+    const { error } = await supabase.from('team_tasks').delete().eq('id', t.id);
+    if (error) { tasks.push(t); render(); toast('המחיקה נכשלה, נסו שוב'); }
+  }
+}
+
+let clearArmed = false;
+$('clear-done').onclick = async () => {
+  if (!clearArmed) {
+    clearArmed = true;
+    $('clear-done').textContent = 'בטוח? לחיצה נוספת תמחק';
+    setTimeout(() => { clearArmed = false; $('clear-done').textContent = 'ניקוי הרשימה'; }, 3000);
+    return;
+  }
+  clearArmed = false;
+  $('clear-done').textContent = 'ניקוי הרשימה';
+  const ids = tasks.filter(t => t.is_done).map(t => t.id);
+  tasks = tasks.filter(t => !t.is_done);
+  render();
+  if (!DEMO && ids.length) {
+    const { error } = await supabase.from('team_tasks').delete().in('id', ids);
+    if (error) { toast('הניקוי נכשל, נסו שוב'); load(); }
+  }
+};
+
+/* ---------- load + realtime ---------- */
+function applyChange(payload) {
+  if (payload.eventType === 'DELETE') {
+    tasks = tasks.filter(t => t.id !== payload.old.id);
+  } else {
+    const row = payload.new;
+    const i = tasks.findIndex(t => t.id === row.id);
+    if (i >= 0) tasks[i] = row; else tasks.push(row);
+  }
+  render();
+}
+
+async function load() {
+  if (DEMO) { tasks = demoTasks(); render(); return; }
+  const { data, error } = await supabase.from('team_tasks').select('*');
+  if (error) {
+    $('banner').innerHTML = `<div class="banner err"><b>הרשימה עוד לא מחוברת.</b><br>
+      צריך להריץ פעם אחת את <b>supabase/team-tasks-setup.sql</b> ב־Supabase (SQL Editor) — ואז לרענן.</div>`;
+    return;
+  }
+  $('banner').innerHTML = '';
+  tasks = data;
+  render();
+  supabase.channel('team-tasks-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'team_tasks' }, applyChange)
+    .subscribe();
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+      const { data: fresh } = await supabase.from('team_tasks').select('*');
+      if (fresh) { tasks = fresh; render(); }
+    }
+  });
+}
+
+function demoTasks() {
+  const seed = [
+    'טורניר 13.8 · יום ה׳ 18:30–23:00 · השקת פאדל קלאב מכבים (מודיעין) · B1–B2',
+    'טורניר 17.8 · יום ב׳ 18:30–23:30 · רמות A · קאנטרי כפר סבא · A2',
+    'טורניר 18.8 · יום ג׳ 17:00–22:00 · ערב פאדל טיים יבנה · C1–B2',
+    'טורניר 20.8 · יום ה׳ 20:00–23:30 · מכבי רחובות · B1–B2',
+    'טורניר 21.8 · יום ו׳ 07:30–13:30 · רמה C + השקת Rally · כפר המכביה · C1–B2 · 64 שחקנים',
+  ];
+  const rows = seed.map((title, i) => ({ id: 'd' + i, title, tag: 'tournament', added_by: null, is_done: false, done_by: null, done_at: null, created_at: new Date(2026, 7, 9, 10, 0, i).toISOString() }));
+  rows.push({ id: 'd90', title: 'לסגור חולצות לצוות מול בית הדפוס', tag: null, added_by: 'מור', is_done: false, done_by: null, done_at: null, created_at: new Date(2026, 7, 9, 11, 0).toISOString() });
+  rows.push({ id: 'd91', title: 'להעלות סטורי הרשמה לטורניר 13.8', tag: null, added_by: 'אלמוג', is_done: true, done_by: 'שחף', done_at: new Date(2026, 7, 9, 12, 0).toISOString(), created_at: new Date(2026, 7, 9, 9, 0).toISOString() });
+  return rows;
+}
+
+/* ---------- wire up ---------- */
+$('add-btn').onclick = addTask;
+$('new-task').addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
+$('done-toggle').onclick = () => {
+  const open = $('done-section').classList.toggle('done-open');
+  $('done-toggle').setAttribute('aria-expanded', open);
+};
+
+renderWho();
+if (!me && !DEMO) $('who-overlay').classList.add('show');
+load();
+</script>
+</body>
+</html>
