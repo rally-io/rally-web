@@ -22,13 +22,16 @@ function StandingRow({ standing, place, qualifies, showStats, dense }: {
     showStats: boolean;
     dense: boolean;
 }): React.ReactElement {
+    const { t } = useTranslation();
     const players = standingPlayers(standing);
     const diff = standing.games_won - standing.games_lost;
+    const dq = standing.is_disqualified === true;
     return (
         <div className={cn(
             'flex items-center gap-2.5 rounded-xl px-2.5',
             dense ? 'min-h-7 py-0.5' : 'min-h-9 py-0.5',
             qualifies && 'bg-(--pb-winner-bg)',
+            dq && 'opacity-60',
         )}>
             <span
                 aria-hidden
@@ -38,9 +41,21 @@ function StandingRow({ standing, place, qualifies, showStats, dense }: {
                     qualifies ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)',
                 )}
             >
-                {place}
+                {dq ? '—' : place}
             </span>
-            <span className={cn('min-w-0 flex-1 truncate font-extrabold text-(--pb-text)', dense ? 'text-[13px]' : 'text-[15px]')}>
+            <span className={cn(
+                'flex min-w-0 flex-1 items-center gap-1.5 truncate font-extrabold',
+                dq ? 'text-(--pb-text-muted)' : 'text-(--pb-text)',
+                dense ? 'text-[13px]' : 'text-[15px]',
+            )}>
+                {/* A strikethrough alone does not say *why* on a board read from
+                    across a room, so the reason is spelled out beside it. */}
+                {dq && (
+                    <span className="shrink-0 rounded px-1 py-px text-[8px] font-black uppercase tracking-widest text-(--pb-text-faint) ring-1 ring-(--pb-border)">
+                        {t('public_bracket.disqualified', 'Disqualified')}
+                    </span>
+                )}
+                <span className={cn('min-w-0 truncate', dq && 'line-through')}>
                 {players.length === 0
                     ? standing.player_name ?? standing.team_name ?? ''
                     : players.map((p, i) => (
@@ -50,16 +65,17 @@ function StandingRow({ standing, place, qualifies, showStats, dense }: {
                             {!dense && <RatingChip rating={p.skill_level} className="ms-1" />}
                         </React.Fragment>
                     ))}
+                </span>
             </span>
             <span className={cn('w-8 shrink-0 text-center font-extrabold tabular-nums text-(--pb-text)', dense ? 'text-sm' : 'text-base')}>
-                {showStats ? standing.wins : ''}
+                {dq ? '—' : showStats ? standing.wins : ''}
             </span>
             <span className={cn(
                 'w-9 shrink-0 text-center font-extrabold tabular-nums',
                 dense ? 'text-[13px]' : 'text-sm',
                 diff > 0 ? 'text-(--pb-highlight)' : 'text-(--pb-text-muted)',
             )}>
-                {showStats ? (diff > 0 ? `+${diff}` : diff) : ''}
+                {dq ? '—' : showStats ? (diff > 0 ? `+${diff}` : diff) : ''}
             </span>
         </div>
     );
@@ -118,7 +134,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                         key={`${s.position}-${playerFullName(s.player_1) || s.team_name || i}`}
                         standing={s}
                         place={i + 1}
-                        qualifies={hasResults && qualifyCount != null && i < qualifyCount}
+                        qualifies={hasResults && qualifyCount != null && i < qualifyCount && s.is_disqualified !== true}
                         showStats={hasResults}
                         dense={dense}
                     />

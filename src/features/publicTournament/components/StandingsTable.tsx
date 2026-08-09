@@ -30,7 +30,10 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
             </div>
             {standings.map((s, i) => {
                 const players = rowPlayers(s);
-                const qualifies = qualifyCount != null && s.position <= qualifyCount;
+                // A disqualified row is numbered last, so in a small enough group
+                // its position still falls inside qualifyCount — guard explicitly.
+                const dq = s.is_disqualified === true;
+                const qualifies = !dq && qualifyCount != null && s.position <= qualifyCount;
                 const diff = s.sets_won - s.sets_lost;
                 return (
                     <React.Fragment key={`${s.position}-${rowLabel(s)}`}>
@@ -39,12 +42,20 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                             large ? 'py-1.5' : 'py-2',
                             i > 0 && 'border-t border-(--pb-border)',
                             qualifies && 'bg-(--pb-winner-bg)',
+                            dq && 'opacity-60',
                         )}>
                             <span className={cn('w-4 shrink-0 font-black', nameText, qualifies ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)')}>
-                                {s.position}
+                                {dq ? '—' : s.position}
                             </span>
                             <span className={cn('flex min-w-0 flex-1', large ? 'items-center' : 'flex-col gap-0.5')}>
-                                {players.length === 0 ? (
+                                {dq ? (
+                                    <span className={cn('flex min-w-0 items-center gap-1.5', nameText)}>
+                                        <span className="truncate font-bold text-(--pb-text-muted) line-through">{rowLabel(s) || players.map(playerFullName).join(' / ')}</span>
+                                        <span className="shrink-0 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-widest text-(--pb-text-faint) ring-1 ring-(--pb-border)">
+                                            {t('public_bracket.disqualified', 'Disqualified')}
+                                        </span>
+                                    </span>
+                                ) : players.length === 0 ? (
                                     <span className={cn('truncate font-bold text-(--pb-text)', nameText)}>{rowLabel(s)}</span>
                                 ) : large ? (
                                     // TV: one line per team, broadcast-table style — halves the panel height
@@ -67,14 +78,14 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                                 )}
                             </span>
                             <span className={cn('flex shrink-0 gap-3 font-extrabold', nameText)}>
-                                <span className="w-5 text-center text-(--pb-text)">{s.wins}</span>
-                                <span className="w-5 text-center text-(--pb-text-muted)">{s.losses}</span>
-                                <span className={cn('w-7 text-center', diff > 0 ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)')}>
-                                    {diff > 0 ? `+${diff}` : diff}
+                                <span className="w-5 text-center text-(--pb-text)">{dq ? '—' : s.wins}</span>
+                                <span className="w-5 text-center text-(--pb-text-muted)">{dq ? '—' : s.losses}</span>
+                                <span className={cn('w-7 text-center', !dq && diff > 0 ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)')}>
+                                    {dq ? '—' : diff > 0 ? `+${diff}` : diff}
                                 </span>
                             </span>
                         </div>
-                        {qualifyCount != null && s.position === qualifyCount && i < standings.length - 1 && (
+                        {!dq && qualifyCount != null && s.position === qualifyCount && i < standings.length - 1 && (
                             <div className="border-t border-dashed border-(--pb-border) px-3 py-1">
                                 <span className="text-[8px] font-extrabold uppercase tracking-widest text-(--pb-text-faint)">
                                     {t('public_bracket.top_qualify', { count: qualifyCount, defaultValue: 'Top {{count}} advance' })}
