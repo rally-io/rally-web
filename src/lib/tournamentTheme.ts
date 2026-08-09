@@ -6,12 +6,12 @@ export function statusColor(status: string | null | undefined): RallyStatusColor
   switch (status) {
     case 'confirmed':
     case 'approved':
-    case 'checked_in':
       return 'success'
     case 'payment_pending':
       return 'accent'
     case 'withdrawn':
     case 'cancelled':
+    case 'rejected':
     case 'disqualified':
       return 'error'
     case 'registered':

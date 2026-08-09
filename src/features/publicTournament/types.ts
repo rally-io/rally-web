@@ -53,6 +53,17 @@ export type PublicRound = z.infer<typeof PublicRoundSchema>;
 
 export const PublicStandingSchema = z.object({
     position: z.number(),
+    /**
+     * Removed from the competition mid-tournament. The row is still sent so a
+     * group that loses a team stays legible, but its record was voided, so the
+     * stats below are all zero and must render as dashes rather than numbers
+     * that would contradict the rows above.
+     *
+     * `.catch(false)` is load-bearing: `standings` is parsed with
+     * `z.array(...).catch([])`, so a single element failing validation blanks
+     * the entire group's table — silently.
+     */
+    is_disqualified: z.boolean().catch(false),
     player_name: z.string().nullish().catch(null),
     team_name: z.string().nullish().catch(null),
     player_1: PublicPlayerSchema.nullish().catch(null),

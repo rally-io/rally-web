@@ -399,7 +399,6 @@
     "registrationStatus_registered": "רשום",
     "registrationStatus_confirmed": "מאושר",
     "registrationStatus_approved": "מאושר",
-    "registrationStatus_checked_in": "צ׳ק-אין",
     "registrationStatus_payment_pending": "ממתין לתשלום",
     "registrationStatus_withdrawn": "פרש",
     "registrationStatus_cancelled": "בוטל",
@@ -442,7 +441,8 @@
     "errorTitle": "שגיאה",
     "paymentDeferredNotice": "התשלום יפתח בקרוב — אנא המשיכו באפליקציית Rally לתשלום.",
     "close": "סגור",
-    "termsOfUse": "תנאי שימוש"
+    "termsOfUse": "תנאי שימוש",
+    "registrationStatus_rejected": "נדחה"
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
@@ -996,6 +996,7 @@
     "auto_rotate": "החלפה אוטומטית",
     "live_now": "חי עכשיו",
     "group_title": "בית {{letter}}",
-    "games_page": "{{shown}} מתוך {{total}} משחקים"
+    "games_page": "{{shown}} מתוך {{total}} משחקים",
+    "disqualified": "נפסל"
   }
 }
