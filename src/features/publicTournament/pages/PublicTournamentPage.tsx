@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import '../themes.css';
 import { usePublicBracket } from '../hooks/usePublicBracket';
 import { useTheme } from '../hooks/useTheme';
-import { useViewMode } from '../hooks/useViewMode';
+import { useViewMode, type ViewMode } from '../hooks/useViewMode';
 import { BIG_SCREEN_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { PublicHeader } from '../components/PublicHeader';
 import { LiveNowStrip } from '../components/LiveNowStrip';
@@ -19,6 +19,7 @@ import { StandingsTable } from '../components/StandingsTable';
 import { QrPanel } from '../components/QrPanel';
 import { LiveTicker } from '../components/LiveTicker';
 import { SponsorStrip } from '../components/SponsorStrip';
+import { VideoView } from '../components/VideoView';
 import { EmptyBracket, ErrorScreen, LoadingScreen } from '../components/PageStates';
 import { detectDir, liveMatches, upcomingMatches } from '../utils';
 
@@ -29,7 +30,7 @@ export default function PublicTournamentPage(): React.ReactElement | null {
     const { token } = useParams<{ token: string }>();
     const { bracket, isLoading, isExpired, isHardError, isReconnecting, updatedAt } = usePublicBracket(token);
     const { theme, cycleTheme } = useTheme();
-    const { view, selectView, isAutoRotate, toggleAutoRotate, showTabs, showPlate, canAutoRotate } = useViewMode(bracket);
+    const { view, selectView, isAutoRotate, toggleAutoRotate, showTabs, showPlate, showVideo, canAutoRotate } = useViewMode(bracket);
     const isBigScreen = useMediaQuery(BIG_SCREEN_QUERY);
 
     const dir = useMemo(() => {
@@ -99,6 +100,24 @@ export default function PublicTournamentPage(): React.ReactElement | null {
             </div>
         );
 
+    const videoContent = <VideoView videos={bracket.videos} isBigScreen={isBigScreen} />;
+
+    // Built here rather than in the hook because tab visibility depends on screen size,
+    // which is a page concern. Video is always last so adding it never moves a tab a
+    // regular visitor already knows the position of.
+    const tabs: ViewMode[] = [];
+    if (isGroupKnockout) {
+        tabs.push('groups');
+        if (!isBigScreen) tabs.push('standings'); // the TV group board embeds its own table
+        tabs.push('knockout');
+        if (showPlate) tabs.push('plate');
+    } else if (isLeague) {
+        tabs.push('standings');
+    } else {
+        tabs.push('knockout');
+    }
+    if (showVideo) tabs.push('video');
+
     return shell(
         <>
             <PublicHeader
@@ -120,14 +139,13 @@ export default function PublicTournamentPage(): React.ReactElement | null {
                         isAutoRotate={isAutoRotate}
                         onToggleAutoRotate={toggleAutoRotate}
                         showAutoRotate={isBigScreen && canAutoRotate}
-                        showPlate={showPlate}
-                        showStandings={!isBigScreen}
+                        tabs={tabs}
                     />
                 </div>
             )}
-            {isBigScreen && view !== 'knockout' && view !== 'plate' && <LiveNowBar matches={live} />}
+            {isBigScreen && view !== 'knockout' && view !== 'plate' && view !== 'video' && <LiveNowBar matches={live} />}
             <main className={cn(isBigScreen ? 'min-h-0 flex-1 overflow-hidden' : showTabs ? '' : 'pt-4')}>
-                {isLeague ? league : view === 'knockout' ? knockout : view === 'plate' ? plate : groupsContent}
+                {view === 'video' ? videoContent : isLeague ? league : view === 'knockout' ? knockout : view === 'plate' ? plate : groupsContent}
             </main>
             {isBigScreen && (
                 <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-(--pb-border) bg-(--pb-card-header) px-8 pb-3 pt-2">

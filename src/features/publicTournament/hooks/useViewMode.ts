@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublicBracketData } from '../types';
 
-export type ViewMode = 'groups' | 'standings' | 'knockout' | 'plate';
+export type ViewMode = 'groups' | 'standings' | 'knockout' | 'plate' | 'video';
 
 /** Which stage of a group-then-knockout tournament auto-rotate should follow. */
 export type RotationPhase = 'group' | 'knockout';
@@ -46,7 +46,12 @@ type UseViewModeResult = {
     toggleAutoRotate: () => void;
     showTabs: boolean;
     showPlate: boolean;
-    /** False when the phase has a single view — hide the toggle rather than let it lie. */
+    showVideo: boolean;
+    /**
+     * False when the phase has a single view, or when the bracket's structure isn't
+     * group_then_knockout (rotation only exists on that structure's branch of `view`
+     * below) — hide the toggle rather than let it light up and rotate nothing.
+     */
     canAutoRotate: boolean;
 };
 
@@ -56,6 +61,7 @@ export function useViewMode(bracket: PublicBracketData | null): UseViewModeResul
     const [rotateIndex, setRotateIndex] = useState(0);
 
     const showPlate = (bracket?.plate_rounds.length ?? 0) > 0;
+    const showVideo = (bracket?.videos.length ?? 0) > 0;
     const phase = useMemo(() => getRotationPhase(bracket), [bracket]);
     const rotationViews = useMemo(() => getRotationViews(phase, showPlate), [phase, showPlate]);
 
@@ -79,7 +85,13 @@ export function useViewMode(bracket: PublicBracketData | null): UseViewModeResul
     const view = useMemo<ViewMode>(() => {
         if (!bracket) return 'knockout';
         if (bracket.structure !== 'group_then_knockout') {
-            return bracket.structure === 'round_robin_league' ? 'groups' : 'knockout';
+            // A manual Video pick has to survive here too — this is the branch every
+            // single-elimination and league tournament takes.
+            if (manual === 'video' && showVideo) return 'video';
+            // 'standings' rather than 'groups' for a league so the tab highlight matches
+            // the label. Inert for rendering: the page's isLeague branch ignores which
+            // of the two it is.
+            return bracket.structure === 'round_robin_league' ? 'standings' : 'knockout';
         }
         if (isAutoRotate) return rotateView;
         // Where the screen lands with nothing selected — and where a manual
@@ -88,9 +100,13 @@ export function useViewMode(bracket: PublicBracketData | null): UseViewModeResul
         // onto the group tables while the main final is on court. Mirrors the CRM
         // dashboard's `effectiveView`.
         const stageDefault: ViewMode = knockoutHasPlayers(bracket) ? 'knockout' : 'groups';
-        if (manual) return manual === 'plate' && !showPlate ? stageDefault : manual;
+        if (manual) {
+            if (manual === 'plate' && !showPlate) return stageDefault;
+            if (manual === 'video' && !showVideo) return stageDefault;
+            return manual;
+        }
         return stageDefault;
-    }, [bracket, manual, isAutoRotate, rotateView, showPlate]);
+    }, [bracket, manual, isAutoRotate, rotateView, showPlate, showVideo]);
 
     return {
         view,
@@ -100,8 +116,15 @@ export function useViewMode(bracket: PublicBracketData | null): UseViewModeResul
         },
         isAutoRotate,
         toggleAutoRotate: (): void => setIsAutoRotate(v => !v),
-        showTabs: bracket?.structure === 'group_then_knockout',
+        // Tabs used to exist only for group+knockout. A tournament with videos needs
+        // them whatever its structure, or the Video view is unreachable.
+        showTabs: bracket?.structure === 'group_then_knockout' || showVideo,
         showPlate,
-        canAutoRotate: rotationViews.length > 1,
+        showVideo,
+        // Rotation is only possible on group_then_knockout: it's the only structure whose
+        // branch of the `view` memo above ever reads `isAutoRotate`/`rotateView`. Every other
+        // structure returns early without consulting them, so offering the toggle there would
+        // light up and rotate nothing — a visible lie on a venue TV.
+        canAutoRotate: bracket?.structure === 'group_then_knockout' && rotationViews.length > 1,
     };
 }

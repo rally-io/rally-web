@@ -93,6 +93,19 @@ export const PublicSponsorSchema = z.object({
 });
 export type PublicSponsor = z.infer<typeof PublicSponsorSchema>;
 
+export const PublicVideoSchema = z.object({
+    id: z.string().catch(''),
+    label: z.string().nullish().catch(null),
+    /** User-facing host name ("YouTube"). Display only — never branch on it. */
+    provider: z.string().catch(''),
+    /** Server-rendered, already provider-correct. The page puts this in an iframe as-is. */
+    embed_url: z.string().catch(''),
+    /** Original link, for the "open on provider" fallback when an embed is blocked. */
+    url: z.string().nullish().catch(null),
+    display_order: z.number().nullish().catch(null),
+});
+export type PublicVideo = z.infer<typeof PublicVideoSchema>;
+
 export const PublicBracketSchema = z.object({
     tournament_id: z.string(),
     tournament_name: z.string().catch(''),
@@ -100,6 +113,7 @@ export const PublicBracketSchema = z.object({
     club_name: z.string().nullish().catch(null),
     club_logo_url: z.string().nullish().catch(null),
     sponsors: z.array(PublicSponsorSchema).catch([]),
+    videos: z.array(PublicVideoSchema).catch([]),
     knockout_rounds: z.array(PublicRoundSchema).catch([]),
     plate_rounds: z.array(PublicRoundSchema).catch([]),
     league_standings: z.array(PublicStandingSchema).nullish().catch(null),

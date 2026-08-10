@@ -1000,6 +1000,8 @@
     "view_standings": "דירוג",
     "view_finals": "גמרים",
     "view_plate": "פלייט",
+    "view_video": "וידאו",
+    "open_on_provider": "צפייה ב-{{provider}}",
     "auto_rotate": "החלפה אוטומטית",
     "live_now": "חי עכשיו",
     "group_title": "בית {{letter}}",
