@@ -4,6 +4,29 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import i18n from '@/i18n'
 
 vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
+// ParticipantsSection pulls this in via a real useQuery hook, which needs a
+// QueryClientProvider this test doesn't set up — null keeps it hidden and
+// out of scope (it has its own test file).
+vi.mock('@/hooks/useTournamentParticipants', () => ({
+  useTournamentParticipants: () => ({ data: null }),
+}))
+// ParticipantsSection also calls useAppSession/useAuthGate directly (no
+// providers mounted here). Mock a fully-onboarded session ('ready') so the
+// section takes the data-gated branch above (null data ⇒ hidden) instead of
+// rendering the signed-out or complete-your-profile prompt, both out of
+// scope for these CTA-focused tests.
+vi.mock('@/hooks/useAppSession', () => ({
+  useAppSession: () => ({
+    status: 'ready',
+    onboardingStatus: null,
+    playerProfile: null,
+    refetchOnboarding: vi.fn(),
+    clearSession: vi.fn(),
+  }),
+}))
+vi.mock('@/hooks/useAuthGate', () => ({
+  useAuthGate: () => ({ requireSignIn: vi.fn() }),
+}))
 // window.location.assign is unforgeable in jsdom — mock the helper instead;
 // its own behavior is covered by the appLinks/AppDownloadModal tests.
 vi.mock('@/lib/appLinks', async (importOriginal) => {

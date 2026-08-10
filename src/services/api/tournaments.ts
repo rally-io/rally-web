@@ -1,7 +1,7 @@
 // src/services/api/tournaments.ts
 import client from './client'
 import type {
-  ApiResponse, Tournament, TournamentDetail, RegistrationDetail,
+  ApiResponse, Tournament, TournamentDetail, RegistrationDetail, TournamentParticipants,
 } from '@/types/api'
 
 export interface TournamentListParams {
@@ -31,6 +31,15 @@ export async function getTournament(
   tournamentId: string,
 ): Promise<ApiResponse<TournamentDetail>> {
   return client.get(`/rally/v1/tournaments/${tournamentId}`)
+}
+
+export async function getTournamentParticipants(
+  tournamentId: string,
+): Promise<ApiResponse<TournamentParticipants>> {
+  // limit=100 covers realistic tournament sizes (~32 pairs max) in one page.
+  return client.get(`/rally/v1/tournaments/${tournamentId}/participants`, {
+    params: { limit: 100 },
+  })
 }
 
 export async function getRegistration(

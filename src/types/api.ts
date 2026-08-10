@@ -180,6 +180,31 @@ export interface MyRegistration {
   payment_status?: string | null
 }
 
+export interface TournamentParticipantPlayer {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  avatar_url: string | null
+  skill_level: number | null
+  skill_tier?: string | null
+  is_guest: boolean
+}
+
+export interface TournamentParticipantPair {
+  registration_id: string
+  team_name: string | null
+  player_1: TournamentParticipantPlayer
+  player_2: TournamentParticipantPlayer | null
+}
+
+export interface TournamentParticipants {
+  tournament_id: string
+  format: string
+  /** Registrations (pairs/teams), not individuals. */
+  confirmed_count: number
+  items: TournamentParticipantPair[]
+}
+
 export interface TournamentDetail extends Tournament {
   prizes: Prize[]
   sponsors: Sponsor[]
