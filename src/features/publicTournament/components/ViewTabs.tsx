@@ -10,19 +10,23 @@ type ViewTabsProps = {
     isAutoRotate: boolean;
     onToggleAutoRotate: () => void;
     showAutoRotate: boolean;
-    showPlate: boolean;
-    /** The TV board embeds its standings, so that tab exists on the phone only. */
-    showStandings: boolean;
+    /**
+     * Exactly which tabs to render, in order. The page computes it because tab
+     * visibility depends on things only the page knows (screen size) as well as on
+     * the bracket — a list beats one boolean prop per tab, which is what this was.
+     */
+    tabs: ViewMode[];
 };
 
-const TABS: { mode: ViewMode; labelKey: string; fallback: string }[] = [
-    { mode: 'groups', labelKey: 'public_bracket.view_groups', fallback: 'Groups' },
-    { mode: 'standings', labelKey: 'public_bracket.view_standings', fallback: 'Standings' },
-    { mode: 'knockout', labelKey: 'public_bracket.view_finals', fallback: 'Finals' },
-    { mode: 'plate', labelKey: 'public_bracket.view_plate', fallback: 'Plate' },
-];
+const TAB_LABELS: Record<ViewMode, { labelKey: string; fallback: string }> = {
+    groups: { labelKey: 'public_bracket.view_groups', fallback: 'Groups' },
+    standings: { labelKey: 'public_bracket.view_standings', fallback: 'Standings' },
+    knockout: { labelKey: 'public_bracket.view_finals', fallback: 'Finals' },
+    plate: { labelKey: 'public_bracket.view_plate', fallback: 'Plate' },
+    video: { labelKey: 'public_bracket.view_video', fallback: 'Video' },
+};
 
-export function ViewTabs({ view, onSelect, isAutoRotate, onToggleAutoRotate, showAutoRotate, showPlate, showStandings }: ViewTabsProps): React.ReactElement {
+export function ViewTabs({ view, onSelect, isAutoRotate, onToggleAutoRotate, showAutoRotate, tabs }: ViewTabsProps): React.ReactElement {
     const { t } = useTranslation();
     return (
         <div className="flex items-center gap-2">
@@ -41,20 +45,18 @@ export function ViewTabs({ view, onSelect, isAutoRotate, onToggleAutoRotate, sho
                 </button>
             )}
             <div className="flex flex-1 gap-1 rounded-xl border border-(--pb-border) bg-(--pb-card) p-1">
-                {TABS
-                    .filter(tab => (tab.mode !== 'plate' || showPlate) && (tab.mode !== 'standings' || showStandings))
-                    .map(tab => (
+                {tabs.map(mode => (
                     <button
-                        key={tab.mode}
-                        onClick={() => onSelect(tab.mode)}
+                        key={mode}
+                        onClick={() => onSelect(mode)}
                         className={cn(
                             'flex-1 rounded-lg py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors',
-                            view === tab.mode
+                            view === mode
                                 ? 'bg-(--pb-accent-bg) text-(--pb-accent)'
                                 : 'text-(--pb-text-faint) hover:text-(--pb-text-muted)',
                         )}
                     >
-                        {t(tab.labelKey, tab.fallback)}
+                        {t(TAB_LABELS[mode].labelKey, TAB_LABELS[mode].fallback)}
                     </button>
                 ))}
             </div>

@@ -996,6 +996,8 @@
     "view_standings": "Standings",
     "view_finals": "Finals",
     "view_plate": "Plate",
+    "view_video": "Video",
+    "open_on_provider": "Watch on {{provider}}",
     "auto_rotate": "Auto rotate",
     "live_now": "Live now",
     "group_title": "Group {{letter}}",

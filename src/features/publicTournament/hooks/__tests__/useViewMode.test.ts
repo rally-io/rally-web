@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { PublicBracketData, PublicMatch, PublicRound } from '../../types';
-import { getRotationPhase, getRotationViews } from '../useViewMode';
+import { renderHook } from '@testing-library/react';
+import type { PublicBracketData, PublicMatch, PublicRound, PublicVideo } from '../../types';
+import { getRotationPhase, getRotationViews, useViewMode } from '../useViewMode';
 
 function makeMatch(hasPlayer: boolean): PublicMatch {
     return {
@@ -29,6 +30,7 @@ function makeBracket(overrides: Partial<PublicBracketData>): PublicBracketData {
         club_name: null,
         club_logo_url: null,
         sponsors: [],
+        videos: [],
         knockout_rounds: [],
         plate_rounds: [],
         league_standings: null,
@@ -140,5 +142,29 @@ describe('plate fallback', () => {
     it('falls back to the groups before the knockout has any teams', () => {
         const bracket = makeBracket({ knockout_rounds: [makeRound(false)], plate_rounds: [] });
         expect(stageDefault(bracket)).toBe('groups');
+    });
+});
+
+describe('canAutoRotate structural gate', () => {
+    // `view`'s early-return branch for any structure other than group_then_knockout never
+    // reads `isAutoRotate`/`rotateView` — rotation only exists on the group_then_knockout
+    // branch below it. A single-elimination bracket whose knockout already holds real
+    // players still produces a `rotationViews` list of length > 1 (knockoutHasPlayers is
+    // true, so getRotationPhase returns 'knockout'), so `canAutoRotate` must be gated on
+    // structure too, or the toggle lights up on a venue TV and rotates nothing.
+    const video: PublicVideo = { id: 'v1', label: 'Court 1', provider: 'YouTube', embed_url: 'https://example.com/embed', url: 'https://example.com', display_order: 0 };
+
+    it('never offers auto-rotate on a single-elimination bracket, even with a live knockout and a video', () => {
+        const bracket = makeBracket({
+            structure: 'single_elimination',
+            knockout_rounds: [makeRound(true)],
+            videos: [video],
+        });
+        const { result } = renderHook(() => useViewMode(bracket));
+        expect(result.current.canAutoRotate).toBe(false);
+        // The tab bar still appears and the video is still reachable — only the
+        // rotation control (which would do nothing on this structure) is hidden.
+        expect(result.current.showTabs).toBe(true);
+        expect(result.current.showVideo).toBe(true);
     });
 });
