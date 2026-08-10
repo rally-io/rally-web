@@ -10,6 +10,7 @@ import { AppDownloadModal, type AppDownloadVariant } from '@/components/app-down
 import { tryOpenInApp } from '@/lib/appLinks'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
+import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
@@ -223,6 +224,8 @@ export default function TournamentDetailPage() {
             }
           />
         )}
+
+        <ParticipantsSection tournamentId={tr.id} />
 
         {tr.prizes.length > 0 && (
           <section>
