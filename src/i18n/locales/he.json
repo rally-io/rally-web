@@ -973,6 +973,7 @@
       "sets_l": "מ' ה'",
       "games_w": "ג' נ'",
       "games_l": "ג' ה'",
+      "games": "משחקונים",
       "diff": "+/-"
     },
     "competing": "מתחרה",
@@ -1005,7 +1006,15 @@
     "auto_rotate": "החלפה אוטומטית",
     "live_now": "חי עכשיו",
     "group_title": "בית {{letter}}",
-    "games_page": "{{shown}} מתוך {{total}} משחקים",
-    "disqualified": "נפסל"
+    "disqualified": "נפסל",
+    "view_games": "משחקים",
+    "lane_finished": "סיום",
+    "round_label": "סבב {{num}}",
+    "round_done": "הסתיים",
+    "round_live": "מתקיים עכשיו",
+    "round_window": "סבבים {{from}}–{{to}} מתוך {{total}}",
+    "lane_no_matches_in_window": "אין משחקים בסבבים המוצגים",
+    "court_next": "הבא בתור",
+    "no_courts": "אין שיוך מגרשים"
   }
 }

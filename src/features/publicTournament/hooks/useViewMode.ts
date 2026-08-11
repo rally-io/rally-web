@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublicBracketData } from '../types';
+import { hasAnyGroupResults } from '../utils';
 
-export type ViewMode = 'groups' | 'standings' | 'knockout' | 'plate' | 'video';
+export type ViewMode = 'groups' | 'games' | 'standings' | 'knockout' | 'plate' | 'video';
 
 /** Which stage of a group-then-knockout tournament auto-rotate should follow. */
 export type RotationPhase = 'group' | 'knockout';
 
-const ROTATE_MS = 5000;
+/** One tab must be readable before the next arrives: six standings tables take longer than 5s. */
+export const ROTATE_MS = 12000;
 
 function knockoutHasPlayers(bracket: PublicBracketData): boolean {
     return bracket.knockout_rounds.some(r => r.matches.some(m => m.team_a?.player_1 || m.team_b?.player_1));
@@ -24,19 +26,17 @@ export function getRotationPhase(bracket: PublicBracketData | null): RotationPha
 /**
  * Ordered list of views to cycle through for a given phase.
  *
- * There is no `standings` entry: the TV group board carries its own standings table, so the
- * group view already answers "who is top, who goes through" — and it stays reachable in the
- * knockout phase for exactly that reason (the final tables are what players look for long
- * after the last group match).
- *
- * The group phase legitimately has ONE view. `(i + 1) % 1` is the identity, so callers must
- * not offer an Auto-rotate toggle that would sit on while nothing moves — see `canAutoRotate`.
+ * The group phase has two screens — the standings tables and the match lanes — because each does
+ * one job at a size readable across a hall. Before the first result there is nothing to rank, so
+ * the list collapses to the schedule alone: a single-entry list makes `canAutoRotate` false
+ * through the rule below, so nothing rotates and no toggle is offered, and the board never shows
+ * a table of places that no game has earned.
  */
-export function getRotationViews(phase: RotationPhase, showPlate: boolean): ViewMode[] {
+export function getRotationViews(phase: RotationPhase, showPlate: boolean, hasResults: boolean): ViewMode[] {
     if (phase === 'knockout') {
         return showPlate ? ['knockout', 'plate', 'groups'] : ['knockout', 'groups'];
     }
-    return ['groups'];
+    return hasResults ? ['groups', 'games'] : ['games'];
 }
 
 type UseViewModeResult = {
@@ -55,15 +55,22 @@ type UseViewModeResult = {
     canAutoRotate: boolean;
 };
 
-export function useViewMode(bracket: PublicBracketData | null): UseViewModeResult {
+export function useViewMode(bracket: PublicBracketData | null, isBigScreen = false): UseViewModeResult {
     const [manual, setManual] = useState<ViewMode | null>(null);
-    const [isAutoRotate, setIsAutoRotate] = useState(false);
+    // On an unattended venue screen both tabs have to be seen without anyone touching anything,
+    // so rotation starts on. A phone is read by one person who chooses; it starts off.
+    // Initial state only: a window resized across the breakpoint after mount will not retro-start.
+    const [isAutoRotate, setIsAutoRotate] = useState(isBigScreen);
     const [rotateIndex, setRotateIndex] = useState(0);
 
     const showPlate = (bracket?.plate_rounds.length ?? 0) > 0;
     const showVideo = (bracket?.videos.length ?? 0) > 0;
     const phase = useMemo(() => getRotationPhase(bracket), [bracket]);
-    const rotationViews = useMemo(() => getRotationViews(phase, showPlate), [phase, showPlate]);
+    const hasResults = useMemo(() => hasAnyGroupResults(bracket?.groups ?? []), [bracket]);
+    const rotationViews = useMemo(
+        () => getRotationViews(phase, showPlate, hasResults),
+        [phase, showPlate, hasResults],
+    );
 
     // A phase flip (group stage finishing, knockout starting, or vice versa) makes
     // whatever index we were on stale — it may point outside the new pair's meaning
@@ -73,7 +80,9 @@ export function useViewMode(bracket: PublicBracketData | null): UseViewModeResul
     }, [phase]);
 
     useEffect(() => {
-        if (!isAutoRotate) return;
+        // Nothing to rotate to (parked pre-start board, or a single-view phase) — don't spin up
+        // a no-op interval that ticks every 12s and never changes anything observable.
+        if (!isAutoRotate || rotationViews.length <= 1) return;
         const id = setInterval(() => {
             setRotateIndex(i => (i + 1) % rotationViews.length);
         }, ROTATE_MS);

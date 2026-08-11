@@ -27,8 +27,9 @@ function tvGridCols(count: number): string {
     return 'grid-cols-3';
 }
 
-/** Rotating per-group accent hue, defined per theme in themes.css. */
-const GROUP_ACCENTS = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
+/** Rotating per-group accent hue, defined per theme in themes.css. Shared by both group views. */
+// eslint-disable-next-line react-refresh/only-export-components -- shared constant, not a component; consumed by LanesView on the games tab
+export const GROUP_ACCENTS = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
 
 export function GroupsView({ groups, view, isBigScreen, qualifyCount }: GroupsViewProps): React.ReactElement {
     const { t } = useTranslation();

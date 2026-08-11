@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { activeMatchIndex, groupGlyph, planBalancedPages, planPages } from '../utils';
+import {
+    activeMatchIndex,
+    courtSlots,
+    groupGlyph,
+    groupHasResults,
+    groupMatchesByRound,
+    pairChipIndex,
+    pairIdentity,
+    pairInitials,
+    PAIR_CHIP_COUNT,
+    visibleRoundWindow,
+} from '../utils';
 import type { PublicMatch } from '../types';
 
 function match(id: string, round: number | null, status = 'scheduled'): PublicMatch {
@@ -17,58 +28,6 @@ function match(id: string, round: number | null, status = 'scheduled'): PublicMa
         scheduled_at: null,
     };
 }
-
-describe('planPages', () => {
-    it('packs rows into pages that fit the budget', () => {
-        // 3 rows of 100 + 10 gap: 100 + 10 + 100 = 210 fits 250; adding the third would be 320.
-        expect(planPages([100, 100, 100], 250, 10)).toEqual([[0, 1], [2]]);
-    });
-
-    it('keeps everything on one page when it already fits', () => {
-        expect(planPages([100, 100], 300, 10)).toEqual([[0, 1]]);
-    });
-
-    it('places an over-tall row rather than dropping it', () => {
-        expect(planPages([400, 50], 100, 10).flat()).toEqual([0, 1]);
-    });
-
-    it('shows every game exactly once across all pages', () => {
-        const pages = planPages([70, 90, 60, 110, 80, 70], 200, 8);
-        expect(pages.flat()).toEqual([0, 1, 2, 3, 4, 5]);
-    });
-
-    it('treats an unmeasured (non-positive) budget as a single page', () => {
-        expect(planPages([100, 100], 0, 10)).toEqual([[0, 1]]);
-        expect(planPages([100, 100], -50, 10)).toEqual([[0, 1]]);
-    });
-
-    it('returns one empty page when a group has no games', () => {
-        expect(planPages([], 200, 10)).toEqual([[]]);
-    });
-});
-
-describe('planBalancedPages', () => {
-    it('spreads games evenly instead of front-loading them', () => {
-        // 6 rows of 100 in a 620 budget: greedy fits 5 and strands 1 on page 2.
-        expect(planPages(Array(6).fill(100), 620, 10)).toEqual([[0, 1, 2, 3, 4], [5]]);
-        expect(planBalancedPages(Array(6).fill(100), 620, 10)).toEqual([[0, 1, 2], [3, 4, 5]]);
-    });
-
-    it('never adds a page compared with greedy packing', () => {
-        const heights = [80, 120, 60, 100, 90, 70, 110, 85, 95];
-        expect(planBalancedPages(heights, 300, 8)).toHaveLength(planPages(heights, 300, 8).length);
-    });
-
-    it('leaves a single page untouched', () => {
-        expect(planBalancedPages([100, 100], 600, 10)).toEqual([[0, 1]]);
-    });
-
-    it('still shows every game exactly once', () => {
-        const flat = planBalancedPages([90, 70, 110, 80, 95], 260, 8).flat();
-        expect([...flat].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
-        expect(new Set(flat).size).toBe(flat.length);
-    });
-});
 
 describe('activeMatchIndex', () => {
     it('prefers the live game', () => {
@@ -100,5 +59,204 @@ describe('groupGlyph', () => {
 
     it('returns null-safe fallback for long trailing words', () => {
         expect(groupGlyph('קבוצת הצפון')).toBeNull();
+    });
+});
+
+describe('groupMatchesByRound', () => {
+    it('splits matches into ordered rounds', () => {
+        const result = groupMatchesByRound([
+            match('c', 2), match('a', 1), match('d', 2), match('b', 1),
+        ]);
+        expect(result.hasRealRounds).toBe(true);
+        expect(result.rounds.map(r => r.roundNumber)).toEqual([1, 2]);
+        expect(result.rounds[0].matches.map(m => m.id)).toEqual(['a', 'b']);
+        expect(result.rounds[1].matches.map(m => m.id)).toEqual(['c', 'd']);
+    });
+
+    it('treats an all-null draw as one flat round', () => {
+        const result = groupMatchesByRound([match('a', null), match('b', null)]);
+        expect(result.hasRealRounds).toBe(false);
+        expect(result.rounds).toHaveLength(1);
+        expect(result.rounds[0].matches.map(m => m.id)).toEqual(['a', 'b']);
+    });
+
+    it('treats a legacy constant-1 draw as one flat round', () => {
+        const result = groupMatchesByRound([match('a', 1), match('b', 1), match('c', 1)]);
+        expect(result.hasRealRounds).toBe(false);
+        expect(result.rounds).toHaveLength(1);
+        expect(result.rounds[0].matches.map(m => m.id)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('returns one empty round for no matches', () => {
+        const result = groupMatchesByRound([]);
+        expect(result.hasRealRounds).toBe(false);
+        expect(result.rounds).toEqual([{ roundNumber: 1, matches: [] }]);
+    });
+});
+
+describe('groupHasResults', () => {
+    it('is false before any game has a score', () => {
+        expect(groupHasResults({ group_name: 'Group A', standings: [], matches: [match('a', 1)] })).toBe(false);
+    });
+
+    it('is true once a set exists', () => {
+        const played = { ...match('a', 1, 'completed'), sets: [{ team_a_score: 6, team_b_score: 4, is_tiebreak: null }] };
+        expect(groupHasResults({ group_name: 'Group A', standings: [], matches: [played] })).toBe(true);
+    });
+
+    it('counts a walkover as a result even with no sets', () => {
+        expect(groupHasResults({ group_name: 'Group A', standings: [], matches: [match('a', 1, 'walkover')] })).toBe(true);
+    });
+});
+
+describe('visibleRoundWindow', () => {
+    it('returns every round when they fit', () => {
+        expect(visibleRoundWindow([1, 2, 3], 2, 4)).toEqual([1, 2, 3]);
+    });
+
+    it('centres the window on the active round', () => {
+        expect(visibleRoundWindow([1, 2, 3, 4, 5], 4, 3)).toEqual([3, 4, 5]);
+    });
+
+    it('clamps the window to the start', () => {
+        expect(visibleRoundWindow([1, 2, 3, 4, 5], 1, 3)).toEqual([1, 2, 3]);
+    });
+
+    it('clamps the window to the end', () => {
+        expect(visibleRoundWindow([1, 2, 3, 4, 5], 5, 3)).toEqual([3, 4, 5]);
+    });
+});
+
+describe('pair identity and chip colour', () => {
+    const player = (id: string, first: string, last: string) => ({
+        id, first_name: first, last_name: last, skill_level: null, is_guest: null,
+    });
+
+    it('is order-independent, so a team and its standings row agree', () => {
+        const a = pairIdentity({ player_1: player('p1', 'Gal', 'Tsarfati'), player_2: player('p2', 'Gaash', 'Greif') });
+        const b = pairIdentity({ player_1: player('p2', 'Gaash', 'Greif'), player_2: player('p1', 'Gal', 'Tsarfati') });
+        expect(a).toBe(b);
+    });
+
+    it('keeps the same chip colour after the pair changes standings position', () => {
+        const first = { position: 1, player_1: player('p1', 'Gal', 'Tsarfati'), player_2: player('p2', 'Gaash', 'Greif') };
+        const later = { position: 4, player_1: player('p1', 'Gal', 'Tsarfati'), player_2: player('p2', 'Gaash', 'Greif') };
+        expect(pairChipIndex(pairIdentity(later))).toBe(pairChipIndex(pairIdentity(first)));
+    });
+
+    it('falls back to names when ids are empty', () => {
+        const withoutIds = pairIdentity({ player_1: player('', 'Gal', 'Tsarfati'), player_2: player('', 'Gaash', 'Greif') });
+        expect(withoutIds).not.toBe('');
+        expect(pairChipIndex(withoutIds)).toBeGreaterThanOrEqual(0);
+    });
+
+    it('always returns a chip index inside the palette', () => {
+        ['', 'a', 'p1|p2', 'שמוליק|גלי'].forEach(id => {
+            const idx = pairChipIndex(id);
+            expect(idx).toBeGreaterThanOrEqual(0);
+            expect(idx).toBeLessThan(PAIR_CHIP_COUNT);
+        });
+    });
+
+    it('takes one initial from each player', () => {
+        expect(pairInitials({ player_1: player('p1', 'Gal', 'T'), player_2: player('p2', 'Noa', 'B') })).toBe('GN');
+    });
+
+    it('falls back to the team name for a single-name entry', () => {
+        expect(pairInitials({ player_1: null, player_2: null, team_name: 'Rally' })).toBe('Ra');
+    });
+
+    it('keeps two pairs distinct when they share one id\'d player but differ in the id-less partner', () => {
+        const withAlice = pairIdentity({ player_1: player('p1', 'Gal', 'Tsarfati'), player_2: player('', 'Alice', 'Wonderland') });
+        const withBob = pairIdentity({ player_1: player('p1', 'Gal', 'Tsarfati'), player_2: player('', 'Bob', 'Marley') });
+        expect(withAlice).not.toBe(withBob);
+        expect(withAlice).not.toBe('p1');
+        expect(withBob).not.toBe('p1');
+    });
+
+    it('stays order-independent for a pair with one id-less player', () => {
+        const a = pairIdentity({ player_1: player('p1', 'Gal', 'Tsarfati'), player_2: player('', 'Alice', 'Wonderland') });
+        const b = pairIdentity({ player_1: player('', 'Alice', 'Wonderland'), player_2: player('p1', 'Gal', 'Tsarfati') });
+        expect(a).toBe(b);
+    });
+
+    it('produces non-empty initials when only player_2 has a name', () => {
+        const nameless = { id: 'p1', first_name: null, last_name: null, skill_level: null, is_guest: null };
+        expect(pairInitials({ player_1: nameless, player_2: player('p2', 'Noa', 'Ben') })).toBe('No');
+    });
+});
+
+describe('courtSlots', () => {
+    const onCourt = (id: string, court: string | null, at: string | null, status = 'scheduled'): PublicMatch => ({
+        ...match(id, 1, status), court_name: court, scheduled_at: at,
+    });
+    const bracket = (matches: PublicMatch[]) => ({
+        tournament_id: 't', tournament_name: 'T', structure: 'group_then_knockout',
+        club_name: null, club_logo_url: null, sponsors: [], videos: [],
+        knockout_rounds: [], plate_rounds: [], league_standings: null,
+        third_place_match: null,
+        groups: [{ group_name: 'Group A', matches, standings: [] }],
+    });
+    // Sibling of `bracket` above: puts the matches on `plate_rounds` instead of `groups`, so a
+    // court occupied only by a plate-bracket match still has to produce a tile.
+    const plateBracket = (matches: PublicMatch[]) => ({
+        tournament_id: 't', tournament_name: 'T', structure: 'group_then_knockout',
+        club_name: null, club_logo_url: null, sponsors: [], videos: [],
+        knockout_rounds: [], plate_rounds: [{ round_number: 1, round_name: 'Plate Final', matches }],
+        league_standings: null, third_place_match: null, groups: [],
+    });
+
+    it('picks the earliest upcoming match per court, not the first in the list', () => {
+        const slots = courtSlots(bracket([
+            onCourt('late', 'Court 1', '2026-08-11T14:00:00Z'),
+            onCourt('early', 'Court 1', '2026-08-11T10:00:00Z'),
+        ]));
+        expect(slots).toHaveLength(1);
+        expect(slots[0].next?.id).toBe('early');
+    });
+
+    it('puts a live match in the live slot and still finds the next one', () => {
+        const slots = courtSlots(bracket([
+            onCourt('now', 'Court 1', '2026-08-11T10:00:00Z', 'in_progress'),
+            onCourt('after', 'Court 1', '2026-08-11T11:00:00Z'),
+        ]));
+        expect(slots[0].live?.id).toBe('now');
+        expect(slots[0].next?.id).toBe('after');
+    });
+
+    it('sorts matches with no scheduled time last rather than first', () => {
+        const slots = courtSlots(bracket([
+            onCourt('untimed', 'Court 1', null),
+            onCourt('timed', 'Court 1', '2026-08-11T12:00:00Z'),
+        ]));
+        expect(slots[0].next?.id).toBe('timed');
+    });
+
+    it('ignores matches with no court name', () => {
+        const slots = courtSlots(bracket([
+            onCourt('nowhere', null, '2026-08-11T10:00:00Z'),
+            onCourt('somewhere', 'Court 2', '2026-08-11T11:00:00Z'),
+        ]));
+        expect(slots.map(s => s.court)).toEqual(['Court 2']);
+    });
+
+    it('returns nothing when no match names a court', () => {
+        expect(courtSlots(bracket([onCourt('a', null, null)]))).toEqual([]);
+    });
+
+    it('orders courts naturally, so Court 10 follows Court 9', () => {
+        const slots = courtSlots(bracket([
+            onCourt('a', 'Court 10', '2026-08-11T10:00:00Z'),
+            onCourt('b', 'Court 9', '2026-08-11T10:00:00Z'),
+        ]));
+        expect(slots.map(s => s.court)).toEqual(['Court 9', 'Court 10']);
+    });
+
+    it('produces a tile for a court occupied only by a plate-bracket match', () => {
+        const slots = courtSlots(plateBracket([
+            onCourt('plate-live', 'Court 5', '2026-08-11T10:00:00Z', 'in_progress'),
+        ]));
+        expect(slots.map(s => s.court)).toEqual(['Court 5']);
+        expect(slots[0].live?.id).toBe('plate-live');
     });
 });

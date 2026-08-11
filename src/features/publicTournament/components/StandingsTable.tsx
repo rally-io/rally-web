@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { FitText } from './FitText';
 import { RatingChip } from './RatingChip';
 import { playerFullName } from '../utils';
 import type { PublicPlayer, PublicStanding } from '../types';
@@ -18,6 +19,7 @@ function rowLabel(s: PublicStanding): string {
 export function StandingsTable({ title, standings, qualifyCount, large }: StandingsTableProps): React.ReactElement {
     const { t } = useTranslation();
     const nameText = large ? 'text-sm' : 'text-xs';
+    const namePx = large ? 14 : 12;
     return (
         <div className="overflow-hidden rounded-xl border border-(--pb-border) bg-(--pb-card)">
             <div className="flex items-center justify-between border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-2">
@@ -25,6 +27,7 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                 <span className="flex gap-3 text-[9px] font-black uppercase text-(--pb-text-faint)">
                     <span className="w-5 text-center">{t('public_bracket.col_wins', 'W')}</span>
                     <span className="w-5 text-center">{t('public_bracket.col_losses', 'L')}</span>
+                    <span className="w-10 text-center">{t('public_bracket.standings_headers.games', 'Games')}</span>
                     <span className="w-7 text-center">+/-</span>
                 </span>
             </div>
@@ -34,7 +37,9 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                 // its position still falls inside qualifyCount — guard explicitly.
                 const dq = s.is_disqualified === true;
                 const qualifies = !dq && qualifyCount != null && s.position <= qualifyCount;
-                const diff = s.sets_won - s.sets_lost;
+                // Games, not sets — the TV board's diff is games-based and the two
+                // surfaces may not disagree about a pair's balance.
+                const diff = s.games_won - s.games_lost;
                 return (
                     <React.Fragment key={`${s.position}-${rowLabel(s)}`}>
                         <div className={cn(
@@ -50,37 +55,64 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                             <span className={cn('flex min-w-0 flex-1', large ? 'items-center' : 'flex-col gap-0.5')}>
                                 {dq ? (
                                     <span className={cn('flex min-w-0 items-center gap-1.5', nameText)}>
-                                        <span className="truncate font-bold text-(--pb-text-muted) line-through">{rowLabel(s) || players.map(playerFullName).join(' / ')}</span>
+                                        <FitText
+                                            text={rowLabel(s) || players.map(playerFullName).join(' / ')}
+                                            maxPx={namePx}
+                                            minPx={9}
+                                            className="min-w-0 font-bold text-(--pb-text-muted) line-through"
+                                        />
                                         <span className="shrink-0 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-widest text-(--pb-text-faint) ring-1 ring-(--pb-border)">
                                             {t('public_bracket.disqualified', 'Disqualified')}
                                         </span>
                                     </span>
                                 ) : players.length === 0 ? (
-                                    <span className={cn('truncate font-bold text-(--pb-text)', nameText)}>{rowLabel(s)}</span>
+                                    <FitText text={rowLabel(s)} maxPx={namePx} minPx={9} className="font-bold text-(--pb-text)" />
                                 ) : large ? (
                                     // TV: one line per team, broadcast-table style — halves the panel height
-                                    <span className={cn('flex min-w-0 items-center gap-1.5 font-bold text-(--pb-text)', nameText)}>
+                                    <span className="flex min-w-0 items-center gap-1.5 font-bold text-(--pb-text)">
                                         {players.map((p, pi) => (
                                             <React.Fragment key={p.id}>
-                                                {pi > 0 && <span className="shrink-0 text-(--pb-text-faint)">/</span>}
-                                                <span className="min-w-0 truncate" title={playerFullName(p)}>{playerFullName(p)}</span>
+                                                {/* The separator needs `nameText` of its own: the names
+                                                    beside it carry an inline font-size from FitText, so
+                                                    without this the slash renders at the inherited root
+                                                    size — visibly bigger than the names it separates. */}
+                                                {pi > 0 && <span className={cn('shrink-0 text-(--pb-text-faint)', nameText)}>/</span>}
+                                                <FitText text={playerFullName(p)} maxPx={namePx} minPx={9} className="min-w-0" />
                                                 <RatingChip rating={p.skill_level} />
                                             </React.Fragment>
                                         ))}
                                     </span>
                                 ) : (
                                     players.map(p => (
-                                        <span key={p.id} className={cn('flex min-w-0 items-center gap-1.5 font-bold text-(--pb-text)', nameText)}>
-                                            <span className="truncate" title={playerFullName(p)}>{playerFullName(p)}</span>
+                                        <span key={p.id} className="flex min-w-0 items-center gap-1.5 font-bold text-(--pb-text)">
+                                            <FitText text={playerFullName(p)} maxPx={namePx} minPx={9} className="min-w-0" />
                                             <RatingChip rating={p.skill_level} />
                                         </span>
                                     ))
                                 )}
                             </span>
-                            <span className={cn('flex shrink-0 gap-3 font-extrabold', nameText)}>
+                            <span className={cn('flex shrink-0 items-center gap-3 font-extrabold', nameText)}>
                                 <span className="w-5 text-center text-(--pb-text)">{dq ? '—' : s.wins}</span>
                                 <span className="w-5 text-center text-(--pb-text-muted)">{dq ? '—' : s.losses}</span>
-                                <span className={cn('w-7 text-center', !dq && diff > 0 ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)')}>
+                                {/* Won/lost as separate elements inside dir="ltr" — a joined "12-7"
+                                    would mirror in RTL. Own games green, opponents' red, every row. */}
+                                <span dir="ltr" className="flex w-10 items-center justify-center gap-px tabular-nums">
+                                    {dq ? (
+                                        <span className="text-(--pb-text-muted)">—</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-(--pb-won)">{s.games_won}</span>
+                                            <span className="font-normal text-(--pb-text-faint)">–</span>
+                                            <span className="text-(--pb-lost)">{s.games_lost}</span>
+                                        </>
+                                    )}
+                                </span>
+                                {/* Muted at zero/DQ — the same token GroupBoardCard uses, so the
+                                    phone and the TV cannot drift into two different greys. */}
+                                <span dir="ltr" className={cn(
+                                    'w-7 text-center tabular-nums',
+                                    dq || diff === 0 ? 'text-(--pb-text-muted)' : diff > 0 ? 'text-(--pb-won)' : 'text-(--pb-lost)',
+                                )}>
                                     {dq ? '—' : diff > 0 ? `+${diff}` : diff}
                                 </span>
                             </span>
