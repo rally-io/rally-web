@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import type { PublicBracketData, PublicMatch, PublicRound, PublicVideo } from '../../types';
+import type { PublicBracketData, PublicGroup, PublicMatch, PublicRound, PublicVideo } from '../../types';
 import { getRotationPhase, getRotationViews, useViewMode } from '../useViewMode';
 
 function makeMatch(hasPlayer: boolean): PublicMatch {
@@ -57,28 +57,35 @@ describe('getRotationPhase', () => {
 });
 
 describe('getRotationViews', () => {
-    it('has a single view in the group phase, regardless of the plate', () => {
-        // The TV board embeds its own standings, so the group stage has nothing to rotate to.
-        expect(getRotationViews('group', true)).toEqual(['groups']);
-        expect(getRotationViews('group', false)).toEqual(['groups']);
+    it('parks on the matches view before any group result exists', () => {
+        // Nothing has been played, so there is nothing to rank: showing a table of places
+        // would state an order no game has earned. The schedule is the whole screen.
+        expect(getRotationViews('group', false, false)).toEqual(['games']);
+        expect(getRotationViews('group', true, false)).toEqual(['games']);
+    });
+
+    it('rotates tables and matches once a result exists', () => {
+        expect(getRotationViews('group', false, true)).toEqual(['groups', 'games']);
+        expect(getRotationViews('group', true, true)).toEqual(['groups', 'games']);
     });
 
     it('knockout phase rotates knockout -> plate -> groups when a plate bracket exists', () => {
-        expect(getRotationViews('knockout', true)).toEqual(['knockout', 'plate', 'groups']);
+        expect(getRotationViews('knockout', true, true)).toEqual(['knockout', 'plate', 'groups']);
     });
 
     it('knockout phase rotates knockout <-> groups when there is no plate', () => {
-        expect(getRotationViews('knockout', false)).toEqual(['knockout', 'groups']);
+        expect(getRotationViews('knockout', false, true)).toEqual(['knockout', 'groups']);
     });
 
-    it('keeps the group tables reachable in every phase', () => {
-        // The final group standings live inside the group board, and they are what players look
-        // for long after the last group match — the knockout starting must not hide them.
+    it('keeps the group tables reachable once they mean something', () => {
+        // The final group standings are what players look for long after the last group match —
+        // the knockout starting must not hide them. Before any result there is no table worth
+        // reaching, which is why the no-results case is excluded here.
         for (const views of [
-            getRotationViews('group', false),
-            getRotationViews('group', true),
-            getRotationViews('knockout', false),
-            getRotationViews('knockout', true),
+            getRotationViews('group', false, true),
+            getRotationViews('group', true, true),
+            getRotationViews('knockout', false, true),
+            getRotationViews('knockout', true, true),
         ]) {
             expect(views).toContain('groups');
         }
@@ -88,39 +95,41 @@ describe('getRotationViews', () => {
         // The hook advances with `(i + 1) % views.length`; a duplicate would make the screen
         // appear to stall on the repeated view.
         for (const views of [
-            getRotationViews('group', false),
-            getRotationViews('knockout', false),
-            getRotationViews('knockout', true),
+            getRotationViews('group', false, false),
+            getRotationViews('group', false, true),
+            getRotationViews('knockout', false, true),
+            getRotationViews('knockout', true, true),
         ]) {
             expect(new Set(views).size).toBe(views.length);
         }
     });
 
-    it('marks the single-view phase so the Auto-rotate toggle can be hidden', () => {
+    it('marks the parked phase so the Auto-rotate toggle can be hidden', () => {
         // `useViewMode` derives `canAutoRotate` from this length. At length 1, `(i + 1) % 1` is
         // the identity: offering the toggle would leave it reading as on with nothing moving.
-        expect(getRotationViews('group', false).length > 1).toBe(false);
-        expect(getRotationViews('knockout', false).length > 1).toBe(true);
+        expect(getRotationViews('group', false, false).length > 1).toBe(false);
+        expect(getRotationViews('group', false, true).length > 1).toBe(true);
+        expect(getRotationViews('knockout', false, true).length > 1).toBe(true);
     });
 });
 
 describe('phase transition', () => {
     it('lands on the new phase list\'s first view instead of carrying over a stale index', () => {
         // Mid-rotation in the knockout phase, sitting on the third view ("groups").
-        const knockoutViews = getRotationViews('knockout', true);
+        const knockoutViews = getRotationViews('knockout', true, true);
         const staleIndex = 2;
         expect(knockoutViews[staleIndex]).toBe('groups');
 
         // The hook resets its index to 0 on any phase change
         // (see the `useEffect(() => setRotateIndex(0), [phase])` in the hook).
-        expect(getRotationViews('group', true)[0]).toBe('groups');
+        expect(getRotationViews('group', true, true)[0]).toBe('groups');
         expect(knockoutViews[0]).toBe('knockout');
     });
 
     it('a stale index from the knockout phase would fall outside the group phase list', () => {
-        // Group phase has one entry, so carrying index 2 over would read `undefined`.
-        expect(getRotationViews('group', true)[2]).toBeUndefined();
-        expect(getRotationViews('group', true)[0]).toBe('groups');
+        // Group phase has at most two entries, so carrying index 2 over would read `undefined`.
+        expect(getRotationViews('group', true, true)[2]).toBeUndefined();
+        expect(getRotationViews('group', true, false)[1]).toBeUndefined();
     });
 });
 
@@ -166,5 +175,46 @@ describe('canAutoRotate structural gate', () => {
         // rotation control (which would do nothing on this structure) is hidden.
         expect(result.current.showTabs).toBe(true);
         expect(result.current.showVideo).toBe(true);
+    });
+});
+
+describe('rotation interval', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('never starts the 12s interval when the rotation list has collapsed to one entry', () => {
+        // Group phase, no result anywhere yet: getRotationViews('group', ..., false) is ['games']
+        // (length 1) — the parked pre-start board. A spinning interval here would be pure
+        // overhead: `(i + 1) % 1` is always 0, so nothing it does is ever observable.
+        const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+        const bracket = makeBracket({ knockout_rounds: [], groups: [] });
+
+        renderHook(() => useViewMode(bracket, true)); // isBigScreen -> isAutoRotate inits true
+
+        expect(setIntervalSpy).not.toHaveBeenCalled();
+    });
+
+    it('starts the interval once the rotation list actually has more than one entry', () => {
+        const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+        const playedMatch: PublicMatch = {
+            id: 'm1',
+            match_label: null,
+            round_number: 1,
+            team_a: { team_name: 'A', player_1: null, player_2: null, is_lucky_loser: null },
+            team_b: { team_name: 'B', player_1: null, player_2: null, is_lucky_loser: null },
+            sets: [{ team_a_score: 6, team_b_score: 4, is_tiebreak: null }],
+            winner_team: 'team_a',
+            next_match_id: null,
+            status: 'completed',
+            court_name: null,
+            scheduled_at: null,
+        };
+        const group: PublicGroup = { group_name: 'Group A', matches: [playedMatch], standings: [] };
+        const bracket = makeBracket({ knockout_rounds: [], groups: [group] });
+
+        renderHook(() => useViewMode(bracket, true));
+
+        expect(setIntervalSpy).toHaveBeenCalled();
     });
 });

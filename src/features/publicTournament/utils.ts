@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { PublicBracketData, PublicMatch, PublicPlayer, PublicRound, PublicTeam } from './types';
+import type { PublicBracketData, PublicGroup, PublicMatch, PublicPlayer, PublicRound, PublicTeam } from './types';
 
 export function playerFullName(p: Pick<PublicPlayer, 'first_name' | 'last_name'> | null | undefined): string {
     return [p?.first_name, p?.last_name].filter(Boolean).join(' ');
@@ -87,62 +87,6 @@ export function groupGlyph(name: string): string | null {
     return matched ? matched[1].toUpperCase() : null;
 }
 
-/**
- * Pack measured row heights into pages that fit `budget`. The live screen is unattended, so
- * anything that doesn't fit has to be paged into view over time — it can never be scrolled to.
- *
- * A row taller than the whole budget is still placed rather than dropped: it clips, but a page
- * that can never be reached would lose it entirely. A non-positive budget means the card has not
- * been laid out yet — treat that as one page so nothing paginates off a phantom measurement.
- */
-export function planPages(heights: number[], budget: number, gap: number): number[][] {
-    if (heights.length === 0) return [[]];
-    if (budget <= 0) return [heights.map((_, i) => i)];
-    const pages: number[][] = [];
-    let page: number[] = [];
-    let used = 0;
-    heights.forEach((height, i) => {
-        const cost = (page.length > 0 ? gap : 0) + height;
-        if (page.length > 0 && used + cost > budget) {
-            pages.push(page);
-            page = [i];
-            used = height;
-            return;
-        }
-        page.push(i);
-        used += cost;
-    });
-    pages.push(page);
-    return pages;
-}
-
-/**
- * Same pages as `planPages`, but filled evenly instead of front-loaded. Greedy packing crams the
- * early pages and strands a couple of games on the last one, which reads as the dead space the
- * board is meant to avoid. Squeezing the budget down to the tightest value that still needs the
- * same number of pages spreads the games across them without ever adding a page.
- */
-export function planBalancedPages(heights: number[], budget: number, gap: number): number[][] {
-    const greedy = planPages(heights, budget, gap);
-    if (greedy.length <= 1) return greedy;
-    let low = 0;
-    let high = budget;
-    let best = greedy;
-    for (let i = 0; i < 20; i++) {
-        const mid = (low + high) / 2;
-        // A non-positive budget makes planPages return a single un-paged page — never accept it
-        // as a "fit", or the search would collapse every game onto one overflowing page.
-        const attempt = mid > 0 ? planPages(heights, mid, gap) : null;
-        if (attempt && attempt.length <= greedy.length) {
-            best = attempt;
-            high = mid;
-        } else {
-            low = mid;
-        }
-    }
-    return best;
-}
-
 /** The game a viewer most likely cares about: the live one, else the next unplayed. */
 export function activeMatchIndex(matches: PublicMatch[]): number {
     const live = matches.findIndex(m => isLiveStatus(m.status));
@@ -162,6 +106,10 @@ export function isFinishedStatus(status: string): boolean {
 export function collectMatches(bracket: PublicBracketData): PublicMatch[] {
     return [
         ...bracket.knockout_rounds.flatMap(r => r.matches),
+        // A plate match is played on a real court exactly like a main-bracket one — omitting it
+        // here starved courtSlots(), so a live plate match showed no tile on an unattended board
+        // even though the court was genuinely occupied.
+        ...bracket.plate_rounds.flatMap(r => r.matches),
         ...(bracket.groups ?? []).flatMap(g => g.matches),
         ...(bracket.third_place_match ? [bracket.third_place_match] : []),
     ];
@@ -169,12 +117,6 @@ export function collectMatches(bracket: PublicBracketData): PublicMatch[] {
 
 export function liveMatches(bracket: PublicBracketData): PublicMatch[] {
     return collectMatches(bracket).filter(m => isLiveStatus(m.status));
-}
-
-export function upcomingMatches(bracket: PublicBracketData, limit: number): PublicMatch[] {
-    return collectMatches(bracket)
-        .filter(m => !isLiveStatus(m.status) && !isFinishedStatus(m.status) && (m.team_a?.player_1 || m.team_b?.player_1))
-        .slice(0, limit);
 }
 
 export function activeRoundIndex(rounds: PublicRound[]): number {
@@ -185,4 +127,164 @@ export function activeRoundIndex(rounds: PublicRound[]): number {
 export function scoreSummary(match: PublicMatch): string {
     if (match.status === 'walkover') return 'W/O';
     return match.sets.map(s => `${s.team_a_score}-${s.team_b_score}`).join(' ');
+}
+
+export type MatchRound = { roundNumber: number; matches: PublicMatch[] };
+
+/**
+ * Split a group's matches into round-robin rounds for the lane's columns.
+ *
+ * Legacy draws arrive with every match on `round_number: 1` (or null) — they have no rounds at
+ * all, and heading a single column "Round 1" would state something the data does not say. Fewer
+ * than two distinct round numbers therefore collapses to ONE flat column, flagged by
+ * `hasRealRounds: false` so the caller can hide the round axis.
+ */
+export function groupMatchesByRound(matches: PublicMatch[]): { rounds: MatchRound[]; hasRealRounds: boolean } {
+    const distinct = new Set(matches.map(m => m.round_number).filter((n): n is number => n != null));
+    if (distinct.size < 2) {
+        return { rounds: [{ roundNumber: 1, matches: [...matches] }], hasRealRounds: false };
+    }
+    const byRound = new Map<number, PublicMatch[]>();
+    matches.forEach(m => {
+        // A null round among numbered ones is an incomplete row, not a round of its own: park it
+        // at 0 so it sorts first and stays visible rather than being dropped.
+        const key = m.round_number ?? 0;
+        const bucket = byRound.get(key);
+        if (bucket) bucket.push(m);
+        else byRound.set(key, [m]);
+    });
+    const rounds = [...byRound.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([roundNumber, list]) => ({ roundNumber, matches: list }));
+    return { rounds, hasRealRounds: true };
+}
+
+/** Has this group produced anything to rank on yet? Mirrors what the standings card shows. */
+export function groupHasResults(group: PublicGroup): boolean {
+    return group.matches.some(m => m.sets.length > 0 || m.status === 'walkover');
+}
+
+/** Any group with a result — the signal that a standings screen is worth rotating to. */
+export function hasAnyGroupResults(groups: PublicGroup[]): boolean {
+    return groups.some(groupHasResults);
+}
+
+/**
+ * The slice of rounds a lane shows when there are more than `max`.
+ *
+ * A 5- or 6-pair group produces 5 rounds, which would squeeze the columns past readability. Show a
+ * window centred on the round being played rather than measuring and paging: the live round is the
+ * one nobody may lose, and a slice needs no layout measurement to stay correct.
+ */
+export function visibleRoundWindow(roundNumbers: number[], activeRound: number, max = 4): number[] {
+    if (roundNumbers.length <= max) return roundNumbers;
+    const activeIdx = Math.max(roundNumbers.indexOf(activeRound), 0);
+    const start = Math.min(
+        Math.max(0, activeIdx - Math.floor((max - 1) / 2)),
+        roundNumbers.length - max,
+    );
+    return roundNumbers.slice(start, start + max);
+}
+
+/** The round the day is on: the first with anything unfinished, else the last. */
+export function activeRoundNumber(rounds: MatchRound[]): number {
+    const live = rounds.find(r => r.matches.some(m => isLiveStatus(m.status)));
+    if (live) return live.roundNumber;
+    const next = rounds.find(r => r.matches.some(m => !isFinishedStatus(m.status)));
+    return next?.roundNumber ?? rounds[rounds.length - 1]?.roundNumber ?? 1;
+}
+
+/** Anything carrying a pair: a match's team, or a standings row. */
+export type PairSource = {
+    player_1?: PublicPlayer | null;
+    player_2?: PublicPlayer | null;
+    team_name?: string | null;
+    player_name?: string | null;
+};
+
+/** How many chip colours the palette holds. */
+export const PAIR_CHIP_COUNT = 8;
+
+/**
+ * A stable key for a pair, identical whichever side of a match they are on and whatever their
+ * current standings position is. Never from array position — see `pairChipIndex`.
+ *
+ * Each present player contributes one fragment (their id, or their name when the id is missing —
+ * the schema `.catch('')`es ids, so empty is reachable), the fragments are sorted, then joined.
+ * Sorting per-fragment (not just per-player) keeps this order-independent (team_a/team_b swap,
+ * player_1/player_2 swap) while still using a real id whenever one exists. Using the id ONLY when
+ * every present player has one — rather than joining whatever ids happen to exist — matters: two
+ * different pairs that share one id'd player but differ in the id-less partner must not collapse
+ * to the same key, or they'd get the same chip colour.
+ */
+export function pairIdentity(source: PairSource | null | undefined): string {
+    if (!source) return '';
+    const players = [source.player_1, source.player_2].filter((p): p is PublicPlayer => p != null);
+    if (players.length > 0) {
+        const allIdentified = players.every(p => Boolean(p.id));
+        if (allIdentified) return players.map(p => p.id).sort().join('|');
+        const fragments = players.map(p => p.id || playerFullName(p).trim().toLowerCase()).filter(Boolean);
+        if (fragments.length > 0) return fragments.sort().join('|');
+    }
+    return (source.team_name ?? source.player_name ?? '').trim().toLowerCase();
+}
+
+/**
+ * Chip colour slot for a pair. Deterministic from identity alone — never from array position, or
+ * a pair would change colour the moment results reorder the table.
+ */
+export function pairChipIndex(identity: string): number {
+    let hash = 0;
+    for (let i = 0; i < identity.length; i++) {
+        hash = (Math.imul(hash, 31) + identity.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash % PAIR_CHIP_COUNT);
+}
+
+/**
+ * Two letters for the chip: one per player, else the first two of whatever name exists.
+ *
+ * The fallback must consider `second` too — guest players routinely lack names, and a pair whose
+ * only named player is `player_2` (player_1 nameless) must still produce initials, not `''`.
+ */
+export function pairInitials(source: PairSource | null | undefined): string {
+    const first = playerFullName(source?.player_1).trim();
+    const second = playerFullName(source?.player_2).trim();
+    if (first && second) return `${first[0]}${second[0]}`;
+    const fallback = first || second || (source?.team_name ?? source?.player_name ?? '').trim();
+    return fallback.slice(0, 2);
+}
+
+export type CourtSlot = { court: string; live: PublicMatch | null; next: PublicMatch | null };
+
+/** Sorts by start time, pushing untimed matches last instead of letting '' sort them first. */
+function byScheduledAt(a: PublicMatch, b: PublicMatch): number {
+    return (a.scheduled_at ?? '￿').localeCompare(b.scheduled_at ?? '￿');
+}
+
+/**
+ * What is on each court right now and what follows it — the rail that replaces the scrolling
+ * ticker. Returns [] when nothing names a court, which the rail renders as a flat live list
+ * rather than as an empty row of tiles.
+ */
+export function courtSlots(bracket: PublicBracketData): CourtSlot[] {
+    // Type predicate (not an `as` cast) narrows court_name to `string` for everything downstream —
+    // it's already been checked truthy here, so re-declaring it nullable would just re-open the
+    // question this filter already answered.
+    const named = collectMatches(bracket).filter(
+        (m): m is PublicMatch & { court_name: string } => Boolean(m.court_name),
+    );
+    if (named.length === 0) return [];
+    const courts = [...new Set(named.map(m => m.court_name))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    return courts.map(court => {
+        const mine = named.filter(m => m.court_name === court);
+        return {
+            court,
+            live: mine.find(m => isLiveStatus(m.status)) ?? null,
+            next: mine
+                .filter(m => !isLiveStatus(m.status) && !isFinishedStatus(m.status))
+                .sort(byScheduledAt)[0] ?? null,
+        };
+    });
 }

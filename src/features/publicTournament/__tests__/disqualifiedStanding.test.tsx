@@ -86,8 +86,8 @@ describe('disqualified pair in the public standings', () => {
         );
         expect(screen.getByText('Team 8')).toBeInTheDocument();
         expect(screen.getByText('Disqualified')).toBeInTheDocument();
-        // rank + wins + losses + diff, all dashed for that one row
-        expect(screen.getAllByText('—')).toHaveLength(4);
+        // rank + wins + losses + games distribution + diff, all dashed for that one row
+        expect(screen.getAllByText('—')).toHaveLength(5);
     });
 
     it('never marks a disqualified row as advancing', () => {

@@ -5,23 +5,23 @@ import { cn } from '@/lib/utils';
 import '../themes.css';
 import { usePublicBracket } from '../hooks/usePublicBracket';
 import { useTheme } from '../hooks/useTheme';
-import { useViewMode, type ViewMode } from '../hooks/useViewMode';
+import { ROTATE_MS, useViewMode, type ViewMode } from '../hooks/useViewMode';
 import { BIG_SCREEN_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
 import { PublicHeader } from '../components/PublicHeader';
 import { LiveNowStrip } from '../components/LiveNowStrip';
-import { LiveNowBar } from '../components/LiveNowBar';
 import { TvCanvas } from '../components/TvCanvas';
 import { ViewTabs } from '../components/ViewTabs';
 import { KnockoutMobile } from '../components/KnockoutMobile';
 import { BracketTreeTV } from '../components/BracketTreeTV';
-import { GroupsView } from '../components/GroupsView';
+import { GroupsView, GROUP_ACCENTS } from '../components/GroupsView';
+import { LanesView } from '../components/LanesView';
+import { CourtRail } from '../components/CourtRail';
 import { StandingsTable } from '../components/StandingsTable';
 import { QrPanel } from '../components/QrPanel';
-import { LiveTicker } from '../components/LiveTicker';
 import { SponsorStrip } from '../components/SponsorStrip';
 import { VideoView } from '../components/VideoView';
 import { EmptyBracket, ErrorScreen, LoadingScreen } from '../components/PageStates';
-import { detectDir, liveMatches, upcomingMatches } from '../utils';
+import { detectDir, liveMatches } from '../utils';
 
 const GROUP_QUALIFY_COUNT = 2; // product default: top 2 advance from each group
 
@@ -30,8 +30,8 @@ export default function PublicTournamentPage(): React.ReactElement | null {
     const { token } = useParams<{ token: string }>();
     const { bracket, isLoading, isExpired, isHardError, isReconnecting, updatedAt } = usePublicBracket(token);
     const { theme, cycleTheme } = useTheme();
-    const { view, selectView, isAutoRotate, toggleAutoRotate, showTabs, showPlate, showVideo, canAutoRotate } = useViewMode(bracket);
     const isBigScreen = useMediaQuery(BIG_SCREEN_QUERY);
+    const { view, selectView, isAutoRotate, toggleAutoRotate, showTabs, showPlate, showVideo, canAutoRotate } = useViewMode(bracket, isBigScreen);
 
     const dir = useMemo(() => {
         if (i18n.language === 'he') return 'rtl';
@@ -46,7 +46,6 @@ export default function PublicTournamentPage(): React.ReactElement | null {
     }, [bracket?.tournament_name]);
 
     const live = useMemo(() => (bracket ? liveMatches(bracket) : []), [bracket]);
-    const upcoming = useMemo(() => (bracket ? upcomingMatches(bracket, 5) : []), [bracket]);
 
     const shell = (children: React.ReactNode): React.ReactElement => (
         <div
@@ -88,6 +87,10 @@ export default function PublicTournamentPage(): React.ReactElement | null {
         ? <GroupsView groups={groups} view={view} isBigScreen={isBigScreen} qualifyCount={isGroupKnockout ? GROUP_QUALIFY_COUNT : undefined} />
         : <EmptyBracket />;
 
+    const lanesContent = groups.length > 0
+        ? <LanesView groups={groups} accents={GROUP_ACCENTS} />
+        : <EmptyBracket />;
+
     const leagueStandings = bracket.league_standings ?? [];
     const league = leagueStandings.length === 0 && !hasKnockout
         ? <EmptyBracket />
@@ -108,7 +111,9 @@ export default function PublicTournamentPage(): React.ReactElement | null {
     const tabs: ViewMode[] = [];
     if (isGroupKnockout) {
         tabs.push('groups');
-        if (!isBigScreen) tabs.push('standings'); // the TV group board embeds its own table
+        // The lanes are a TV layout; the phone keeps its standings tab instead.
+        if (isBigScreen) tabs.push('games');
+        else tabs.push('standings');
         tabs.push('knockout');
         if (showPlate) tabs.push('plate');
     } else if (isLeague) {
@@ -140,17 +145,23 @@ export default function PublicTournamentPage(): React.ReactElement | null {
                         onToggleAutoRotate={toggleAutoRotate}
                         showAutoRotate={isBigScreen && canAutoRotate}
                         tabs={tabs}
+                        rotateMs={ROTATE_MS}
                     />
                 </div>
             )}
-            {isBigScreen && view !== 'knockout' && view !== 'plate' && view !== 'video' && <LiveNowBar matches={live} />}
             <main className={cn(isBigScreen ? 'min-h-0 flex-1 overflow-hidden' : showTabs ? '' : 'pt-4')}>
-                {view === 'video' ? videoContent : isLeague ? league : view === 'knockout' ? knockout : view === 'plate' ? plate : groupsContent}
+                {view === 'video' ? videoContent
+                    : isLeague ? league
+                    : view === 'knockout' ? knockout
+                    : view === 'plate' ? plate
+                    : view === 'games' ? (isBigScreen ? lanesContent : groupsContent)
+                    : groupsContent}
             </main>
             {isBigScreen && (
                 <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-(--pb-border) bg-(--pb-card-header) px-8 pb-3 pt-2">
                     <QrPanel />
-                    <LiveTicker live={live} upcoming={upcoming} />
+                    {/* The lanes carry a court on every card; every other view needs the rail. */}
+                    {view !== 'games' && <CourtRail bracket={bracket} />}
                     <SponsorStrip sponsors={bracket.sponsors} />
                 </footer>
             )}

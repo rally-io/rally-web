@@ -17,18 +17,23 @@ type GroupsViewProps = {
 
 /**
  * Column count tuned so every group fits on one screen without scrolling.
- * 4 groups collapse to a single row of 4 from xl (1280px) up — the size any club
- * TV runs at — so they stay one row tall. Below xl they fall to a 2×2 grid.
+ *
+ * Four groups sit 2×2 rather than in one row of four. The canvas is 1600×900 and a group of
+ * four pairs is about 280px tall, so a single row gave each card 369×625 — starving it of the
+ * width the pair names need while wasting more than half its height. Measured at 2×2 the card
+ * is roughly 758×302: the names get about four times the room, and the empty space disappears
+ * because the card is finally the shape of its contents.
  */
 function tvGridCols(count: number): string {
     if (count <= 1) return 'mx-auto w-full max-w-2xl grid-cols-1';
     if (count === 2) return 'grid-cols-2';
-    if (count === 4) return 'grid-cols-2 xl:grid-cols-4';
+    if (count === 4) return 'grid-cols-2';
     return 'grid-cols-3';
 }
 
-/** Rotating per-group accent hue, defined per theme in themes.css. */
-const GROUP_ACCENTS = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
+/** Rotating per-group accent hue, defined per theme in themes.css. Shared by both group views. */
+// eslint-disable-next-line react-refresh/only-export-components -- shared constant, not a component; consumed by LanesView on the games tab
+export const GROUP_ACCENTS = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
 
 export function GroupsView({ groups, view, isBigScreen, qualifyCount }: GroupsViewProps): React.ReactElement {
     const { t } = useTranslation();
