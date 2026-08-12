@@ -51,6 +51,30 @@ npm run test:watch   # vitest watch mode
 ```
 
 Run a single test file: `npx vitest run src/path/to/file.test.tsx`
+
+### Visual harness for the live tournament board
+
+`http://localhost:5174/preview.html` (dev only — `src/preview.tsx`, not routed, not emitted into
+`dist`) renders the public live board's real components in the real TV shell at the real 1600×900
+canvas, driven by fixture data. Query params, also togglable from the on-page controls:
+`?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=he|en&cols=N`.
+
+Use it for **any** change to `src/features/publicTournament` layout. Two things make it necessary
+rather than convenient: the test suite runs in jsdom, which does no layout (`scrollWidth` and
+`clientWidth` are always 0), so clipping and overflow cannot fail a test; and `/live/:token` needs
+the rally-api backend plus a real share token, while no tournament in the database has more than
+four pairs in a group — so the dense five/six-pair case is unreachable with real data.
+
+Check a layout change by measuring, not eyeballing — on an unattended screen there is no scrollbar,
+so overflow just silently eats a row:
+
+```js
+document.querySelectorAll('[data-testid="standings-list"]')
+  .forEach(l => console.log(l.scrollHeight - l.clientHeight))   // 0 = fits
+```
+
+The shape to test is the worst one: `?groups=5&pairs=6&dq=1` (a disqualified row is the tallest
+row, and a 3-across grid halves the card height).
 Run a single test by name: `npx vitest run -t "test name pattern"`
 
 The app crashes at module load if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing (`src/lib/supabase.ts` throws) — copy `.env.example` → `.env` (or `.env.local`) and fill in real values before `npm run dev`. `VITE_API_BASE_URL` is optional and defaults to `http://localhost:8080`.
