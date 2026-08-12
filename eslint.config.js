@@ -34,6 +34,14 @@ export default tseslint.config(
       // wrappers (src/types/api.ts, src/services/api/*) and test mocks. Keep it
       // visible without failing CI; tighten to 'error' if we ever type those out.
       '@typescript-eslint/no-explicit-any': 'warn',
+      // A leading underscore is this codebase's "declared on purpose, not used"
+      // marker — see `(_event, newSession)` in AuthContext and `(_match, open,
+      // close)` in lib/og. Those two only pass by accident: the default
+      // `args: 'after-used'` ignores an unused parameter that sits before a used
+      // one, so the convention silently stops working the moment every parameter
+      // is unused. Honour it explicitly instead. Arguments only — unused
+      // variables and imports are still errors.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 
