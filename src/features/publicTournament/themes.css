@@ -2,7 +2,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Karantina:wght@700&display=swap');
 
 [data-bracket-theme] {
+    /* Ink and edge for the live state: score numerals, the "Live" labels, the dot and the card's
+       ring. Overridden per skin wherever the ground fights it — see the gradient block below. */
     --pb-live: #f43f5e;
+    /* The live card's wash. Deliberately NOT overridden anywhere, so "live" is the same warm
+       tint in all three skins even where the ink above has to change to stay readable. */
+    --pb-live-tint: #f43f5e;
 }
 /* Condensed display face for the tournament title and group glyphs (Hebrew + Latin). */
 .pb-display {
@@ -34,6 +39,10 @@
     --pb-highlight-contrast: #0b0e14;
     --pb-winner-bg: rgb(217 244 91 / 0.07);
     --pb-glow: rgb(217 244 91 / 0.25);
+    /* The distribution column's two inks: the pair's own games vs the opponents'.
+       Green/red on every row by design — not a sign color. */
+    --pb-won: #4ade80;
+    --pb-lost: #f87171;
 }
 [data-bracket-theme='light'] {
     --pb-surface: #f8fafc;
@@ -50,6 +59,8 @@
     --pb-highlight-contrast: #ffffff;
     --pb-winner-bg: #f8ffd9;
     --pb-glow: rgb(153 191 0 / 0.3);
+    --pb-won: #16a34a;
+    --pb-lost: #dc2626;
 }
 [data-bracket-theme='gradient'] {
     --pb-surface: linear-gradient(160deg, #0033a0 0%, #0055ff 55%, #003d7a 100%);
@@ -66,6 +77,17 @@
     --pb-highlight-contrast: #0b0e14;
     --pb-winner-bg: rgb(217 244 91 / 0.12);
     --pb-glow: rgb(217 244 91 / 0.35);
+    /* Measured on a live card over this skin's blue ground, #f43f5e lands at 1.64:1 — barely
+       half the 3:1 floor for large text, against 4.41:1 in dark and 3.14:1 in light. The live
+       score is the number this board exists to show, so it cannot be the least readable thing
+       on it. Lightened for this skin only, the same reason .pb-ga-1 is lightened above; the
+       card keeps its red wash through --pb-live-tint. */
+    --pb-live: #ffc2cd;
+    /* Lightened for the blue ground, same reason --pb-live is: mid greens/reds fall
+       under the 3:1 large-text floor against #0055ff. --pb-lost matches --pb-live's
+       hue family so "opponent games" and "live" reds don't clash on one card. */
+    --pb-won: #a7f3d0;
+    --pb-lost: #ffc2cd;
 }
 
 @keyframes pb-pulse {
@@ -76,77 +98,33 @@
     0% { background-color: var(--pb-glow); }
     100% { background-color: transparent; }
 }
-@keyframes pb-ticker-ltr {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
+.pb-live-dot { animation: pb-pulse 1.6s ease-in-out infinite; }
+.pb-score-flash { animation: pb-score-flash 1.2s ease-out 1; }
+@media (prefers-reduced-motion: reduce) {
+    .pb-live-dot, .pb-score-flash { animation: none !important; }
 }
-@keyframes pb-ticker-rtl {
-    from { transform: translateX(0); }
-    to { transform: translateX(50%); }
+
+/* A live match card on the lane board: steady tint plus a hard edge, readable across a hall in
+   every theme. The tint is a background-IMAGE overlay, not a background-color mixed against
+   --pb-card: that token is translucent in the gradient theme, and mixing into it premultiplies
+   down to a ~19% pale wash there while looking correct in dark/light. An overlay composites over
+   whatever ground the card already has, so all three themes get the same 12% red. */
+.pb-live-card {
+    background-image: linear-gradient(
+        color-mix(in srgb, var(--pb-live-tint) 12%, transparent),
+        color-mix(in srgb, var(--pb-live-tint) 12%, transparent)
+    );
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pb-live) 55%, transparent);
 }
-/* Pulsing frame + tint that marks a live match — reads from across a room. */
-@keyframes pb-live-frame {
-    0%, 100% {
-        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pb-live) 72%, transparent);
-        background-color: color-mix(in srgb, var(--pb-live) 9%, transparent);
-    }
-    50% {
-        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pb-live) 22%, transparent);
-        background-color: color-mix(in srgb, var(--pb-live) 20%, transparent);
-    }
-}
-/* Auto-paging on the unattended TV cards: a filling bar shows when the page will turn. */
-@keyframes pb-page-fill {
+
+/* The rotation progress bar under the active tab: shows the screen is about to change, so a
+   viewer mid-read knows to wait rather than assuming the board is stuck. */
+@keyframes pb-rotate-fill {
     from { width: 0; }
     to { width: 100%; }
 }
-@keyframes pb-page-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: none; }
-}
-.pb-page-bar { animation: pb-page-fill linear forwards; }
-.pb-page-in { animation: pb-page-in 0.4s ease-out; }
-
-/* A live game inside a board card: a steady tint + edge, with only the dot animating.
-   The full pulsing frame is too loud when the same match is already held big in the live bar. */
-.pb-live-row {
-    background-color: color-mix(in srgb, var(--pb-live) 10%, transparent);
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pb-live) 45%, transparent);
-}
-
-/* A live game inside a board card: a steady tint + edge, with only the dot animating.
-   The full pulsing frame is too loud when the same match is already held big in the live bar. */
-.pb-live-row {
-    background-color: color-mix(in srgb, var(--pb-live) 10%, transparent);
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pb-live) 45%, transparent);
-}
-
-/* Short screens — a laptop, or a TV smaller than 1080p. The standings stay pinned and COMPLETE:
-   they only give up vertical rhythm, never information. Ratings and the W/± header are inline, so
-   hiding them buys no height at all — it would drop what a viewer asked to see for nothing. What
-   doesn't fit is handled by paging the games, not by deleting content. Doubled selectors outrank
-   the single-class Tailwind utilities they override without needing !important. */
-@media (max-height: 940px) {
-    .pb-board-row.pb-board-row { min-height: 1.6rem; padding-block: 0.0625rem; }
-    .pb-board-qualify.pb-board-qualify { padding-block: 0.0625rem; }
-}
-
-.pb-live-frame { animation: pb-live-frame 1.8s ease-in-out infinite; }
-.pb-live-dot { animation: pb-pulse 1.6s ease-in-out infinite; }
-.pb-score-flash { animation: pb-score-flash 1.2s ease-out 1; }
-.pb-ticker-track {
-    display: inline-flex;
-    white-space: nowrap;
-    animation: pb-ticker-ltr 30s linear infinite;
-}
-[dir='rtl'] .pb-ticker-track { animation-name: pb-ticker-rtl; }
+.pb-rotate-bar { animation: pb-rotate-fill linear forwards; }
 @media (prefers-reduced-motion: reduce) {
-    .pb-live-dot, .pb-score-flash, .pb-ticker-track, .pb-page-in { animation: none !important; }
-    /* Pages still turn — that is content access, not decoration — but without the sweeping bar. */
-    .pb-page-bar { animation: none !important; width: 100%; }
-    .pb-live-frame {
-        animation: none !important;
-        box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pb-live) 55%, transparent);
-        background-color: color-mix(in srgb, var(--pb-live) 14%, transparent);
-    }
+    /* The rotation itself still happens — that is content access. Only the sweep stops. */
+    .pb-rotate-bar { animation: none !important; width: 100%; }
 }

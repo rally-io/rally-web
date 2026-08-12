@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FitText } from './FitText';
 import { RatingChip } from './RatingChip';
 import { isLiveStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName } from '../utils';
 import type { PublicMatch, PublicPlayer, PublicTeam, SetScore } from '../types';
@@ -11,17 +12,17 @@ export type MatchCardVariant = 'default' | 'node' | 'hero';
 
 type MatchCardProps = { match: PublicMatch; variant?: MatchCardVariant; className?: string };
 
-function TeamNames({ team }: { team: PublicTeam }): React.ReactElement {
+function TeamNames({ team, maxPx }: { team: PublicTeam; maxPx: number }): React.ReactElement {
     const { t } = useTranslation();
     const players = [team.player_1, team.player_2].filter((p): p is PublicPlayer => Boolean(p));
     if (players.length === 0) {
-        return <span className="truncate">{team.team_name ? localizeTeamPlaceholder(team.team_name, t) : ''}</span>;
+        return <FitText text={team.team_name ? localizeTeamPlaceholder(team.team_name, t) : ''} maxPx={maxPx} minPx={9} className="min-w-0" />;
     }
     return (
         <span className="flex min-w-0 flex-col gap-0.5">
             {players.map(p => (
                 <span key={p.id} className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate" title={playerFullName(p)}>{playerFullName(p)}</span>
+                    <FitText text={playerFullName(p)} maxPx={maxPx} minPx={9} className="min-w-0" />
                     <RatingChip rating={p.skill_level} />
                 </span>
             ))}
@@ -51,6 +52,9 @@ function TeamRow({ team, sets, side, winner, status, small, large }: {
     const isWinner = winner === side;
     const isLoser = winner !== null && !isWinner;
     const scores = sets.map(s => (side === 'team_a' ? s.team_a_score : s.team_b_score));
+    // The same three-step ladder as the row's own text size below, in px: FitText needs a
+    // number, and two copies of a variant ladder drift the moment one variant is retuned.
+    const namePx = small ? 12 : large ? 15 : 13;
     return (
         <div className={cn('flex items-stretch', isWinner && 'bg-(--pb-winner-bg)')}>
             <div className={cn(
@@ -59,7 +63,7 @@ function TeamRow({ team, sets, side, winner, status, small, large }: {
                 isLoser && 'text-(--pb-text-muted)',
             )}>
                 {team ? (
-                    <TeamNames team={team} />
+                    <TeamNames team={team} maxPx={namePx} />
                 ) : (
                     // `truncate` because the label is translated: `public_bracket.status.tbd`
                     // used to be an empty string here and now carries real text (Hebrew

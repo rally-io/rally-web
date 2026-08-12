@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { FitText } from './FitText';
 import { teamLabel } from '../utils';
 import type { PublicMatch } from '../types';
 
@@ -25,12 +26,20 @@ export function ChampionBar({ match, className }: ChampionBarProps): React.React
             <span className="block text-[8px] font-black uppercase tracking-[0.3em] text-(--pb-text-faint)">
                 {t('public_bracket.champion', 'Tournament Champion')}
             </span>
-            <span className={cn(
-                'block truncate text-sm font-black',
-                champion ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)',
-            )}>
-                {champion ? teamLabel(champion) : '—'}
-            </span>
+            {/* The champion pair is the one name on this screen nobody may have to guess at,
+                so it shrinks to fit rather than ellipsizing. maxPx 14 is the text-sm it
+                replaces. The placeholder stays a plain span: a single em-dash never overflows,
+                and FitText would hang a title="—" off it. */}
+            {champion ? (
+                <FitText
+                    text={teamLabel(champion)}
+                    maxPx={14}
+                    minPx={9}
+                    className="font-black text-(--pb-highlight)"
+                />
+            ) : (
+                <span className="block text-sm font-black text-(--pb-text-faint)">—</span>
+            )}
         </div>
     );
 }

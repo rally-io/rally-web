@@ -969,6 +969,7 @@
       "sets_l": "Sets L",
       "games_w": "Games W",
       "games_l": "Games L",
+      "games": "Games",
       "diff": "+/-"
     },
     "competing": "Competing",
@@ -1001,7 +1002,15 @@
     "auto_rotate": "Auto rotate",
     "live_now": "Live now",
     "group_title": "Group {{letter}}",
-    "games_page": "{{shown}} of {{total}} games",
-    "disqualified": "Disqualified"
+    "disqualified": "Disqualified",
+    "view_games": "Matches",
+    "lane_finished": "Final",
+    "round_label": "Round {{num}}",
+    "round_done": "Finished",
+    "round_live": "In progress",
+    "round_window": "Rounds {{from}}–{{to}} of {{total}}",
+    "lane_no_matches_in_window": "No matches in this round window",
+    "court_next": "Next",
+    "no_courts": "No court assignments"
   }
 }
