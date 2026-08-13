@@ -52,12 +52,13 @@ export async function getTournamentParticipants(
   })
 }
 
-export async function getTournamentFilterOptions(): Promise<
-  ApiResponse<{ clubs: TournamentFilterClub[] }>
-> {
+export async function getTournamentFilterOptions(
+  search?: string,
+): Promise<ApiResponse<{ clubs: TournamentFilterClub[] }>> {
   // include_live mirrors the list call above so counts match what the list shows
   return client.get('/rally/v1/tournaments/filter-options', {
-    params: { include_live: true },
+    // search has min_length=1 on the API — omit entirely rather than send ''
+    params: { include_live: true, ...(search ? { search } : {}) },
   })
 }
 

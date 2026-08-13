@@ -77,14 +77,19 @@ export default function TournamentsPage() {
     const h = setTimeout(() => setDebounced(search.trim()), 300)
     return () => clearTimeout(h)
   }, [search])
+  // Single source of truth for the search term sent to the API: both the
+  // list call (filters.search below) and ClubFilterDropdown's filter-options
+  // call must send the exact same string, truncation included, or a club's
+  // advertised count can drift from what selecting it actually yields.
+  const searchTerm = debounced.slice(0, 100)
   const filters = useMemo(
     () => ({
       type: tab,
-      ...(debounced ? { search: debounced.slice(0, 100) } : {}),
+      ...(searchTerm ? { search: searchTerm } : {}),
       ...(tab === 'upcoming' && clubIds.length ? { club_ids: clubIds } : {}),
       ...(tab === 'upcoming' && sort === 'latest' ? { sort } : {}),
     }),
-    [tab, debounced, clubIds, sort],
+    [tab, searchTerm, clubIds, sort],
   )
 
   const enabled = !(tab === 'my' && signedOut)
@@ -162,7 +167,7 @@ export default function TournamentsPage() {
 
         {tab === 'upcoming' && (
           <div className="mb-8 flex flex-wrap items-center gap-3">
-            <ClubFilterDropdown selected={clubIds} onApply={setClubIds} />
+            <ClubFilterDropdown selected={clubIds} onApply={setClubIds} search={searchTerm} />
             <SortToggle value={sort} onChange={setSort} />
           </div>
         )}

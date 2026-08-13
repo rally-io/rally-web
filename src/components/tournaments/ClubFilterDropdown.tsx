@@ -7,15 +7,20 @@ import { useTournamentFilterOptions } from '@/hooks/useTournamentFilterOptions'
 export function ClubFilterDropdown({
   selected,
   onApply,
+  search = '',
 }: {
   selected: string[]
   onApply: (clubIds: string[]) => void
+  /** The page's own search box term (not the popover's club-name filter
+   * below) — forwarded to filter-options so a club's advertised count
+   * matches what selecting it yields while the list is search-narrowed. */
+  search?: string
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<string[]>(selected)
   const [query, setQuery] = useState('')
-  const { data: clubs = [], isError, isPending, refetch } = useTournamentFilterOptions(open)
+  const { data: clubs = [], isError, isPending, refetch } = useTournamentFilterOptions(open, search)
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()

@@ -59,4 +59,40 @@ describe('ClubFilterDropdown', () => {
     // a claimed number, must be what renders.
     expect(screen.getByRole('button', { name: 'Show' })).toBeInTheDocument()
   })
+
+  // Search wiring: the counts query key must include the search term. Without
+  // it, typing a new term into the page's search box would serve up to 60s
+  // (staleTime) of stale counts from the cache instead of refetching — the
+  // exact dead-end the counts↔list invariant forbids.
+  it('refetches counts when the search prop changes, not serving cached counts', async () => {
+    vi.mocked(getTournamentFilterOptions).mockImplementation(async (search = '') => ({
+      success: true,
+      data: {
+        clubs:
+          search === 'tel'
+            ? [{ id: 'club-1', name: 'Padel Time', count: 1 }]
+            : [{ id: 'club-1', name: 'Padel Time', count: 4 }],
+      },
+    } as never))
+
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const onApply = vi.fn()
+    const { rerender } = render(
+      <QueryClientProvider client={qc}>
+        <ClubFilterDropdown selected={[]} onApply={onApply} search="" />
+      </QueryClientProvider>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /Clubs/i }))
+    await waitFor(() => expect(getTournamentFilterOptions).toHaveBeenCalledWith(''))
+
+    rerender(
+      <QueryClientProvider client={qc}>
+        <ClubFilterDropdown selected={[]} onApply={onApply} search="tel" />
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(getTournamentFilterOptions).toHaveBeenCalledWith('tel'))
+    expect(getTournamentFilterOptions).toHaveBeenCalledTimes(2)
+  })
 })

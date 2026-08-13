@@ -24,4 +24,23 @@ describe('tournaments api params', () => {
     expect(url).toBe('/rally/v1/tournaments/filter-options')
     expect((config as AxiosRequestConfig).params).toEqual({ include_live: true })
   })
+
+  // The API's `search` param has min_length=1 — sending '' is a validation
+  // error, so an empty term must be omitted entirely, not forwarded as ''.
+  // toEqual (exact match, not toMatchObject) is what makes this test able to
+  // catch a stray `search: ''` sneaking into the params object.
+  it('omits search entirely when the term is empty, no []/undefined leaking in', async () => {
+    await getTournamentFilterOptions('')
+    const [, config] = vi.mocked(client.get).mock.calls[0]
+    expect((config as AxiosRequestConfig).params).toEqual({ include_live: true })
+  })
+
+  it('forwards a non-empty search term to filter-options', async () => {
+    await getTournamentFilterOptions('zcz')
+    const [, config] = vi.mocked(client.get).mock.calls[0]
+    expect((config as AxiosRequestConfig).params).toEqual({
+      include_live: true,
+      search: 'zcz',
+    })
+  })
 })

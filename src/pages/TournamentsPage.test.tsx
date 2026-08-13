@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom'
@@ -159,5 +159,60 @@ describe('TournamentsPage filters', () => {
     await waitFor(() => expect(getTournaments).toHaveBeenCalled())
     await userEvent.click(await screen.findByRole('button', { name: /Clear filters|ניקוי סינון/ }))
     await waitFor(() => expect(router.state.location.search).toBe(''))
+  })
+
+  // Search wiring: the club picker's counts must respect the active search
+  // term, or a club can advertise a count a search-narrowed list then yields
+  // 0 results for. Type into the page's own search box (not the popover's
+  // club-name filter) and confirm the term reaches filter-options once the
+  // popover opens (the counts query is `enabled: open`).
+  it('the search box term flows through to filter-options once the popover opens', async () => {
+    renderPage()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+
+    const input = screen.getByRole('textbox')
+    await userEvent.type(input, 'padel')
+
+    await userEvent.click(screen.getByRole('button', { name: /Clubs/i }))
+    await waitFor(() =>
+      expect(getTournamentFilterOptions).toHaveBeenCalledWith('padel'),
+    )
+  })
+
+  // Search wiring, the load-bearing seam: the list call and the
+  // filter-options call must agree on the exact same search string,
+  // including the 100-char truncation, or the counts↔list invariant breaks.
+  // Uses fireEvent.change (not userEvent.type) to set a value past the input's
+  // maxLength=100 — typing would be capped by the DOM before either call ever
+  // saw the untruncated string, making the truncation path unexercised.
+  it('sends the identical (truncated) search term to the list and to filter-options', async () => {
+    renderPage()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+
+    const input = screen.getByRole('textbox')
+    const longTerm = 'x'.repeat(150)
+    fireEvent.change(input, { target: { value: longTerm } })
+
+    await userEvent.click(screen.getByRole('button', { name: /Clubs/i }))
+    await waitFor(() => {
+      const listCalls = vi.mocked(getTournaments).mock.calls
+      expect(listCalls[listCalls.length - 1][0]!.search).toBeTruthy()
+    })
+    await waitFor(() => {
+      const optionsCalls = vi.mocked(getTournamentFilterOptions).mock.calls
+      expect(optionsCalls[optionsCalls.length - 1][0]).toBeTruthy()
+    })
+
+    const listCalls = vi.mocked(getTournaments).mock.calls
+    const optionsCalls = vi.mocked(getTournamentFilterOptions).mock.calls
+    const listSearch = listCalls[listCalls.length - 1][0]!.search
+    const optionsSearch = optionsCalls[optionsCalls.length - 1][0]
+
+    // Compare the two calls to each other, not to a hardcoded "100" literal,
+    // so this still holds if the truncation length is ever changed.
+    expect(optionsSearch).toBe(listSearch)
+    // And confirm truncation actually happened (proves this isn't a vacuous
+    // pass from a short, untruncated string being trivially equal to itself).
+    expect(listSearch!.length).toBeLessThan(longTerm.length)
   })
 })
