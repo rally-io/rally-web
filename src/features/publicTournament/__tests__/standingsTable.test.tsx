@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 import { StandingsTable } from '../components/StandingsTable';
-import type { PublicStanding } from '../types';
+import { GroupsView } from '../components/GroupsView';
+import type { PublicGroup, PublicMatch, PublicStanding } from '../types';
 
 const row = (over: Partial<PublicStanding> & { position: number }): PublicStanding => ({
     player_name: null,
@@ -86,5 +87,87 @@ describe('StandingsTable score columns', () => {
         const separator = Array.from(container.querySelectorAll('span')).find(el => el.textContent === '/');
         expect(separator).toBeDefined();
         expect(separator!.className).toContain('text-sm');
+    });
+});
+
+describe('StandingsTable before the first result', () => {
+    const fourPairs = [
+        row({ position: 1, team_name: 'Pair One' }),
+        row({ position: 2, team_name: 'Pair Two' }),
+        row({ position: 3, team_name: 'Pair Three' }),
+        row({ position: 4, team_name: 'Pair Four' }),
+    ];
+
+    it('shows the full table reading zero, not a stripped-down one', () => {
+        // A board that is emptier before the tournament than during it reads as broken, and a
+        // table that grows columns the moment a score lands changes shape under the hall. The
+        // columns are up from the draw, at 0.
+        const { container } = render(<StandingsTable title="Group A" standings={fourPairs} qualifyCount={2} />);
+
+        expect(screen.getByText('Pair One')).toBeInTheDocument();
+        expect(screen.getByText('Pair Four')).toBeInTheDocument();
+        // Column headings, place numerals, the cutoff line and the numeric cells all present.
+        expect(screen.getByText('Games')).toBeInTheDocument();
+        expect(screen.getByText('1')).toBeInTheDocument();
+        expect(screen.getByText(/advance/i)).toBeInTheDocument();
+        expect(container.querySelectorAll('.tabular-nums').length).toBeGreaterThan(0);
+    });
+
+    it('keeps the same columns once results arrive, so nothing moves', () => {
+        // The pair of assertions that matters: identical structure before and after, which is
+        // what stops the card resizing under a viewer mid-read.
+        const before = render(<StandingsTable title="Group A" standings={fourPairs} qualifyCount={2} />);
+        const columnsBefore = before.container.querySelectorAll('.tabular-nums').length;
+        before.unmount();
+
+        const after = render(<StandingsTable title="Group A" standings={[
+            row({ position: 1, team_name: 'Pair One', wins: 1, games_won: 6, games_lost: 2 }),
+            row({ position: 2, team_name: 'Pair Two', losses: 1, games_won: 2, games_lost: 6 }),
+            row({ position: 3, team_name: 'Pair Three' }),
+            row({ position: 4, team_name: 'Pair Four' }),
+        ]} qualifyCount={2} />);
+
+        expect(after.container.querySelectorAll('.tabular-nums').length).toBe(columnsBefore);
+        expect(after.container.querySelector('.bg-\\(--pb-winner-bg\\)')).not.toBeNull();
+    });
+});
+
+describe('the phone and the TV show the same thing pre-start', () => {
+    const match = (over: Partial<PublicMatch>): PublicMatch => ({
+        id: 'm1',
+        match_label: null,
+        round_number: 1,
+        team_a: null,
+        team_b: null,
+        sets: [],
+        winner_team: null,
+        next_match_id: null,
+        status: 'scheduled',
+        court_name: null,
+        scheduled_at: null,
+        ...over,
+    });
+
+    const groupWith = (matches: PublicMatch[]): PublicGroup => ({
+        group_name: 'Group A',
+        matches,
+        standings: [
+            row({ position: 1, team_name: 'Pair One' }),
+            row({ position: 2, team_name: 'Pair Two' }),
+            row({ position: 3, team_name: 'Pair Three' }),
+        ],
+    });
+
+    // These two surfaces render different components for one group, and drifted apart once
+    // already — the phone ranked pairs while the TV showed names alone for the same tournament.
+    it('draws the cutoff line on an unplayed group', () => {
+        render(<GroupsView groups={[groupWith([match({})])]} view="standings" isBigScreen={false} qualifyCount={2} />);
+        expect(screen.getByText(/advance/i)).toBeInTheDocument();
+    });
+
+    it('still draws it once a match has a score', () => {
+        const played = match({ sets: [{ team_a_score: 6, team_b_score: 1, is_tiebreak: null }] });
+        render(<GroupsView groups={[groupWith([played])]} view="standings" isBigScreen={false} qualifyCount={2} />);
+        expect(screen.getByText(/advance/i)).toBeInTheDocument();
     });
 });

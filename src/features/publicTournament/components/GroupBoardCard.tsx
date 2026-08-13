@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PairChip } from './PairChip';
 import { FitText } from './FitText';
-import { groupGlyph, groupHasResults, localizeGroupName, playerFullName } from '../utils';
+import { groupGlyph, localizeGroupName, playerFullName } from '../utils';
 import type { PublicGroup, PublicPlayer, PublicStanding } from '../types';
 
 type GroupBoardCardProps = { group: PublicGroup; accentClass?: string; qualifyCount?: number };
@@ -36,7 +36,6 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
     const { t } = useTranslation();
     const glyph = groupGlyph(group.group_name);
     const standings = group.standings;
-    const hasResults = groupHasResults(group);
     const playedCount = group.matches.filter(m => m.sets.length > 0 || m.status === 'walkover').length;
     // Past four pairs, a fifth/sixth row no longer fits this card's fixed share of the 1600×900
     // canvas at full size — there is no scroll on an unattended screen, so an unshrunk row would
@@ -63,7 +62,10 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                 </span>
             </header>
 
-            {/* Header row only once numbers exist — before that every column would read blank.
+            {/* The columns are up from the draw onward, reading 0 until they fill in. Held back
+                until the first result, the board was emptier before the tournament than during
+                it — the opposite of what a hall arriving to find its group expects, and a card
+                that then changed shape under them the moment a score landed.
 
                 Column widths are pared to what the numbers actually need, and the gap with them:
                 on the 4-across TV grid the card is ~369px, and every pixel of chrome here is
@@ -71,16 +73,14 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                 bottomed out at FitText's floor and then clipped mid-word — the one thing this
                 screen must never do. `w-14` stays as-is because the «משחקונים» label, not the
                 score under it, is what sets that column's floor. */}
-            {hasResults && (
-                <div className="flex shrink-0 items-center gap-1.5 px-6 pt-1 text-[10px] font-black uppercase tracking-wider text-(--pb-text-faint)">
-                    <span className="w-6 shrink-0" />
-                    <span className="flex-1" />
-                    <span className="w-6 shrink-0 text-center">{t('public_bracket.standings_headers.mp', 'MP')}</span>
-                    <span className="w-6 shrink-0 text-center">{t('public_bracket.col_wins', 'W')}</span>
-                    <span className="w-14 shrink-0 text-center">{t('public_bracket.standings_headers.games', 'Games')}</span>
-                    <span className="w-8 shrink-0 text-center">+/-</span>
-                </div>
-            )}
+            <div className="flex shrink-0 items-center gap-1.5 px-6 pt-1 text-[10px] font-black uppercase tracking-wider text-(--pb-text-faint)">
+                <span className="w-6 shrink-0" />
+                <span className="flex-1" />
+                <span className="w-6 shrink-0 text-center">{t('public_bracket.standings_headers.mp', 'MP')}</span>
+                <span className="w-6 shrink-0 text-center">{t('public_bracket.col_wins', 'W')}</span>
+                <span className="w-14 shrink-0 text-center">{t('public_bracket.standings_headers.games', 'Games')}</span>
+                <span className="w-8 shrink-0 text-center">+/-</span>
+            </div>
 
             {/* A tight cluster seated directly under the column header, NOT justify-evenly (which
                 spread four rows across the whole card and read as four islands) and NOT
@@ -101,7 +101,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
             >
                 {standings.map((s, i) => {
                     const dq = s.is_disqualified === true;
-                    const qualifies = hasResults && qualifyCount != null && i < qualifyCount && !dq;
+                    const qualifies = qualifyCount != null && i < qualifyCount && !dq;
                     const diff = s.games_won - s.games_lost;
                     const played = s.wins + s.losses;
                     const nameLines = standingNameLines(s);
@@ -113,8 +113,6 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                                 qualifies && 'bg-(--pb-winner-bg)',
                                 dq && 'opacity-60',
                             )}>
-                                {/* No place numerals before the first result: 1–4 with nothing
-                                    played reads as a ranking that no game has earned. */}
                                 <span
                                     aria-hidden
                                     className={cn(
@@ -132,7 +130,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                                         qualifies ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)',
                                     )}
                                 >
-                                    {hasResults ? (dq ? '—' : i + 1) : ''}
+                                    {dq ? '—' : i + 1}
                                 </span>
                                 <PairChip pair={s} className="h-5 w-5 rounded-md text-[9px]" />
                                 <span className="flex min-w-0 flex-1 flex-col justify-center">
@@ -167,58 +165,54 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                                         </span>
                                     ))}
                                 </span>
-                                {hasResults && (
-                                    <>
-                                        <span className={cn(
-                                            'w-6 shrink-0 text-center text-[15px] font-extrabold tabular-nums text-(--pb-text-muted)',
-                                            dense && 'text-[13px]',
-                                        )}>
-                                            {dq ? '—' : played}
-                                        </span>
-                                        <span className={cn(
-                                            'w-6 shrink-0 text-center text-[15px] font-extrabold tabular-nums text-(--pb-text)',
-                                            dense && 'text-[13px]',
-                                        )}>
-                                            {dq ? '—' : s.wins}
-                                        </span>
-                                        {/* Won/lost as separate elements inside dir="ltr": a joined
-                                            "20-10" would mirror in RTL — the dash is a bidi joiner,
-                                            same reason the set scores are never assembled into a
-                                            string. Own games always green, opponents' always red. */}
-                                        <span
-                                            dir="ltr"
-                                            className={cn(
-                                                'flex w-14 shrink-0 items-center justify-center gap-px text-[15px] font-extrabold tabular-nums',
-                                                dense && 'text-[13px]',
-                                            )}
-                                        >
-                                            {dq ? (
-                                                <span className="text-(--pb-text-muted)">—</span>
-                                            ) : (
-                                                <>
-                                                    <span className="text-(--pb-won)">{s.games_won}</span>
-                                                    <span className="font-normal text-(--pb-text-faint)">–</span>
-                                                    <span className="text-(--pb-lost)">{s.games_lost}</span>
-                                                </>
-                                            )}
-                                        </span>
-                                        <span
-                                            dir="ltr"
-                                            className={cn(
-                                                'w-8 shrink-0 text-center text-[13px] font-extrabold tabular-nums',
-                                                dense && 'text-[11px]',
-                                                dq || diff === 0 ? 'text-(--pb-text-muted)'
-                                                    : diff > 0 ? 'text-(--pb-won)' : 'text-(--pb-lost)',
-                                            )}
-                                        >
-                                            {dq ? '—' : diff > 0 ? `+${diff}` : diff}
-                                        </span>
-                                    </>
-                                )}
+                                <span className={cn(
+                                    'w-6 shrink-0 text-center text-[15px] font-extrabold tabular-nums text-(--pb-text-muted)',
+                                    dense && 'text-[13px]',
+                                )}>
+                                    {dq ? '—' : played}
+                                </span>
+                                <span className={cn(
+                                    'w-6 shrink-0 text-center text-[15px] font-extrabold tabular-nums text-(--pb-text)',
+                                    dense && 'text-[13px]',
+                                )}>
+                                    {dq ? '—' : s.wins}
+                                </span>
+                                {/* Won/lost as separate elements inside dir="ltr": a joined
+                                    "20-10" would mirror in RTL — the dash is a bidi joiner,
+                                    same reason the set scores are never assembled into a
+                                    string. Own games always green, opponents' always red. */}
+                                <span
+                                    dir="ltr"
+                                    className={cn(
+                                        'flex w-14 shrink-0 items-center justify-center gap-px text-[15px] font-extrabold tabular-nums',
+                                        dense && 'text-[13px]',
+                                    )}
+                                >
+                                    {dq ? (
+                                        <span className="text-(--pb-text-muted)">—</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-(--pb-won)">{s.games_won}</span>
+                                            <span className="font-normal text-(--pb-text-faint)">–</span>
+                                            <span className="text-(--pb-lost)">{s.games_lost}</span>
+                                        </>
+                                    )}
+                                </span>
+                                <span
+                                    dir="ltr"
+                                    className={cn(
+                                        'w-8 shrink-0 text-center text-[13px] font-extrabold tabular-nums',
+                                        dense && 'text-[11px]',
+                                        dq || diff === 0 ? 'text-(--pb-text-muted)'
+                                            : diff > 0 ? 'text-(--pb-won)' : 'text-(--pb-lost)',
+                                    )}
+                                >
+                                    {dq ? '—' : diff > 0 ? `+${diff}` : diff}
+                                </span>
                             </div>
                             {/* The cutoff line belongs AT the cutoff — between the last qualifying
                                 row and the first that misses out — not under the whole table. */}
-                            {hasResults && qualifyCount != null && i === qualifyCount - 1 && i < standings.length - 1 && (
+                            {qualifyCount != null && i === qualifyCount - 1 && i < standings.length - 1 && (
                                 <p className={cn("flex items-center gap-2 px-3 py-0.5 text-[9px] font-black uppercase tracking-wider text-(--pb-highlight) before:h-px before:flex-1 before:border-t before:border-dashed before:border-(--pb-highlight)/50 before:content-[''] after:h-px after:flex-1 after:border-t after:border-dashed after:border-(--pb-highlight)/50 after:content-['']", dense && 'py-0')}>
                                     {t('public_bracket.top_qualify', { count: qualifyCount, defaultValue: `Top ${qualifyCount} advance` })}
                                 </p>

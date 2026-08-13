@@ -128,3 +128,28 @@
     /* The rotation itself still happens — that is content access. Only the sweep stops. */
     .pb-rotate-bar { animation: none !important; width: 100%; }
 }
+
+/* The court rail's marquee, used ONLY when the courts outnumber the width — a venue with four
+   courts gets a rail that never moves, because nothing is hidden for motion to reveal. The track
+   holds two copies of the tiles, so travelling exactly half its width lands on the start of the
+   duplicate and the loop has no seam.
+
+   Two keyframes rather than one signed variable: the board runs RTL in Hebrew, where the tiles
+   flow from the right edge and the overflow lies to the LEFT, so the track has to travel the
+   other way to bring it into view. */
+@keyframes pb-rail-march {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+@keyframes pb-rail-march-rtl {
+    from { transform: translateX(0); }
+    to { transform: translateX(50%); }
+}
+.pb-rail-track { animation: pb-rail-march var(--pb-rail-dur, 40s) linear infinite; }
+[dir='rtl'] .pb-rail-track { animation-name: pb-rail-march-rtl; }
+@media (prefers-reduced-motion: reduce) {
+    /* Same principle as the rotation bar: reaching the hidden courts IS content access, so the
+       travel cannot simply stop or half the courts become unreachable. It advances in discrete
+       jumps instead of gliding — one tile-width per step, held still in between. */
+    .pb-rail-track { animation-timing-function: steps(var(--pb-rail-steps, 8)); }
+}
