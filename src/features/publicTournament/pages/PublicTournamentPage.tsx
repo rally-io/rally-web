@@ -160,8 +160,16 @@ export default function PublicTournamentPage(): React.ReactElement | null {
             {isBigScreen && (
                 <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-(--pb-border) bg-(--pb-card-header) px-8 pb-3 pt-2">
                     <QrPanel />
-                    {/* The lanes carry a court on every card; every other view needs the rail. */}
-                    {view !== 'games' && <CourtRail bracket={bracket} />}
+                    {/* On every view, including the lanes. This used to be hidden on 'games' on the
+                        grounds that a lane card already names its court — but a finished card shows
+                        only "Final" with no court at all, and finding what is on court by scanning
+                        two dozen lane cards for a red border is not the question the rail answers.
+
+                        The cost of hiding it was a footer that emptied to just the QR panel on one
+                        tab out of the set, which is now a band of dead space appearing and
+                        disappearing every 12 seconds as the board rotates. Same tiles, same place,
+                        all evening. */}
+                    <CourtRail bracket={bracket} />
                     <SponsorStrip sponsors={bracket.sponsors} />
                 </footer>
             )}

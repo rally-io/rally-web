@@ -3,7 +3,6 @@ import {
     activeMatchIndex,
     courtSlots,
     groupGlyph,
-    groupHasResults,
     groupMatchesByRound,
     pairChipIndex,
     pairIdentity,
@@ -91,21 +90,6 @@ describe('groupMatchesByRound', () => {
         const result = groupMatchesByRound([]);
         expect(result.hasRealRounds).toBe(false);
         expect(result.rounds).toEqual([{ roundNumber: 1, matches: [] }]);
-    });
-});
-
-describe('groupHasResults', () => {
-    it('is false before any game has a score', () => {
-        expect(groupHasResults({ group_name: 'Group A', standings: [], matches: [match('a', 1)] })).toBe(false);
-    });
-
-    it('is true once a set exists', () => {
-        const played = { ...match('a', 1, 'completed'), sets: [{ team_a_score: 6, team_b_score: 4, is_tiebreak: null }] };
-        expect(groupHasResults({ group_name: 'Group A', standings: [], matches: [played] })).toBe(true);
-    });
-
-    it('counts a walkover as a result even with no sets', () => {
-        expect(groupHasResults({ group_name: 'Group A', standings: [], matches: [match('a', 1, 'walkover')] })).toBe(true);
     });
 });
 

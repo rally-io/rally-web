@@ -21,6 +21,12 @@
  *       .forEach(l => console.log(l.scrollHeight - l.clientHeight))   // 0 = fits
  *
  * /preview.html?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=en&cols=2
+ *              &played=0&phone=1
+ *
+ * `played=0` is the pre-start board — draw made, nothing scored. It is the state a venue screen
+ * spends the whole first hour in and the hardest one to reach with real data, since a tournament
+ * only passes through it once. `phone=1` swaps the TV canvas for the phone layout, which renders
+ * a different component (StandingsTable, not GroupBoardCard) for the same group.
  */
 /* eslint-disable react-refresh/only-export-components -- an entry point like main.tsx, not a
    module anything imports; fast refresh has nothing to preserve here. */
@@ -33,7 +39,8 @@ import './features/publicTournament/themes.css';
 import { cn } from '@/lib/utils';
 import { TvCanvas } from './features/publicTournament/components/TvCanvas';
 import { GroupBoardCard } from './features/publicTournament/components/GroupBoardCard';
-import { GROUP_ACCENTS } from './features/publicTournament/components/GroupsView';
+import { GroupsView, GROUP_ACCENTS } from './features/publicTournament/components/GroupsView';
+import { getRotationViews } from './features/publicTournament/hooks/useViewMode';
 import { PublicHeader } from './features/publicTournament/components/PublicHeader';
 import { ViewTabs } from './features/publicTournament/components/ViewTabs';
 import { QrPanel } from './features/publicTournament/components/QrPanel';
@@ -48,6 +55,8 @@ const withDq = q.get('dq') === '1';
 const longNames = q.get('long') !== '0';
 const lang = q.get('lang') ?? 'he';
 const colsParam = q.get('cols');
+const played = q.get('played') !== '0';
+const phone = q.get('phone') === '1';
 void i18n.changeLanguage(lang);
 
 const player = (id: string, first: string, last: string) => ({
@@ -81,15 +90,20 @@ function grp(name: string, n: number, dqIndex: number): PublicGroup {
     return {
         group_name: name,
         matches: Array.from({ length: (n * (n - 1)) / 2 }, (_, i) =>
-            mk({ sets: i < Math.ceil((n * (n - 1)) / 4) ? [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }] : [] })),
+            mk({ sets: played && i < Math.ceil((n * (n - 1)) / 4) ? [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }] : [] })),
         standings: Array.from({ length: n }, (_, i) => {
             const [f1, l1, f2, l2] = src[i % src.length];
             return standing({
                 position: i + 1,
                 player_1: player(`${name}-${i}-a`, f1, l1),
                 player_2: player(`${name}-${i}-b`, f2, l2),
-                wins: n - 1 - i, losses: i,
-                games_won: 20 - i * 2, games_lost: 7 + i * 2,
+                // Zeroed with the matches: the API returns a standings row per pair from the
+                // moment the draw is made, all counters at 0, so a fixture that keeps its
+                // totals while emptying its matches is a state the board can never be in.
+                wins: played ? n - 1 - i : 0,
+                losses: played ? i : 0,
+                games_won: played ? 20 - i * 2 : 0,
+                games_lost: played ? 7 + i * 2 : 0,
                 is_disqualified: i === dqIndex,
             });
         }),
@@ -136,12 +150,37 @@ function Controls(): React.ReactElement {
             ))}
             <button className={btn(withDq)} onClick={() => set('dq', withDq ? '0' : '1')}>dq</button>
             <button className={btn(longNames)} onClick={() => set('long', longNames ? '0' : '1')}>long names</button>
+            <button className={btn(played)} onClick={() => set('played', played ? '0' : '1')}>{played ? 'played' : 'pre-start'}</button>
+            <button className={btn(phone)} onClick={() => set('phone', phone ? '0' : '1')}>{phone ? 'phone' : 'tv'}</button>
             <button className={btn(lang === 'he')} onClick={() => set('lang', lang === 'he' ? 'en' : 'he')}>{lang}</button>
         </div>
     );
 }
 
 function Preview(): React.ReactElement {
+    // The real gate, not a hardcoded true: `showAutoRotate` is what decides whether the venue
+    // screen offers the toggle at all, so the harness has to ask the same function the page does.
+    const showAutoRotate = getRotationViews('group', false, groups.length > 0).length > 1;
+
+    if (phone) {
+        return (
+            <>
+                <Controls />
+                <div
+                    dir={lang === 'he' ? 'rtl' : 'ltr'}
+                    data-bracket-theme={theme}
+                    className="min-h-screen text-(--pb-text) [background:var(--pb-surface)]"
+                >
+                    {/* A phone-width column, since the phone layout is the one that has to survive
+                        a ~390px viewport. Everything inside is the real component tree. */}
+                    <div className="mx-auto w-[390px] pt-16">
+                        <GroupsView groups={groups} view="standings" isBigScreen={false} qualifyCount={2} />
+                    </div>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Controls />
@@ -163,8 +202,8 @@ function Preview(): React.ReactElement {
                     />
                     <div className="mx-auto w-full max-w-md shrink-0 px-4 py-1">
                         <ViewTabs
-                            view="groups" onSelect={() => {}} isAutoRotate={false}
-                            onToggleAutoRotate={() => {}} showAutoRotate
+                            view="groups" onSelect={() => {}} isAutoRotate
+                            onToggleAutoRotate={() => {}} showAutoRotate={showAutoRotate}
                             tabs={['groups', 'games', 'knockout']} rotateMs={20000}
                         />
                     </div>
