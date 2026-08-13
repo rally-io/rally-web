@@ -15,12 +15,12 @@ export function ClubFilterDropdown({
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<string[]>(selected)
   const [query, setQuery] = useState('')
-  const { data: clubs = [], isError, refetch } = useTournamentFilterOptions(open)
+  const { data: clubs = [], isError, isPending, refetch } = useTournamentFilterOptions(open)
 
-  const visible = useMemo(
-    () => clubs.filter((c) => c.name.includes(query.trim())),
-    [clubs, query],
-  )
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return clubs.filter((c) => c.name.toLowerCase().includes(q))
+  }, [clubs, query])
   const draftCount = clubs
     .filter((c) => draft.includes(c.id))
     .reduce((sum, c) => sum + c.count, 0)
@@ -33,7 +33,10 @@ export function ClubFilterDropdown({
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        if (next) setDraft(selected) // re-seed draft on every open
+        if (next) {
+          setDraft(selected) // re-seed draft on every open
+          setQuery('') // discard stale search text from the previous session
+        }
       }}
     >
       <PopoverTrigger asChild>
@@ -47,7 +50,10 @@ export function ClubFilterDropdown({
         >
           {t('tournament.tournamentsFilterClubs')}
           {selected.length > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rally-accent px-1 text-xs font-black text-rally-accent-text">
+            <span
+              aria-label={String(selected.length)}
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rally-accent px-1 text-xs font-black text-rally-accent-text"
+            >
               {selected.length}
             </span>
           )}
@@ -67,30 +73,39 @@ export function ClubFilterDropdown({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('tournament.tournamentsFilterSearchClub')}
+                aria-label={t('tournament.tournamentsFilterSearchClub')}
                 className="h-9 w-full rounded-lg border border-rally-border bg-rally-bg px-3 pe-9 text-sm text-rally-text placeholder:text-rally-text-muted focus:border-rally-accent focus:outline-none"
               />
             </div>
             <div className="max-h-64 overflow-y-auto">
-              {visible.map((club) => (
-                <button
-                  key={club.id}
-                  type="button"
-                  onClick={() => toggle(club.id)}
-                  className="flex w-full items-center gap-2.5 border-b border-rally-border-subtle px-1 py-2.5 text-sm text-rally-text last:border-b-0"
-                >
-                  <span
-                    className={`flex h-4.5 w-4.5 items-center justify-center rounded border ${
-                      draft.includes(club.id)
-                        ? 'border-rally-accent bg-rally-accent text-rally-accent-text'
-                        : 'border-rally-border-strong'
-                    }`}
+              {isPending ? (
+                <p className="w-full py-4 text-center text-sm text-rally-text-2">{t('common.loading')}</p>
+              ) : visible.length === 0 ? (
+                <p className="w-full py-4 text-center text-sm text-rally-text-2">{t('clubs.empty')}</p>
+              ) : (
+                visible.map((club) => (
+                  <button
+                    key={club.id}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={draft.includes(club.id)}
+                    onClick={() => toggle(club.id)}
+                    className="flex w-full items-center gap-2.5 border-b border-rally-border-subtle px-1 py-2.5 text-sm text-rally-text last:border-b-0"
                   >
-                    {draft.includes(club.id) && <Check className="h-3 w-3" />}
-                  </span>
-                  <span className="flex-1 text-start">{club.name}</span>
-                  <span className="text-xs text-rally-text-muted">{club.count}</span>
-                </button>
-              ))}
+                    <span
+                      className={`flex h-4.5 w-4.5 items-center justify-center rounded border ${
+                        draft.includes(club.id)
+                          ? 'border-rally-accent bg-rally-accent text-rally-accent-text'
+                          : 'border-rally-border-strong'
+                      }`}
+                    >
+                      {draft.includes(club.id) && <Check className="h-3 w-3" />}
+                    </span>
+                    <span className="flex-1 text-start">{club.name}</span>
+                    <span className="text-xs text-rally-text-muted">{club.count}</span>
+                  </button>
+                ))
+              )}
             </div>
             <div className="mt-3 flex gap-2">
               <button
@@ -102,11 +117,12 @@ export function ClubFilterDropdown({
               </button>
               <button
                 type="button"
+                disabled={isPending}
                 onClick={() => {
                   onApply(draft)
                   setOpen(false)
                 }}
-                className="flex-[2] rounded-full bg-rally-accent py-2 text-xs font-bold text-rally-accent-text"
+                className="flex-[2] rounded-full bg-rally-accent py-2 text-xs font-bold text-rally-accent-text disabled:opacity-40"
               >
                 {t('tournament.tournamentsFilterApply', { count: draftCount })}
               </button>
