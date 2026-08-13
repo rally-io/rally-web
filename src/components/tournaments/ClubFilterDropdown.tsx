@@ -26,21 +26,15 @@ export function ClubFilterDropdown({
     const q = query.trim().toLowerCase()
     return clubs.filter((c) => c.name.toLowerCase().includes(q))
   }, [clubs, query])
-  const draftCount = clubs
-    .filter((c) => draft.includes(c.id))
-    .reduce((sum, c) => sum + c.count, 0)
-  // Clubs are fetched only while the popover is open (`enabled: open`), so on
-  // first open — and on any fetch error — there is no reliable per-club count
-  // to sum yet. Only assert a number once the options actually loaded.
-  const optionsAvailable = !isPending && !isError
-  const totalCount = clubs.reduce((sum, c) => sum + c.count, 0)
-  // An empty draft applies as "no filter" (every club), so its count must be
-  // the total across every club, not 0 — 0 describes a result Apply never
-  // actually produces.
-  const applyCount = draft.length === 0 ? totalCount : draftCount
-  const applyLabel = optionsAvailable
-    ? t('tournament.tournamentsFilterApply', { count: applyCount })
-    : t('tournament.tournamentsFilterApplyBare')
+  // This is a club picker, so the apply button counts CLUBS — a tournament total
+  // here reads as the wrong noun to a player choosing clubs. Counting the draft
+  // also means the label never depends on the fetched options, so it stays right
+  // while they are loading, after a fetch error, and when a selected club has
+  // been filtered out of the list by the search.
+  const applyLabel =
+    draft.length === 0
+      ? t('tournament.tournamentsFilterApplyBare')
+      : t('tournament.tournamentsFilterApplyClubs', { count: draft.length })
 
   const toggle = (id: string) =>
     setDraft((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]))

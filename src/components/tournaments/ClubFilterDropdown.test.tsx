@@ -22,10 +22,12 @@ describe('ClubFilterDropdown', () => {
     vi.clearAllMocks()
   })
 
-  // Fix 3: an empty draft applies as "no filter" (every club), so its Apply
-  // label must show the total across every club — not 0, which is what the
-  // old draft-only sum rendered while nothing was checked yet.
-  it('shows the total across all clubs on Apply when the draft is empty', async () => {
+  // This is a club picker, so Apply counts CLUBS. The per-club numbers in the
+  // list are tournament counts, which is exactly why a tournament total on the
+  // button was confusing. The counts below (4 and 3) are deliberately different
+  // from the club counts (1 and 2) so a regression to summing tournaments fails
+  // here rather than passing by coincidence.
+  it('counts clubs on Apply, and drops the number entirely when nothing is selected', async () => {
     vi.mocked(getTournamentFilterOptions).mockResolvedValue({
       success: true,
       data: {
@@ -40,8 +42,17 @@ describe('ClubFilterDropdown', () => {
     await userEvent.click(screen.getByRole('button', { name: /Clubs/i }))
     await waitFor(() => expect(screen.getByText('Padel Time')).toBeInTheDocument())
 
-    expect(screen.getByRole('button', { name: 'Show 7 tournaments' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Show 0 tournaments' })).not.toBeInTheDocument()
+    // Nothing selected applies as "no filter", so there is no honest number.
+    expect(screen.getByRole('button', { name: 'Show' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /Padel Time/i }))
+    expect(screen.getByRole('button', { name: 'Show 1 club' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /Smash Club/i }))
+    expect(screen.getByRole('button', { name: 'Show 2 clubs' })).toBeInTheDocument()
+
+    // The old behaviour, in both its forms.
+    expect(screen.queryByRole('button', { name: /tournaments/i })).not.toBeInTheDocument()
   })
 
   // Fix 2: a failed filter-options fetch must not take the Clear/Apply

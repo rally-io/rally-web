@@ -141,7 +141,7 @@ describe('TournamentsPage filters', () => {
     await userEvent.click(screen.getByRole('button', { name: /Clubs/i }))
     await waitFor(() => expect(screen.getByText('Padel Time')).toBeInTheDocument())
     await userEvent.click(screen.getByRole('checkbox', { name: /Padel Time/i }))
-    await userEvent.click(screen.getByRole('button', { name: 'Show 4 tournaments' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Show 1 club' }))
 
     await waitFor(() => expect(router.state.location.search).toContain(`clubs=${CLUB_A}`))
     await waitFor(() => {
