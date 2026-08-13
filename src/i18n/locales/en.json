@@ -445,7 +445,14 @@
     "paymentDeferredNotice": "Payment will open soon — please continue in the Rally app to pay.",
     "close": "Close",
     "termsOfUse": "Terms of Use",
-    "registrationStatus_rejected": "Not accepted"
+    "registrationStatus_rejected": "Not accepted",
+    "tournamentsFilterClubs": "Clubs",
+    "tournamentsFilterSearchClub": "Search club…",
+    "tournamentsFilterClear": "Clear",
+    "tournamentsFilterApply": "Show {{count}} tournaments",
+    "tournamentsSortSoonest": "Soonest first",
+    "tournamentsSortLatest": "Latest first",
+    "tournamentsFilterEmptyCta": "Clear filters"
   },
   "profile": {
     "completeTitle": "Complete Your Profile",
