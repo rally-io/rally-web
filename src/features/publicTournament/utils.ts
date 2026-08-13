@@ -245,36 +245,34 @@ export function pairInitials(source: PairSource | null | undefined): string {
     return fallback.slice(0, 2);
 }
 
-export type CourtSlot = { court: string; live: PublicMatch | null; next: PublicMatch | null };
-
 /** Sorts by start time, pushing untimed matches last instead of letting '' sort them first. */
 function byScheduledAt(a: PublicMatch, b: PublicMatch): number {
     return (a.scheduled_at ?? '￿').localeCompare(b.scheduled_at ?? '￿');
 }
 
+/** How many matches the footer queue holds. At ~5s per tile this is a ~50s loop. */
+export const UP_NEXT_MAX = 10;
+
 /**
- * What is on each court right now and what follows it — the rail that replaces the scrolling
- * ticker. Returns [] when nothing names a court, which the rail renders as a flat live list
- * rather than as an empty row of tiles.
+ * The queue a spectator is actually waiting on: everything live, then everything still to come,
+ * earliest first.
+ *
+ * Deliberately NOT one entry per court, which is what this replaced. A per-court board shows each
+ * court's immediate next match and nothing behind it, so a round of twelve matches across two
+ * courts rendered two tiles and the other ten had nowhere to appear — including every match with
+ * no court assigned yet, which never reached the footer at all.
+ *
+ * Untimed matches sort last rather than first (see `byScheduledAt`) and still appear, because a
+ * draw without a schedule is a normal state for a club that seeds courts on the night.
+ *
+ * Capped, because the loop has to stay short enough to be worth waiting for: this is the exact
+ * failure that retired the original scrolling ticker, where a player stood and watched a marquee
+ * cycle the whole tournament to find one match.
  */
-export function courtSlots(bracket: PublicBracketData): CourtSlot[] {
-    // Type predicate (not an `as` cast) narrows court_name to `string` for everything downstream —
-    // it's already been checked truthy here, so re-declaring it nullable would just re-open the
-    // question this filter already answered.
-    const named = collectMatches(bracket).filter(
-        (m): m is PublicMatch & { court_name: string } => Boolean(m.court_name),
-    );
-    if (named.length === 0) return [];
-    const courts = [...new Set(named.map(m => m.court_name))]
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    return courts.map(court => {
-        const mine = named.filter(m => m.court_name === court);
-        return {
-            court,
-            live: mine.find(m => isLiveStatus(m.status)) ?? null,
-            next: mine
-                .filter(m => !isLiveStatus(m.status) && !isFinishedStatus(m.status))
-                .sort(byScheduledAt)[0] ?? null,
-        };
-    });
+export function upNextMatches(bracket: PublicBracketData, max = UP_NEXT_MAX): PublicMatch[] {
+    const unfinished = collectMatches(bracket).filter(m => !isFinishedStatus(m.status));
+    const live = unfinished.filter(m => isLiveStatus(m.status));
+    const upcoming = unfinished.filter(m => !isLiveStatus(m.status)).sort(byScheduledAt);
+    return [...live, ...upcoming].slice(0, max);
 }
+

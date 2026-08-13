@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { FitText } from './FitText';
-import { courtSlots, teamLabel, type CourtSlot } from '../utils';
+import { isLiveStatus, teamLabel, upNextMatches } from '../utils';
 import type { PublicBracketData, PublicMatch } from '../types';
 
 type CourtRailProps = { bracket: PublicBracketData };
@@ -13,8 +13,12 @@ type CourtRailProps = { bracket: PublicBracketData };
 const TILE_PX = 208;
 const GAP_PX = 10;
 
-/** Seconds a single tile takes to cross, so a 16-court rail travels at the same speed as a 9-court
- *  one instead of becoming a blur. */
+/** A tile stops growing here. Without it two matches stretch to 635px each and the footer reads
+ *  as two balloons with the content pinned to their far edges. */
+const TILE_MAX_PX = 272;
+
+/** Seconds a single tile takes to cross, so a ten-match queue travels at the same speed as a
+ *  four-match one instead of becoming a blur. */
 const SECONDS_PER_TILE = 5;
 
 function time(match: PublicMatch): string {
@@ -29,34 +33,24 @@ function time(match: PublicMatch): string {
 }
 
 /**
- * The courts worth a tile: one with neither a live match nor a next one has nothing to report,
- * and the panel's whole point is "what's happening now".
+ * The footer queue: what is on court now, and the matches due after it.
  *
- * There is deliberately no cap. There used to be one at six tiles, which quietly suited the
- * tournaments nobody checked: two clubs in the database run 11 and 16 courts, so ten of them were
- * dropped with nothing on screen to say they existed, and a player on Court 12 never once saw
- * their match. Everything that does not fit now scrolls into view instead of vanishing.
- */
-function occupiedCourts(slots: CourtSlot[]): CourtSlot[] {
-    return slots.filter(s => s.live !== null || s.next !== null);
-}
-
-/**
- * What is on each court right now, and what follows it — held still in the footer whenever it
- * fits, and travelling only when it cannot.
+ * One tile per MATCH, not per court. Per court — which this replaced — showed each court's
+ * immediate next match and nothing behind it, so a round of twelve matches on two courts put two
+ * tiles on the board and the other ten had nowhere to appear. Worse, a match with no court
+ * assigned was invisible: the whole rail vanished for any club that seeds courts on the night,
+ * leaving a footer with nothing in it but the QR panel.
  *
- * Movement is information here, not decoration: a rail that scrolls is saying "there is more of
- * this than the screen holds". A four-court club therefore gets a rail that never moves, because
- * nothing is hidden for motion to reveal — and the tiles stay in one place all evening, which is
- * what a player glancing up for their court actually needs. Renders nothing at all when no match
- * names a court, rather than an empty row of tiles.
+ * The queue scrolls only when it outgrows the rail, which is the same rule as before: movement
+ * means "there is more of this than the screen holds", so a board with two matches on shows two
+ * tiles and holds still.
  */
 export function CourtRail({ bracket }: CourtRailProps): React.ReactElement | null {
     const { t } = useTranslation();
-    const slots = occupiedCourts(courtSlots(bracket));
-    // Callback ref, not useRef: the rail element does not exist while no court is named, so an
+    const matches = upNextMatches(bracket);
+    // Callback ref, not useRef: the rail element does not exist while the queue is empty, so an
     // effect keyed on a plain ref would run once against null and never re-attach when the first
-    // court is assigned mid-tournament.
+    // match is scheduled mid-tournament.
     const [rail, setRail] = useState<HTMLDivElement | null>(null);
     const [width, setWidth] = useState(0);
 
@@ -77,22 +71,24 @@ export function CourtRail({ bracket }: CourtRailProps): React.ReactElement | nul
         return () => observer.disconnect();
     }, [rail]);
 
-    if (slots.length === 0) return null;
+    if (matches.length === 0) return null;
 
-    const needed = slots.length * TILE_PX + (slots.length - 1) * GAP_PX;
+    const needed = matches.length * TILE_PX + (matches.length - 1) * GAP_PX;
     // `width` is 0 before the first measurement — and permanently so in jsdom, which does no
     // layout. Treating that as "fits" means the rail can only ever start scrolling on evidence,
     // never on the absence of it.
     const scrolls = width > 0 && needed > width;
 
-    function tile({ court, live, next }: CourtSlot, copy: number): React.ReactElement {
-        const match = live ?? next;
+    function tile(match: PublicMatch, copy: number): React.ReactElement {
+        const live = isLiveStatus(match.status);
+        const at = time(match);
         return (
             <div
-                key={`${copy}-${court}`}
+                key={`${copy}-${match.id}`}
                 // The second copy exists only to make the loop seamless; it must not be read out
                 // twice or counted twice by anything walking the tree.
                 aria-hidden={copy > 0 || undefined}
+                style={scrolls ? undefined : { maxWidth: TILE_MAX_PX }}
                 className={cn(
                     'flex min-w-0 flex-col gap-0.5 rounded-xl border bg-(--pb-card) px-3 py-1.5',
                     scrolls ? 'w-[208px] shrink-0' : 'flex-1',
@@ -100,35 +96,33 @@ export function CourtRail({ bracket }: CourtRailProps): React.ReactElement | nul
                 )}
             >
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider">
-                    <span className="truncate text-(--pb-text-muted)">{court}</span>
+                    {/* Absent for a match the CRM has not put on a court yet — the tile still
+                        belongs in the queue, it just cannot say where. */}
+                    {match.court_name && <span className="truncate text-(--pb-text-muted)">{match.court_name}</span>}
                     <span className={cn('ms-auto flex shrink-0 items-center gap-1.5', live ? 'text-(--pb-live)' : 'text-(--pb-accent)')}>
                         {live && <span className="pb-live-dot h-1.5 w-1.5 rounded-full bg-(--pb-live)" />}
                         {live ? t('public_bracket.live_now', 'Live now') : t('public_bracket.court_next', 'Next')}
                     </span>
                 </div>
-                {/* `match` is always live ?? next here — `slots` was already filtered to tiles
-                    that have one or the other, so there is no TBD case left to render. */}
-                {match && (
-                    <div className="flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 flex-1 font-extrabold leading-tight text-(--pb-text)">
-                            <FitText text={teamLabel(match.team_a)} maxPx={12} minPx={9} />
-                            <FitText text={teamLabel(match.team_b)} maxPx={12} minPx={9} className="text-(--pb-text-muted)" />
+                <div className="flex min-w-0 items-center gap-2">
+                    <span className="min-w-0 flex-1 font-extrabold leading-tight text-(--pb-text)">
+                        <FitText text={teamLabel(match.team_a)} maxPx={12} minPx={9} />
+                        <FitText text={teamLabel(match.team_b)} maxPx={12} minPx={9} className="text-(--pb-text-muted)" />
+                    </span>
+                    {live && match.sets.length > 0 ? (
+                        // Each set as its own pair of elements — a joined "6:4" mirrors in RTL.
+                        <span className="flex shrink-0 gap-1.5">
+                            {match.sets.map((s, i) => (
+                                <span key={i} className="flex flex-col text-center text-[15px] font-black leading-tight tabular-nums text-(--pb-live)">
+                                    <span>{s.team_a_score}</span>
+                                    <span>{s.team_b_score}</span>
+                                </span>
+                            ))}
                         </span>
-                        {live && live.sets.length > 0 ? (
-                            // Each set as its own pair of elements — a joined "6:4" mirrors in RTL.
-                            <span className="flex shrink-0 gap-1.5">
-                                {live.sets.map((s, i) => (
-                                    <span key={i} className="flex flex-col text-center text-[15px] font-black leading-tight tabular-nums text-(--pb-live)">
-                                        <span>{s.team_a_score}</span>
-                                        <span>{s.team_b_score}</span>
-                                    </span>
-                                ))}
-                            </span>
-                        ) : (
-                            <span className="shrink-0 text-[15px] font-black tabular-nums text-(--pb-accent)">{time(match)}</span>
-                        )}
-                    </div>
-                )}
+                    ) : at ? (
+                        <span className="shrink-0 text-[15px] font-black tabular-nums text-(--pb-accent)">{at}</span>
+                    ) : null}
+                </div>
             </div>
         );
     }
@@ -138,13 +132,13 @@ export function CourtRail({ bracket }: CourtRailProps): React.ReactElement | nul
             <div
                 className={cn('flex gap-2.5', scrolls ? 'pb-rail-track w-max' : 'flex-1')}
                 style={scrolls ? ({
-                    '--pb-rail-dur': `${slots.length * SECONDS_PER_TILE}s`,
+                    '--pb-rail-dur': `${matches.length * SECONDS_PER_TILE}s`,
                     // One discrete jump per tile under prefers-reduced-motion.
-                    '--pb-rail-steps': slots.length,
+                    '--pb-rail-steps': matches.length,
                 } as React.CSSProperties) : undefined}
             >
-                {slots.map(s => tile(s, 0))}
-                {scrolls && slots.map(s => tile(s, 1))}
+                {matches.map(m => tile(m, 0))}
+                {scrolls && matches.map(m => tile(m, 1))}
             </div>
         </div>
     );
