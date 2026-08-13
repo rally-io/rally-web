@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
     activeMatchIndex,
+    isDecidedTeam,
+    localizeTeamPlaceholder,
     upNextMatches,
     UP_NEXT_MAX,
     groupGlyph,
@@ -268,8 +270,81 @@ describe('upNextMatches', () => {
         expect(upNextMatches(withKnockout).map(m => m.id)).toEqual(['real']);
     });
 
+    it('skips a knockout slot the groups have not filled, however it is labelled', () => {
+        // Seen on the production board. The backend draws the knockout up front and labels the
+        // undecided slots "Winner of Match #49" vs "Winner of Match #50" — non-empty strings, so
+        // a filter that only asked "does this side have a label?" queued them as real fixtures
+        // and the footer announced matches between two match numbers.
+        const placeholder = (id: string, a: string, b: string): PublicMatch => ({
+            ...match(id, 1), team_a: pair(a), team_b: pair(b), court_name: null, scheduled_at: null,
+        });
+        const withKnockout = {
+            ...bracket([at('real', 'Court 1', '2026-08-11T10:00:00Z')]),
+            knockout_rounds: [{
+                round_number: 1, round_name: 'Quarterfinal', matches: [
+                    placeholder('ko1', 'Winner of Match #49', 'Winner of Match #50'),
+                    placeholder('ko2', 'Loser of Match #41', 'Winner of Match #42'),
+                    // Spacing and the '#' are both optional in what the backend emits.
+                    placeholder('ko3', 'winner of match 7', 'Winner of  Match  #8'),
+                ],
+            }],
+        };
+        expect(upNextMatches(withKnockout).map(m => m.id)).toEqual(['real']);
+    });
+
+    it('still queues a genuinely named team that carries no players', () => {
+        // The rule is "undecided", not "has no players" — a club entering teams by name only
+        // must not be filtered out alongside the bracket placeholders.
+        const named = {
+            ...match('named', 1), team_a: pair('Maccabim A'), team_b: pair('Maccabim B'),
+            court_name: 'Court 1', scheduled_at: '2026-08-11T10:00:00Z',
+        };
+        expect(upNextMatches(bracket([named])).map(m => m.id)).toEqual(['named']);
+    });
+
     it('sees plate matches, which are played on real courts like any other', () => {
         const ids = upNextMatches(plateBracket([at('plate', 'Court 5', '2026-08-11T10:00:00Z')])).map(m => m.id);
         expect(ids).toEqual(['plate']);
+    });
+});
+
+describe('placeholder teams', () => {
+    const pair = (name: string) => ({ team_name: name, player_1: null, player_2: null, is_lucky_loser: null });
+    const player = { id: 'p1', first_name: 'Gal', last_name: 'Levi', skill_level: null, is_guest: null };
+    // Returns the KEY, not the defaultValue: in English the defaultValue is byte-identical to the
+    // input ("Winner of Match #49"), so comparing output to input cannot tell a recognised
+    // placeholder from an unrecognised one. The key can.
+    const t = ((key: string) => key) as never;
+
+    it.each([
+        'Winner of Match #49',
+        'Loser of Match #50',
+        'winner of match 7',
+        'Winner of  Match  #8',
+        'Loser  of  Match 12',
+    ])('treats %s as undecided, and localizeTeamPlaceholder agrees it is a placeholder', name => {
+        expect(isDecidedTeam(pair(name))).toBe(false);
+        // The coupling that matters: the display path and the queue filter must agree about what
+        // a placeholder IS. They share one regex now; this fails the moment anyone forks it.
+        expect(localizeTeamPlaceholder(name, t)).toMatch(/^public_bracket\.(winner|loser)_of_match$/);
+    });
+
+    it.each([
+        'Maccabim A',
+        'Winners',
+        'Match Point',
+    ])('treats %s as a real team, and localizeTeamPlaceholder leaves it alone', name => {
+        expect(isDecidedTeam(pair(name))).toBe(true);
+        expect(localizeTeamPlaceholder(name, t)).toBe(name);
+    });
+
+    it('is decided whenever real players are present, whatever the team name says', () => {
+        expect(isDecidedTeam({ team_name: 'Winner of Match #49', player_1: player, player_2: null, is_lucky_loser: null })).toBe(true);
+    });
+
+    it('is undecided for a null team or an empty name', () => {
+        expect(isDecidedTeam(null)).toBe(false);
+        expect(isDecidedTeam(undefined)).toBe(false);
+        expect(isDecidedTeam(pair(''))).toBe(false);
     });
 });
