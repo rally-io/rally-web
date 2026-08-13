@@ -454,6 +454,7 @@
     "tournamentsFilterSearchClub": "חיפוש מועדון…",
     "tournamentsFilterClear": "ניקוי",
     "tournamentsFilterApply": "הצגת {{count}} טורנירים",
+    "tournamentsFilterApplyBare": "הצגה",
     "tournamentsSortSoonest": "הקרוב קודם",
     "tournamentsSortLatest": "הרחוק קודם",
     "tournamentsFilterEmptyCta": "ניקוי סינון"

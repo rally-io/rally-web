@@ -450,6 +450,7 @@
     "tournamentsFilterSearchClub": "Search club…",
     "tournamentsFilterClear": "Clear",
     "tournamentsFilterApply": "Show {{count}} tournaments",
+    "tournamentsFilterApplyBare": "Show",
     "tournamentsSortSoonest": "Soonest first",
     "tournamentsSortLatest": "Latest first",
     "tournamentsFilterEmptyCta": "Clear filters"
