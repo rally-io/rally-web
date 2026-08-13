@@ -21,13 +21,38 @@ export function localizeMatchLabel(label: string | number | null | undefined, t:
     return String(label);
 }
 
-/** Backend placeholder team names ("Winner of Match #3" / "Loser of Match #3"), translated at display time. */
+/**
+ * The bracket's own name for a slot the earlier rounds have not filled: "Winner of Match #3",
+ * "Loser of Match #3". ONE pattern, shared by the two things that care — the display path that
+ * translates it and `isDecidedTeam` below, which keeps it off the footer queue. They were two
+ * separate regexes until a placeholder reached a venue board as a queued "next match"; a copy
+ * that drifts from its twin puts it straight back.
+ */
+const PLACEHOLDER_TEAM_NAME = /^(winner|loser)\s+of\s+match\s*#?\s*(\d+)$/i;
+
+/** Backend placeholder team names, translated at display time. */
 export function localizeTeamPlaceholder(name: string, t: TFunction): string {
-    const winner = /^winner of match\s*#?\s*(\d+)$/i.exec(name.trim());
-    if (winner) return t('public_bracket.winner_of_match', { num: winner[1], defaultValue: `Winner of Match #${winner[1]}` });
-    const loser = /^loser of match\s*#?\s*(\d+)$/i.exec(name.trim());
-    if (loser) return t('public_bracket.loser_of_match', { num: loser[1], defaultValue: `Loser of Match #${loser[1]}` });
-    return name;
+    const matched = PLACEHOLDER_TEAM_NAME.exec(name.trim());
+    if (!matched) return name;
+    const num = matched[2];
+    return matched[1].toLowerCase() === 'winner'
+        ? t('public_bracket.winner_of_match', { num, defaultValue: `Winner of Match #${num}` })
+        : t('public_bracket.loser_of_match', { num, defaultValue: `Loser of Match #${num}` });
+}
+
+/**
+ * Can the board put a name on this side yet?
+ *
+ * Real players always can. A `team_name` usually can too — but NOT when it is a bracket
+ * placeholder, which names nobody: a knockout match drawn before the groups finish arrives as
+ * "Winner of Match #49" vs "Winner of Match #50". That reads as a real fixture to anything
+ * checking only that the label is non-empty, which is exactly how it reached a venue footer.
+ */
+export function isDecidedTeam(team: PublicTeam | null | undefined): boolean {
+    if (!team) return false;
+    if (team.player_1) return true;
+    const name = (team.team_name ?? '').trim();
+    return name !== '' && !PLACEHOLDER_TEAM_NAME.test(name);
 }
 
 export function containsHebrew(text: string): boolean {
@@ -270,11 +295,13 @@ export const UP_NEXT_MAX = 10;
  * cycle the whole tournament to find one match.
  */
 export function upNextMatches(bracket: PublicBracketData, max = UP_NEXT_MAX): PublicMatch[] {
-    // Both sides must be known. A group_then_knockout bracket carries its knockout matches from
-    // the moment the draw is made, with team_a and team_b null until the groups decide them —
-    // unfinished, unscheduled, and completely empty. Queued, they filled the footer with tiles
-    // reading "Next" and nothing else. A tile a spectator cannot act on is worse than no tile.
-    const playable = (m: PublicMatch): boolean => Boolean(teamLabel(m.team_a)) && Boolean(teamLabel(m.team_b));
+    // Both sides must be DECIDED, not merely labelled. A group_then_knockout bracket carries its
+    // knockout matches from the draw onward: sometimes with both teams null, sometimes with the
+    // placeholder names "Winner of Match #49" vs "Winner of Match #50". Both are unfinished and
+    // unscheduled, and both reached the footer — the first as blank tiles, the second as tiles
+    // announcing a fixture between two matches. A tile a spectator cannot act on is worse than
+    // no tile.
+    const playable = (m: PublicMatch): boolean => isDecidedTeam(m.team_a) && isDecidedTeam(m.team_b);
     const unfinished = collectMatches(bracket).filter(m => !isFinishedStatus(m.status) && playable(m));
     const live = unfinished.filter(m => isLiveStatus(m.status));
     const upcoming = unfinished.filter(m => !isLiveStatus(m.status)).sort(byScheduledAt);
