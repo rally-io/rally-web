@@ -270,7 +270,12 @@ export const UP_NEXT_MAX = 10;
  * cycle the whole tournament to find one match.
  */
 export function upNextMatches(bracket: PublicBracketData, max = UP_NEXT_MAX): PublicMatch[] {
-    const unfinished = collectMatches(bracket).filter(m => !isFinishedStatus(m.status));
+    // Both sides must be known. A group_then_knockout bracket carries its knockout matches from
+    // the moment the draw is made, with team_a and team_b null until the groups decide them —
+    // unfinished, unscheduled, and completely empty. Queued, they filled the footer with tiles
+    // reading "Next" and nothing else. A tile a spectator cannot act on is worse than no tile.
+    const playable = (m: PublicMatch): boolean => Boolean(teamLabel(m.team_a)) && Boolean(teamLabel(m.team_b));
+    const unfinished = collectMatches(bracket).filter(m => !isFinishedStatus(m.status) && playable(m));
     const live = unfinished.filter(m => isLiveStatus(m.status));
     const upcoming = unfinished.filter(m => !isLiveStatus(m.status)).sort(byScheduledAt);
     return [...live, ...upcoming].slice(0, max);

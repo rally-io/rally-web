@@ -172,8 +172,13 @@ describe('pair identity and chip colour', () => {
 });
 
 describe('upNextMatches', () => {
+    // The shared `match()` helper leaves both teams null, which the queue now treats as an
+    // undecided knockout slot and skips — so anything meant to BE queued has to carry pairs.
+    const pair = (name: string) => ({ team_name: name, player_1: null, player_2: null, is_lucky_loser: null });
     const at = (id: string, court: string | null, when: string | null, status = 'scheduled'): PublicMatch => ({
-        ...match(id, 1, status), court_name: court, scheduled_at: when,
+        ...match(id, 1, status),
+        team_a: pair(`${id} A`), team_b: pair(`${id} B`),
+        court_name: court, scheduled_at: when,
     });
     const bracket = (matches: PublicMatch[]) => ({
         tournament_id: 't', tournament_name: 'T', structure: 'group_then_knockout',
@@ -243,6 +248,24 @@ describe('upNextMatches', () => {
             at(`m${i}`, 'Court 1', `2026-08-11T${String(10 + i).padStart(2, '0')}:00:00Z`));
         expect(upNextMatches(bracket(many))).toHaveLength(UP_NEXT_MAX);
         expect(upNextMatches(bracket(many), 3).map(m => m.id)).toEqual(['m0', 'm1', 'm2']);
+    });
+
+    it('skips a match whose teams are not decided yet', () => {
+        // The defect this fixes, seen on the production board: a group_then_knockout bracket
+        // carries its knockout matches from the draw onward with both teams null. Unfinished and
+        // unscheduled, they queued ahead of nothing and filled the footer with tiles reading
+        // "Next" over blank names.
+        const empty = (id: string): PublicMatch => ({
+            ...match(id, 1), team_a: null, team_b: null, court_name: null, scheduled_at: null,
+        });
+        const half = (id: string): PublicMatch => ({
+            ...match(id, 1), team_a: pair('Known'), team_b: null, court_name: null, scheduled_at: null,
+        });
+        const withKnockout = {
+            ...bracket([at('real', 'Court 1', '2026-08-11T10:00:00Z')]),
+            knockout_rounds: [{ round_number: 1, round_name: 'Semifinal', matches: [empty('ko1'), half('ko2')] }],
+        };
+        expect(upNextMatches(withKnockout).map(m => m.id)).toEqual(['real']);
     });
 
     it('sees plate matches, which are played on real courts like any other', () => {

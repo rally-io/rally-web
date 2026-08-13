@@ -93,17 +93,23 @@ describe('disqualified pair in the public standings', () => {
     it('never marks a disqualified row as advancing', () => {
         // The row is numbered last, so in a group this small its position still
         // falls inside qualifyCount — the guard has to be explicit.
+        //
+        // Rows carry a result deliberately: the qualifying tint is withheld entirely until the
+        // group has played something, so an all-zero fixture would pass this by tinting nothing
+        // at all and prove nothing about the disqualified row.
         const { container } = render(
             <StandingsTable
                 title="Group A"
                 qualifyCount={2}
                 standings={[
-                    row({ position: 1, team_name: 'Team 1' }),
-                    { ...row({ position: 2, team_name: 'Team 8' }), is_disqualified: true },
+                    row({ position: 1, team_name: 'Team 1', wins: 1, losses: 0 }),
+                    { ...row({ position: 2, team_name: 'Team 8', wins: 0, losses: 1 }), is_disqualified: true },
                 ]}
             />,
         );
         const highlighted = container.querySelectorAll('.bg-\\(--pb-winner-bg\\)');
         expect(highlighted).toHaveLength(1);
+        // And it is Team 1's row, not the disqualified one.
+        expect(highlighted[0].textContent).toContain('Team 1');
     });
 });
