@@ -73,7 +73,7 @@ describe('TournamentsPage filters', () => {
     const params = vi.mocked(getTournaments).mock.calls[0][0]!
     expect(params.club_ids).toBeUndefined()
     expect(params.sort).toBeUndefined()
-    expect(screen.queryByRole('button', { name: 'Clubs' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Clubs|מועדונים/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /הקרוב קודם|הרחוק קודם|Soonest first|Latest first/ }),
     ).not.toBeInTheDocument()
