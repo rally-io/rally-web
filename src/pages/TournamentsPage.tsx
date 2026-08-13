@@ -18,6 +18,8 @@ import type { Tournament } from '@/types/api'
 
 type TournamentsTab = 'upcoming' | 'my'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default function TournamentsPage() {
   const { t } = useTranslation()
   const { status } = useAppSession()
@@ -33,10 +35,16 @@ export default function TournamentsPage() {
   }
   const sort: 'soonest' | 'latest' =
     searchParams.get('sort') === 'latest' ? 'latest' : 'soonest' // unknown → default
-  const clubIds = useMemo(
-    () => (searchParams.get('clubs') ?? '').split(',').filter(Boolean),
-    [searchParams],
-  )
+  const clubIds = useMemo(() => {
+    // Only pass UUID-shaped ids to the API — a stale/mistyped `?clubs=` value
+    // (hand-edited, or a club whose last tournament ended) must degrade to
+    // "no filter" rather than 422 the whole page (spec §6). Dedupe + sort so
+    // `?clubs=A,B` and `?clubs=B,A` are one canonical filter, not two.
+    const ids = (searchParams.get('clubs') ?? '')
+      .split(',')
+      .filter((id) => UUID_RE.test(id))
+    return Array.from(new Set(ids)).sort()
+  }, [searchParams])
 
   const setSort = (next: 'soonest' | 'latest') => {
     const params = new URLSearchParams(searchParams)
@@ -46,8 +54,20 @@ export default function TournamentsPage() {
   }
   const setClubIds = (ids: string[]) => {
     const params = new URLSearchParams(searchParams)
-    if (ids.length === 0) params.delete('clubs')
-    else params.set('clubs', ids.join(','))
+    // Canonicalize on write too: applying the same selection in a different
+    // toggle order must produce the same URL, not fork the query key.
+    const canonical = Array.from(new Set(ids)).sort()
+    if (canonical.length === 0) params.delete('clubs')
+    else params.set('clubs', canonical.join(','))
+    setSearchParams(params, { replace: true })
+  }
+  const clearFilters = () => {
+    // One params object, not sequential setClubIds()+setSort() calls — both
+    // would build off the same (stale, pre-update) `searchParams` closure in
+    // this handler and the second call would clobber the first.
+    const params = new URLSearchParams(searchParams)
+    params.delete('clubs')
+    params.delete('sort')
     setSearchParams(params, { replace: true })
   }
   const [search, setSearch] = useState('')
@@ -75,8 +95,11 @@ export default function TournamentsPage() {
     enabled ? data?.pages.flatMap((p) => p?.items ?? []) ?? [] : []
   // Anything being played right now goes first: a player checking the site
   // mid-tournament is looking for the scoreboard, not next month's draw.
-  // Server order is preserved within each group, so "load more" only ever
-  // appends.
+  // Under sort=soonest (the default) this is nearly a no-op — in-progress
+  // tournaments already sort first server-side. Under sort=latest they sort
+  // LAST server-side, so this bubbling is load-bearing: a live tournament
+  // that "load more" pulls in on page 3 still jumps straight to position 0
+  // here — "load more" can reorder the visible list, not just append to it.
   const tournaments: Tournament[] = [
     ...loaded.filter(isTournamentLive),
     ...loaded.filter((tr) => !isTournamentLive(tr)),
@@ -195,7 +218,7 @@ export default function TournamentsPage() {
                 <TournamentUpdatesTrigger onClick={() => setUpdatesOpen(true)} />
               </div>
               {clubIds.length > 0 && (
-                <Button variant="outline" onClick={() => setClubIds([])} className="mb-6">
+                <Button variant="outline" onClick={clearFilters} className="mb-6">
                   {t('tournament.tournamentsFilterEmptyCta')}
                 </Button>
               )}
