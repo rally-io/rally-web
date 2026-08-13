@@ -37,6 +37,15 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
     const glyph = groupGlyph(group.group_name);
     const standings = group.standings;
     const playedCount = group.matches.filter(m => m.sets.length > 0 || m.status === 'walkover').length;
+    // The qualifying tint is the one thing on this card that points at two SPECIFIC pairs. Before
+    // a ball is hit the row order is the draw order, so tinting the top two tells the hall those
+    // two are through on the strength of where the draw put them. The numerals and the cutoff line
+    // stay up regardless — one is list order, the other is the format everyone is playing to — but
+    // this one makes a claim, so it waits for a result to back it.
+    //
+    // Read off the standings rather than the matches: it is the rows being ranked, so a table of
+    // all-zero rows has nothing to rank whatever the fixtures say.
+    const ranked = standings.some(s => s.wins + s.losses > 0);
     // Past four pairs, a fifth/sixth row no longer fits this card's fixed share of the 1600×900
     // canvas at full size — there is no scroll on an unattended screen, so an unshrunk row would
     // silently clip off the bottom instead. `cn()`'s conflict resolution (twMerge) means every
@@ -101,7 +110,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
             >
                 {standings.map((s, i) => {
                     const dq = s.is_disqualified === true;
-                    const qualifies = qualifyCount != null && i < qualifyCount && !dq;
+                    const qualifies = ranked && qualifyCount != null && i < qualifyCount && !dq;
                     const diff = s.games_won - s.games_lost;
                     const played = s.wins + s.losses;
                     const nameLines = standingNameLines(s);

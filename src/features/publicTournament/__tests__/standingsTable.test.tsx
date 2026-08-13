@@ -111,6 +111,10 @@ describe('StandingsTable before the first result', () => {
         expect(screen.getByText('1')).toBeInTheDocument();
         expect(screen.getByText(/advance/i)).toBeInTheDocument();
         expect(container.querySelectorAll('.tabular-nums').length).toBeGreaterThan(0);
+
+        // ...but NOT the qualifying tint. It is the one mark that points at two specific pairs,
+        // and pre-start the only thing putting them on top is where the draw fell.
+        expect(container.querySelector('.bg-\\(--pb-winner-bg\\)')).toBeNull();
     });
 
     it('keeps the same columns once results arrive, so nothing moves', () => {

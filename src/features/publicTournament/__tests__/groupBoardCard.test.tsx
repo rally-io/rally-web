@@ -94,6 +94,23 @@ describe('GroupBoardCard', () => {
         expect(Array.from(rankSpans).map(s => s.textContent)).toEqual(['1', '2']);
         expect(container.querySelectorAll('.tabular-nums').length).toBeGreaterThan(0);
         expect(screen.getByText('Games')).toBeInTheDocument();
+
+        // The qualifying tint is the exception: it names two specific pairs as through, and
+        // pre-start the only thing putting them on top is the draw order.
+        expect(container.querySelector('.bg-\\(--pb-winner-bg\\)')).toBeNull();
+    });
+
+    it('tints the qualifying rows as soon as the group has a result', () => {
+        // The other direction, so the gate above cannot be satisfied by never tinting at all.
+        const g = group({
+            matches: [match({ id: 'm1', sets: [{ team_a_score: 6, team_b_score: 2, is_tiebreak: null }] })],
+            standings: [
+                standing({ position: 1, team_name: 'Winner', wins: 1, losses: 0 }),
+                standing({ position: 2, team_name: 'Loser', wins: 0, losses: 1 }),
+            ],
+        });
+        const { container } = render(<GroupBoardCard group={g} qualifyCount={1} />);
+        expect(container.querySelectorAll('.bg-\\(--pb-winner-bg\\)')).toHaveLength(1);
     });
 
     it('shows matches-played, wins, the games distribution and the signed diff once results exist', () => {
