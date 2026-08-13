@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
     activeMatchIndex,
-    courtSlots,
+    upNextMatches,
+    UP_NEXT_MAX,
     groupGlyph,
     groupMatchesByRound,
     pairChipIndex,
@@ -170,9 +171,9 @@ describe('pair identity and chip colour', () => {
     });
 });
 
-describe('courtSlots', () => {
-    const onCourt = (id: string, court: string | null, at: string | null, status = 'scheduled'): PublicMatch => ({
-        ...match(id, 1, status), court_name: court, scheduled_at: at,
+describe('upNextMatches', () => {
+    const at = (id: string, court: string | null, when: string | null, status = 'scheduled'): PublicMatch => ({
+        ...match(id, 1, status), court_name: court, scheduled_at: when,
     });
     const bracket = (matches: PublicMatch[]) => ({
         tournament_id: 't', tournament_name: 'T', structure: 'group_then_knockout',
@@ -181,8 +182,6 @@ describe('courtSlots', () => {
         third_place_match: null,
         groups: [{ group_name: 'Group A', matches, standings: [] }],
     });
-    // Sibling of `bracket` above: puts the matches on `plate_rounds` instead of `groups`, so a
-    // court occupied only by a plate-bracket match still has to produce a tile.
     const plateBracket = (matches: PublicMatch[]) => ({
         tournament_id: 't', tournament_name: 'T', structure: 'group_then_knockout',
         club_name: null, club_logo_url: null, sponsors: [], videos: [],
@@ -190,57 +189,64 @@ describe('courtSlots', () => {
         league_standings: null, third_place_match: null, groups: [],
     });
 
-    it('picks the earliest upcoming match per court, not the first in the list', () => {
-        const slots = courtSlots(bracket([
-            onCourt('late', 'Court 1', '2026-08-11T14:00:00Z'),
-            onCourt('early', 'Court 1', '2026-08-11T10:00:00Z'),
-        ]));
-        expect(slots).toHaveLength(1);
-        expect(slots[0].next?.id).toBe('early');
+    it('queues every upcoming match, not one per court', () => {
+        // The defect this replaced: keyed on court, a round of four matches on two courts put
+        // TWO tiles on the board and the other two had nowhere to appear.
+        const ids = upNextMatches(bracket([
+            at('a', 'Court 1', '2026-08-11T10:00:00Z'),
+            at('b', 'Court 2', '2026-08-11T10:00:00Z'),
+            at('c', 'Court 1', '2026-08-11T11:00:00Z'),
+            at('d', 'Court 2', '2026-08-11T11:00:00Z'),
+        ])).map(m => m.id);
+        expect(ids).toEqual(['a', 'b', 'c', 'd']);
     });
 
-    it('puts a live match in the live slot and still finds the next one', () => {
-        const slots = courtSlots(bracket([
-            onCourt('now', 'Court 1', '2026-08-11T10:00:00Z', 'in_progress'),
-            onCourt('after', 'Court 1', '2026-08-11T11:00:00Z'),
-        ]));
-        expect(slots[0].live?.id).toBe('now');
-        expect(slots[0].next?.id).toBe('after');
+    it('includes matches with no court assigned', () => {
+        // A club that seeds courts on the night had NO footer at all before this: the rail
+        // filtered to matches naming a court and rendered nothing when none did.
+        const ids = upNextMatches(bracket([
+            at('nocourt', null, '2026-08-11T10:00:00Z'),
+        ])).map(m => m.id);
+        expect(ids).toEqual(['nocourt']);
     });
 
-    it('sorts matches with no scheduled time last rather than first', () => {
-        const slots = courtSlots(bracket([
-            onCourt('untimed', 'Court 1', null),
-            onCourt('timed', 'Court 1', '2026-08-11T12:00:00Z'),
-        ]));
-        expect(slots[0].next?.id).toBe('timed');
+    it('orders by start time and pushes untimed matches last', () => {
+        const ids = upNextMatches(bracket([
+            at('untimed', 'Court 3', null),
+            at('late', 'Court 1', '2026-08-11T14:00:00Z'),
+            at('early', 'Court 2', '2026-08-11T10:00:00Z'),
+        ])).map(m => m.id);
+        expect(ids).toEqual(['early', 'late', 'untimed']);
     });
 
-    it('ignores matches with no court name', () => {
-        const slots = courtSlots(bracket([
-            onCourt('nowhere', null, '2026-08-11T10:00:00Z'),
-            onCourt('somewhere', 'Court 2', '2026-08-11T11:00:00Z'),
-        ]));
-        expect(slots.map(s => s.court)).toEqual(['Court 2']);
+    it('puts live matches at the head of the queue, whatever their start time', () => {
+        const ids = upNextMatches(bracket([
+            at('soon', 'Court 1', '2026-08-11T10:00:00Z'),
+            at('playing', 'Court 2', '2026-08-11T23:00:00Z', 'in_progress'),
+        ])).map(m => m.id);
+        expect(ids[0]).toBe('playing');
     });
 
-    it('returns nothing when no match names a court', () => {
-        expect(courtSlots(bracket([onCourt('a', null, null)]))).toEqual([]);
+    it('drops finished matches', () => {
+        const ids = upNextMatches(bracket([
+            at('done', 'Court 1', '2026-08-11T09:00:00Z', 'completed'),
+            at('wo', 'Court 2', '2026-08-11T09:30:00Z', 'walkover'),
+            at('next', 'Court 1', '2026-08-11T10:00:00Z'),
+        ])).map(m => m.id);
+        expect(ids).toEqual(['next']);
     });
 
-    it('orders courts naturally, so Court 10 follows Court 9', () => {
-        const slots = courtSlots(bracket([
-            onCourt('a', 'Court 10', '2026-08-11T10:00:00Z'),
-            onCourt('b', 'Court 9', '2026-08-11T10:00:00Z'),
-        ]));
-        expect(slots.map(s => s.court)).toEqual(['Court 9', 'Court 10']);
+    it('caps the queue so the loop stays short enough to wait through', () => {
+        // Unbounded, a 24-match draw is a two-minute cycle at five seconds a tile — the exact
+        // complaint that retired the original ticker.
+        const many = Array.from({ length: 24 }, (_, i) =>
+            at(`m${i}`, 'Court 1', `2026-08-11T${String(10 + i).padStart(2, '0')}:00:00Z`));
+        expect(upNextMatches(bracket(many))).toHaveLength(UP_NEXT_MAX);
+        expect(upNextMatches(bracket(many), 3).map(m => m.id)).toEqual(['m0', 'm1', 'm2']);
     });
 
-    it('produces a tile for a court occupied only by a plate-bracket match', () => {
-        const slots = courtSlots(plateBracket([
-            onCourt('plate-live', 'Court 5', '2026-08-11T10:00:00Z', 'in_progress'),
-        ]));
-        expect(slots.map(s => s.court)).toEqual(['Court 5']);
-        expect(slots[0].live?.id).toBe('plate-live');
+    it('sees plate matches, which are played on real courts like any other', () => {
+        const ids = upNextMatches(plateBracket([at('plate', 'Court 5', '2026-08-11T10:00:00Z')])).map(m => m.id);
+        expect(ids).toEqual(['plate']);
     });
 });
