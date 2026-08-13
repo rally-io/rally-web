@@ -1,0 +1,3565 @@
+{
+ "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+ "tournament_name": "Launch Cup",
+ "structure": "group_then_knockout",
+ "club_name": "Padel Club",
+ "club_logo_url": null,
+ "sponsors": [],
+ "videos": [],
+ "groups": [
+  {
+   "group_name": "Group A",
+   "matches": [
+    {
+     "id": "8a1c0e81-fc9f-4d9d-8c31-13030f203098",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group A",
+     "position_in_round": 1,
+     "match_number": 1,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "36fe7137-46d8-430e-84d5-35ad56fc0f27",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p1",
+       "first_name": "Player1",
+       "last_name": "Surname1",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p2",
+       "first_name": "Player2",
+       "last_name": "Surname2",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "ea2933dc-a475-4cde-bf28-60281b611708",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.3,
+       "id": "p3",
+       "first_name": "Player3",
+       "last_name": "Surname3",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p4",
+       "first_name": "Player4",
+       "last_name": "Surname4",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "scheduled",
+     "sets": [],
+     "scheduled_at": "2026-08-13 18:30:00+00:00",
+     "started_at": null,
+     "completed_at": null,
+     "court_name": "Court 1",
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #1"
+    },
+    {
+     "id": "fb17b731-5767-413d-9e99-4d91c3e1c684",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group A",
+     "position_in_round": 2,
+     "match_number": 7,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "85f4e3f8-7d40-40ed-a6b1-15e28faee3de",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 6.0,
+       "id": "p5",
+       "first_name": "Player5",
+       "last_name": "Surname5",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 6.0,
+       "id": "p6",
+       "first_name": "Player6",
+       "last_name": "Surname6",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "602f70a7-6309-41bf-9232-d3d13f71e151",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 7.0,
+       "id": "p7",
+       "first_name": "Player7",
+       "last_name": "Surname7",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p8",
+       "first_name": "Player8",
+       "last_name": "Surname8",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #7"
+    },
+    {
+     "id": "5dc622e6-dd2a-4312-b289-a3c33ab5b87a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group A",
+     "position_in_round": 1,
+     "match_number": 13,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "36fe7137-46d8-430e-84d5-35ad56fc0f27",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p1",
+       "first_name": "Player1",
+       "last_name": "Surname1",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p2",
+       "first_name": "Player2",
+       "last_name": "Surname2",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "602f70a7-6309-41bf-9232-d3d13f71e151",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 7.0,
+       "id": "p7",
+       "first_name": "Player7",
+       "last_name": "Surname7",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p8",
+       "first_name": "Player8",
+       "last_name": "Surname8",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #13"
+    },
+    {
+     "id": "2dd03bcf-0cd9-4cb3-8eac-b916afa32bc1",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group A",
+     "position_in_round": 2,
+     "match_number": 19,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "ea2933dc-a475-4cde-bf28-60281b611708",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.3,
+       "id": "p3",
+       "first_name": "Player3",
+       "last_name": "Surname3",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p4",
+       "first_name": "Player4",
+       "last_name": "Surname4",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "85f4e3f8-7d40-40ed-a6b1-15e28faee3de",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 6.0,
+       "id": "p5",
+       "first_name": "Player5",
+       "last_name": "Surname5",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 6.0,
+       "id": "p6",
+       "first_name": "Player6",
+       "last_name": "Surname6",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #19"
+    },
+    {
+     "id": "81e7eb62-68c6-49af-8d61-6da44d932dc8",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group A",
+     "position_in_round": 1,
+     "match_number": 25,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "36fe7137-46d8-430e-84d5-35ad56fc0f27",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p1",
+       "first_name": "Player1",
+       "last_name": "Surname1",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p2",
+       "first_name": "Player2",
+       "last_name": "Surname2",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "85f4e3f8-7d40-40ed-a6b1-15e28faee3de",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 6.0,
+       "id": "p5",
+       "first_name": "Player5",
+       "last_name": "Surname5",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 6.0,
+       "id": "p6",
+       "first_name": "Player6",
+       "last_name": "Surname6",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #25"
+    },
+    {
+     "id": "75115308-a2e5-4bf2-8bfa-186f208c9ae4",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group A",
+     "position_in_round": 2,
+     "match_number": 31,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "602f70a7-6309-41bf-9232-d3d13f71e151",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 7.0,
+       "id": "p7",
+       "first_name": "Player7",
+       "last_name": "Surname7",
+       "is_guest": false,
+       "mapped_skill_level": "6.0 - 7.0 (A1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p8",
+       "first_name": "Player8",
+       "last_name": "Surname8",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "ea2933dc-a475-4cde-bf28-60281b611708",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.3,
+       "id": "p3",
+       "first_name": "Player3",
+       "last_name": "Surname3",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p4",
+       "first_name": "Player4",
+       "last_name": "Surname4",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #31"
+    }
+   ],
+   "standings": [
+    {
+     "position": 1,
+     "registration_id": "36fe7137-46d8-430e-84d5-35ad56fc0f27",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.5,
+      "id": "p1",
+      "first_name": "Player1",
+      "last_name": "Surname1",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p2",
+      "first_name": "Player2",
+      "last_name": "Surname2",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 2,
+     "registration_id": "ea2933dc-a475-4cde-bf28-60281b611708",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.3,
+      "id": "p3",
+      "first_name": "Player3",
+      "last_name": "Surname3",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p4",
+      "first_name": "Player4",
+      "last_name": "Surname4",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 3,
+     "registration_id": "85f4e3f8-7d40-40ed-a6b1-15e28faee3de",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 6.0,
+      "id": "p5",
+      "first_name": "Player5",
+      "last_name": "Surname5",
+      "is_guest": false,
+      "mapped_skill_level": "6.0 - 7.0 (A1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 6.0,
+      "id": "p6",
+      "first_name": "Player6",
+      "last_name": "Surname6",
+      "is_guest": false,
+      "mapped_skill_level": "6.0 - 7.0 (A1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 4,
+     "registration_id": "602f70a7-6309-41bf-9232-d3d13f71e151",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 7.0,
+      "id": "p7",
+      "first_name": "Player7",
+      "last_name": "Surname7",
+      "is_guest": false,
+      "mapped_skill_level": "6.0 - 7.0 (A1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p8",
+      "first_name": "Player8",
+      "last_name": "Surname8",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    }
+   ]
+  },
+  {
+   "group_name": "Group B",
+   "matches": [
+    {
+     "id": "06d5eb0e-7c24-4892-82f7-ff147097014c",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group B",
+     "position_in_round": 1,
+     "match_number": 2,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4e1f4d12-74cc-496d-ac61-4e002d9aed13",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 3.03,
+       "id": "p9",
+       "first_name": "Player9",
+       "last_name": "Surname9",
+       "is_guest": false,
+       "mapped_skill_level": "3.0 - 3.5 (C1)",
+       "skill_tier": "silver"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p10",
+       "first_name": "Player10",
+       "last_name": "Surname10",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "c80598f6-faed-4196-9ab5-0ad9ee67dcad",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.25,
+       "id": "p11",
+       "first_name": "Player11",
+       "last_name": "Surname11",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.75,
+       "id": "p12",
+       "first_name": "Player12",
+       "last_name": "Surname12",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "scheduled",
+     "sets": [],
+     "scheduled_at": "2026-08-13 18:30:00+00:00",
+     "started_at": null,
+     "completed_at": null,
+     "court_name": "Court 2",
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #2"
+    },
+    {
+     "id": "acaa3cda-48e7-4970-963b-8f6dd60357d1",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group B",
+     "position_in_round": 2,
+     "match_number": 8,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "452a7e1d-6e80-4467-8581-49d85cf80636",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.9,
+       "id": "p13",
+       "first_name": "Player13",
+       "last_name": "Surname13",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p14",
+       "first_name": "Player14",
+       "last_name": "Surname14",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "48f8c301-67cf-400c-8377-8c7cf2038449",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.75,
+       "id": "p15",
+       "first_name": "Player15",
+       "last_name": "Surname15",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p16",
+       "first_name": "Player16",
+       "last_name": "Surname16",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #8"
+    },
+    {
+     "id": "6331ea33-e803-489c-a5ce-ee0756d39d9f",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group B",
+     "position_in_round": 1,
+     "match_number": 14,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4e1f4d12-74cc-496d-ac61-4e002d9aed13",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 3.03,
+       "id": "p9",
+       "first_name": "Player9",
+       "last_name": "Surname9",
+       "is_guest": false,
+       "mapped_skill_level": "3.0 - 3.5 (C1)",
+       "skill_tier": "silver"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p10",
+       "first_name": "Player10",
+       "last_name": "Surname10",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "48f8c301-67cf-400c-8377-8c7cf2038449",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.75,
+       "id": "p15",
+       "first_name": "Player15",
+       "last_name": "Surname15",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p16",
+       "first_name": "Player16",
+       "last_name": "Surname16",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #14"
+    },
+    {
+     "id": "043eb675-8295-4a10-a606-e3083ea56f56",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group B",
+     "position_in_round": 2,
+     "match_number": 20,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "c80598f6-faed-4196-9ab5-0ad9ee67dcad",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.25,
+       "id": "p11",
+       "first_name": "Player11",
+       "last_name": "Surname11",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.75,
+       "id": "p12",
+       "first_name": "Player12",
+       "last_name": "Surname12",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "452a7e1d-6e80-4467-8581-49d85cf80636",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.9,
+       "id": "p13",
+       "first_name": "Player13",
+       "last_name": "Surname13",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p14",
+       "first_name": "Player14",
+       "last_name": "Surname14",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #20"
+    },
+    {
+     "id": "a7a075d0-64c6-4400-a084-df5dc5c6bc66",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group B",
+     "position_in_round": 1,
+     "match_number": 26,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4e1f4d12-74cc-496d-ac61-4e002d9aed13",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 3.03,
+       "id": "p9",
+       "first_name": "Player9",
+       "last_name": "Surname9",
+       "is_guest": false,
+       "mapped_skill_level": "3.0 - 3.5 (C1)",
+       "skill_tier": "silver"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p10",
+       "first_name": "Player10",
+       "last_name": "Surname10",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "452a7e1d-6e80-4467-8581-49d85cf80636",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.9,
+       "id": "p13",
+       "first_name": "Player13",
+       "last_name": "Surname13",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p14",
+       "first_name": "Player14",
+       "last_name": "Surname14",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #26"
+    },
+    {
+     "id": "c3fe2729-9ce1-4dcc-af98-e8abed788c94",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group B",
+     "position_in_round": 2,
+     "match_number": 32,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "48f8c301-67cf-400c-8377-8c7cf2038449",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.75,
+       "id": "p15",
+       "first_name": "Player15",
+       "last_name": "Surname15",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p16",
+       "first_name": "Player16",
+       "last_name": "Surname16",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "c80598f6-faed-4196-9ab5-0ad9ee67dcad",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.25,
+       "id": "p11",
+       "first_name": "Player11",
+       "last_name": "Surname11",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.75,
+       "id": "p12",
+       "first_name": "Player12",
+       "last_name": "Surname12",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #32"
+    }
+   ],
+   "standings": [
+    {
+     "position": 1,
+     "registration_id": "4e1f4d12-74cc-496d-ac61-4e002d9aed13",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 3.03,
+      "id": "p9",
+      "first_name": "Player9",
+      "last_name": "Surname9",
+      "is_guest": false,
+      "mapped_skill_level": "3.0 - 3.5 (C1)",
+      "skill_tier": "silver"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p10",
+      "first_name": "Player10",
+      "last_name": "Surname10",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 2,
+     "registration_id": "c80598f6-faed-4196-9ab5-0ad9ee67dcad",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 5.25,
+      "id": "p11",
+      "first_name": "Player11",
+      "last_name": "Surname11",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 5.75,
+      "id": "p12",
+      "first_name": "Player12",
+      "last_name": "Surname12",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 3,
+     "registration_id": "452a7e1d-6e80-4467-8581-49d85cf80636",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.9,
+      "id": "p13",
+      "first_name": "Player13",
+      "last_name": "Surname13",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 5.0,
+      "id": "p14",
+      "first_name": "Player14",
+      "last_name": "Surname14",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 4,
+     "registration_id": "48f8c301-67cf-400c-8377-8c7cf2038449",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 5.75,
+      "id": "p15",
+      "first_name": "Player15",
+      "last_name": "Surname15",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p16",
+      "first_name": "Player16",
+      "last_name": "Surname16",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    }
+   ]
+  },
+  {
+   "group_name": "Group C",
+   "matches": [
+    {
+     "id": "a8f19fcc-5747-4266-9b95-8ab107eb88fc",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group C",
+     "position_in_round": 1,
+     "match_number": 3,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4e16cd92-9f3b-4fb9-9289-f9ff00c1dc9a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.8,
+       "id": "p17",
+       "first_name": "Player17",
+       "last_name": "Surname17",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p18",
+       "first_name": "Player18",
+       "last_name": "Surname18",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "72c982d7-bd00-4217-9639-df3fb4af6c20",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p19",
+       "first_name": "Player19",
+       "last_name": "Surname19",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p20",
+       "first_name": "Player20",
+       "last_name": "Surname20",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #3"
+    },
+    {
+     "id": "c1610087-059c-48c8-b845-7a48216318d4",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group C",
+     "position_in_round": 2,
+     "match_number": 9,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4530afca-36ba-4f91-884e-96c988105782",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.5,
+       "id": "p21",
+       "first_name": "Player21",
+       "last_name": "Surname21",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.75,
+       "id": "p22",
+       "first_name": "Player22",
+       "last_name": "Surname22",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "5747fd59-959b-4a2a-a25c-078d0206f35a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p23",
+       "first_name": "Player23",
+       "last_name": "Surname23",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p24",
+       "first_name": "Player24",
+       "last_name": "Surname24",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #9"
+    },
+    {
+     "id": "d4b4e973-0b24-450a-8df4-8874578dbf79",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group C",
+     "position_in_round": 1,
+     "match_number": 15,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4e16cd92-9f3b-4fb9-9289-f9ff00c1dc9a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.8,
+       "id": "p17",
+       "first_name": "Player17",
+       "last_name": "Surname17",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p18",
+       "first_name": "Player18",
+       "last_name": "Surname18",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "5747fd59-959b-4a2a-a25c-078d0206f35a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p23",
+       "first_name": "Player23",
+       "last_name": "Surname23",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p24",
+       "first_name": "Player24",
+       "last_name": "Surname24",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #15"
+    },
+    {
+     "id": "1256904c-b66f-4758-a8e2-02ad1026b4a7",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group C",
+     "position_in_round": 2,
+     "match_number": 21,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "72c982d7-bd00-4217-9639-df3fb4af6c20",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p19",
+       "first_name": "Player19",
+       "last_name": "Surname19",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p20",
+       "first_name": "Player20",
+       "last_name": "Surname20",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "4530afca-36ba-4f91-884e-96c988105782",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.5,
+       "id": "p21",
+       "first_name": "Player21",
+       "last_name": "Surname21",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.75,
+       "id": "p22",
+       "first_name": "Player22",
+       "last_name": "Surname22",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #21"
+    },
+    {
+     "id": "45aa91e9-96d9-4132-b85c-d161de4c6f11",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group C",
+     "position_in_round": 1,
+     "match_number": 27,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "4e16cd92-9f3b-4fb9-9289-f9ff00c1dc9a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.8,
+       "id": "p17",
+       "first_name": "Player17",
+       "last_name": "Surname17",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p18",
+       "first_name": "Player18",
+       "last_name": "Surname18",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "4530afca-36ba-4f91-884e-96c988105782",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.5,
+       "id": "p21",
+       "first_name": "Player21",
+       "last_name": "Surname21",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.75,
+       "id": "p22",
+       "first_name": "Player22",
+       "last_name": "Surname22",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #27"
+    },
+    {
+     "id": "369a0b7a-9231-4663-99ae-91204f970a3e",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group C",
+     "position_in_round": 2,
+     "match_number": 33,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "5747fd59-959b-4a2a-a25c-078d0206f35a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p23",
+       "first_name": "Player23",
+       "last_name": "Surname23",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p24",
+       "first_name": "Player24",
+       "last_name": "Surname24",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "72c982d7-bd00-4217-9639-df3fb4af6c20",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p19",
+       "first_name": "Player19",
+       "last_name": "Surname19",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p20",
+       "first_name": "Player20",
+       "last_name": "Surname20",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #33"
+    }
+   ],
+   "standings": [
+    {
+     "position": 1,
+     "registration_id": "4e16cd92-9f3b-4fb9-9289-f9ff00c1dc9a",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.8,
+      "id": "p17",
+      "first_name": "Player17",
+      "last_name": "Surname17",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p18",
+      "first_name": "Player18",
+      "last_name": "Surname18",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 2,
+     "registration_id": "72c982d7-bd00-4217-9639-df3fb4af6c20",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.5,
+      "id": "p19",
+      "first_name": "Player19",
+      "last_name": "Surname19",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 5.0,
+      "id": "p20",
+      "first_name": "Player20",
+      "last_name": "Surname20",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 3,
+     "registration_id": "4530afca-36ba-4f91-884e-96c988105782",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 5.5,
+      "id": "p21",
+      "first_name": "Player21",
+      "last_name": "Surname21",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.75,
+      "id": "p22",
+      "first_name": "Player22",
+      "last_name": "Surname22",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 4,
+     "registration_id": "5747fd59-959b-4a2a-a25c-078d0206f35a",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.5,
+      "id": "p23",
+      "first_name": "Player23",
+      "last_name": "Surname23",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p24",
+      "first_name": "Player24",
+      "last_name": "Surname24",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    }
+   ]
+  },
+  {
+   "group_name": "Group D",
+   "matches": [
+    {
+     "id": "40c71b0e-b983-4eb3-b90d-188b6f049a7a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group D",
+     "position_in_round": 1,
+     "match_number": 4,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "03ab52fe-31ad-4245-80f0-cf1bdd3f8370",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p25",
+       "first_name": "Player25",
+       "last_name": "Surname25",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p26",
+       "first_name": "Player26",
+       "last_name": "Surname26",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "086c36a3-e11f-4bfe-92ba-860d4a148eae",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p27",
+       "first_name": "Player27",
+       "last_name": "Surname27",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.25,
+       "id": "p28",
+       "first_name": "Player28",
+       "last_name": "Surname28",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #4"
+    },
+    {
+     "id": "f5034378-61a6-4090-8811-c3b2b3552acd",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group D",
+     "position_in_round": 2,
+     "match_number": 10,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "9f086c49-0cf1-43af-bc2e-b8bcca864496",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.9,
+       "id": "p29",
+       "first_name": "Player29",
+       "last_name": "Surname29",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p30",
+       "first_name": "Player30",
+       "last_name": "Surname30",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "f9ccbc88-be7e-437d-b450-7fa9eb5c804f",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p31",
+       "first_name": "Player31",
+       "last_name": "Surname31",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p32",
+       "first_name": "Player32",
+       "last_name": "Surname32",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #10"
+    },
+    {
+     "id": "60a9e69d-79c0-49a6-95f9-b4d85cf0776d",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group D",
+     "position_in_round": 1,
+     "match_number": 16,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "03ab52fe-31ad-4245-80f0-cf1bdd3f8370",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p25",
+       "first_name": "Player25",
+       "last_name": "Surname25",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p26",
+       "first_name": "Player26",
+       "last_name": "Surname26",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "f9ccbc88-be7e-437d-b450-7fa9eb5c804f",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p31",
+       "first_name": "Player31",
+       "last_name": "Surname31",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p32",
+       "first_name": "Player32",
+       "last_name": "Surname32",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #16"
+    },
+    {
+     "id": "2bdf0bab-3da8-42b8-a7b5-d36b12d2f60d",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group D",
+     "position_in_round": 2,
+     "match_number": 22,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "086c36a3-e11f-4bfe-92ba-860d4a148eae",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p27",
+       "first_name": "Player27",
+       "last_name": "Surname27",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.25,
+       "id": "p28",
+       "first_name": "Player28",
+       "last_name": "Surname28",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "9f086c49-0cf1-43af-bc2e-b8bcca864496",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.9,
+       "id": "p29",
+       "first_name": "Player29",
+       "last_name": "Surname29",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p30",
+       "first_name": "Player30",
+       "last_name": "Surname30",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #22"
+    },
+    {
+     "id": "fde528ba-faf4-4694-94cd-d1ebc795b57a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group D",
+     "position_in_round": 1,
+     "match_number": 28,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "03ab52fe-31ad-4245-80f0-cf1bdd3f8370",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p25",
+       "first_name": "Player25",
+       "last_name": "Surname25",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p26",
+       "first_name": "Player26",
+       "last_name": "Surname26",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "9f086c49-0cf1-43af-bc2e-b8bcca864496",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.9,
+       "id": "p29",
+       "first_name": "Player29",
+       "last_name": "Surname29",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p30",
+       "first_name": "Player30",
+       "last_name": "Surname30",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #28"
+    },
+    {
+     "id": "7d971ad2-0e65-4003-98ed-b73baacabfa0",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group D",
+     "position_in_round": 2,
+     "match_number": 34,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "f9ccbc88-be7e-437d-b450-7fa9eb5c804f",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p31",
+       "first_name": "Player31",
+       "last_name": "Surname31",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p32",
+       "first_name": "Player32",
+       "last_name": "Surname32",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "086c36a3-e11f-4bfe-92ba-860d4a148eae",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p27",
+       "first_name": "Player27",
+       "last_name": "Surname27",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.25,
+       "id": "p28",
+       "first_name": "Player28",
+       "last_name": "Surname28",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #34"
+    }
+   ],
+   "standings": [
+    {
+     "position": 1,
+     "registration_id": "03ab52fe-31ad-4245-80f0-cf1bdd3f8370",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.5,
+      "id": "p25",
+      "first_name": "Player25",
+      "last_name": "Surname25",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p26",
+      "first_name": "Player26",
+      "last_name": "Surname26",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 2,
+     "registration_id": "086c36a3-e11f-4bfe-92ba-860d4a148eae",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.0,
+      "id": "p27",
+      "first_name": "Player27",
+      "last_name": "Surname27",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.25,
+      "id": "p28",
+      "first_name": "Player28",
+      "last_name": "Surname28",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 3,
+     "registration_id": "9f086c49-0cf1-43af-bc2e-b8bcca864496",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.9,
+      "id": "p29",
+      "first_name": "Player29",
+      "last_name": "Surname29",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p30",
+      "first_name": "Player30",
+      "last_name": "Surname30",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 4,
+     "registration_id": "f9ccbc88-be7e-437d-b450-7fa9eb5c804f",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.0,
+      "id": "p31",
+      "first_name": "Player31",
+      "last_name": "Surname31",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p32",
+      "first_name": "Player32",
+      "last_name": "Surname32",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    }
+   ]
+  },
+  {
+   "group_name": "Group E",
+   "matches": [
+    {
+     "id": "39ceed89-01a6-4933-a060-8303be2d2f22",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group E",
+     "position_in_round": 1,
+     "match_number": 5,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "97bee2b7-5bbb-4d26-9f97-bcb32b2b82ba",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p33",
+       "first_name": "Player33",
+       "last_name": "Surname33",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.0,
+       "id": "p34",
+       "first_name": "Player34",
+       "last_name": "Surname34",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "fa06a574-b8ba-43a6-9aea-b1fd84e3b0b6",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.0,
+       "id": "p35",
+       "first_name": "Player35",
+       "last_name": "Surname35",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p36",
+       "first_name": "Player36",
+       "last_name": "Surname36",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #5"
+    },
+    {
+     "id": "bd1cab17-0856-40cb-acd2-cac5bef1c4f1",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group E",
+     "position_in_round": 2,
+     "match_number": 11,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "7b74154f-654b-41f3-b0f0-72279e67a675",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p37",
+       "first_name": "Player37",
+       "last_name": "Surname37",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p38",
+       "first_name": "Player38",
+       "last_name": "Surname38",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "a0cc1434-8eb7-4866-a721-4fbb3acf70bb",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.0,
+       "id": "p39",
+       "first_name": "Player39",
+       "last_name": "Surname39",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p40",
+       "first_name": "Player40",
+       "last_name": "Surname40",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #11"
+    },
+    {
+     "id": "6bd54e1b-bd1c-44c6-a920-f890b32b8017",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group E",
+     "position_in_round": 1,
+     "match_number": 17,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "97bee2b7-5bbb-4d26-9f97-bcb32b2b82ba",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p33",
+       "first_name": "Player33",
+       "last_name": "Surname33",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.0,
+       "id": "p34",
+       "first_name": "Player34",
+       "last_name": "Surname34",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "a0cc1434-8eb7-4866-a721-4fbb3acf70bb",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.0,
+       "id": "p39",
+       "first_name": "Player39",
+       "last_name": "Surname39",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p40",
+       "first_name": "Player40",
+       "last_name": "Surname40",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #17"
+    },
+    {
+     "id": "f0075037-aa5f-4930-86ec-ba75cbe0788e",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group E",
+     "position_in_round": 2,
+     "match_number": 23,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "fa06a574-b8ba-43a6-9aea-b1fd84e3b0b6",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.0,
+       "id": "p35",
+       "first_name": "Player35",
+       "last_name": "Surname35",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p36",
+       "first_name": "Player36",
+       "last_name": "Surname36",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "7b74154f-654b-41f3-b0f0-72279e67a675",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p37",
+       "first_name": "Player37",
+       "last_name": "Surname37",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p38",
+       "first_name": "Player38",
+       "last_name": "Surname38",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #23"
+    },
+    {
+     "id": "8ae833a0-2343-407f-8ead-63addecd51e9",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group E",
+     "position_in_round": 1,
+     "match_number": 29,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "97bee2b7-5bbb-4d26-9f97-bcb32b2b82ba",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.0,
+       "id": "p33",
+       "first_name": "Player33",
+       "last_name": "Surname33",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.0,
+       "id": "p34",
+       "first_name": "Player34",
+       "last_name": "Surname34",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "7b74154f-654b-41f3-b0f0-72279e67a675",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.5,
+       "id": "p37",
+       "first_name": "Player37",
+       "last_name": "Surname37",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p38",
+       "first_name": "Player38",
+       "last_name": "Surname38",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #29"
+    },
+    {
+     "id": "b9f24dfa-6e7b-4031-a9be-1a8dfcb80087",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group E",
+     "position_in_round": 2,
+     "match_number": 35,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "a0cc1434-8eb7-4866-a721-4fbb3acf70bb",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.0,
+       "id": "p39",
+       "first_name": "Player39",
+       "last_name": "Surname39",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": null,
+       "id": "p40",
+       "first_name": "Player40",
+       "last_name": "Surname40",
+       "is_guest": true,
+       "mapped_skill_level": null,
+       "skill_tier": null
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "fa06a574-b8ba-43a6-9aea-b1fd84e3b0b6",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 5.0,
+       "id": "p35",
+       "first_name": "Player35",
+       "last_name": "Surname35",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 5.0,
+       "id": "p36",
+       "first_name": "Player36",
+       "last_name": "Surname36",
+       "is_guest": false,
+       "mapped_skill_level": "5.0 - 5.5 (A2)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #35"
+    }
+   ],
+   "standings": [
+    {
+     "position": 1,
+     "registration_id": "97bee2b7-5bbb-4d26-9f97-bcb32b2b82ba",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.0,
+      "id": "p33",
+      "first_name": "Player33",
+      "last_name": "Surname33",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.0,
+      "id": "p34",
+      "first_name": "Player34",
+      "last_name": "Surname34",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 2,
+     "registration_id": "fa06a574-b8ba-43a6-9aea-b1fd84e3b0b6",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 5.0,
+      "id": "p35",
+      "first_name": "Player35",
+      "last_name": "Surname35",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 5.0,
+      "id": "p36",
+      "first_name": "Player36",
+      "last_name": "Surname36",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 3,
+     "registration_id": "7b74154f-654b-41f3-b0f0-72279e67a675",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.5,
+      "id": "p37",
+      "first_name": "Player37",
+      "last_name": "Surname37",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p38",
+      "first_name": "Player38",
+      "last_name": "Surname38",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 4,
+     "registration_id": "a0cc1434-8eb7-4866-a721-4fbb3acf70bb",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 5.0,
+      "id": "p39",
+      "first_name": "Player39",
+      "last_name": "Surname39",
+      "is_guest": false,
+      "mapped_skill_level": "5.0 - 5.5 (A2)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": null,
+      "id": "p40",
+      "first_name": "Player40",
+      "last_name": "Surname40",
+      "is_guest": true,
+      "mapped_skill_level": null,
+      "skill_tier": null
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    }
+   ]
+  },
+  {
+   "group_name": "Group F",
+   "matches": [
+    {
+     "id": "339309c7-2a8f-4b8c-b075-5833df3c8363",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group F",
+     "position_in_round": 1,
+     "match_number": 6,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "172477e7-8bba-488d-9d75-09cf708d5b21",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p41",
+       "first_name": "Player41",
+       "last_name": "Surname41",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p42",
+       "first_name": "Player42",
+       "last_name": "Surname42",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "ebc6e58b-0c49-4d28-9016-73b9bed35894",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p43",
+       "first_name": "Player43",
+       "last_name": "Surname43",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p44",
+       "first_name": "Player44",
+       "last_name": "Surname44",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #6"
+    },
+    {
+     "id": "d90d8486-ac7e-4b3a-81ad-850bce34e003",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 1,
+     "round_name": "Group F",
+     "position_in_round": 2,
+     "match_number": 12,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "42d7f608-64d3-4d77-8214-814de12d285a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 0.0,
+       "id": "p45",
+       "first_name": "Player45",
+       "last_name": "Surname45",
+       "is_guest": false,
+       "mapped_skill_level": "1.0 - 1.5 (D2)",
+       "skill_tier": "bronze"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p46",
+       "first_name": "Player46",
+       "last_name": "Surname46",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "9975be33-1ff1-4c7b-b708-3149d006a147",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p47",
+       "first_name": "Player47",
+       "last_name": "Surname47",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p48",
+       "first_name": "Player48",
+       "last_name": "Surname48",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #12"
+    },
+    {
+     "id": "aa80a3f3-8f03-4b56-a701-38e40033d169",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group F",
+     "position_in_round": 1,
+     "match_number": 18,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "172477e7-8bba-488d-9d75-09cf708d5b21",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p41",
+       "first_name": "Player41",
+       "last_name": "Surname41",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p42",
+       "first_name": "Player42",
+       "last_name": "Surname42",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "9975be33-1ff1-4c7b-b708-3149d006a147",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p47",
+       "first_name": "Player47",
+       "last_name": "Surname47",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p48",
+       "first_name": "Player48",
+       "last_name": "Surname48",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #18"
+    },
+    {
+     "id": "b147175c-e259-40db-9b80-cc343a5b929d",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 2,
+     "round_name": "Group F",
+     "position_in_round": 2,
+     "match_number": 24,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "ebc6e58b-0c49-4d28-9016-73b9bed35894",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p43",
+       "first_name": "Player43",
+       "last_name": "Surname43",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p44",
+       "first_name": "Player44",
+       "last_name": "Surname44",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "42d7f608-64d3-4d77-8214-814de12d285a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 0.0,
+       "id": "p45",
+       "first_name": "Player45",
+       "last_name": "Surname45",
+       "is_guest": false,
+       "mapped_skill_level": "1.0 - 1.5 (D2)",
+       "skill_tier": "bronze"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p46",
+       "first_name": "Player46",
+       "last_name": "Surname46",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #24"
+    },
+    {
+     "id": "553cf222-e81a-412f-9213-946038af2930",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group F",
+     "position_in_round": 1,
+     "match_number": 30,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "172477e7-8bba-488d-9d75-09cf708d5b21",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p41",
+       "first_name": "Player41",
+       "last_name": "Surname41",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p42",
+       "first_name": "Player42",
+       "last_name": "Surname42",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "42d7f608-64d3-4d77-8214-814de12d285a",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 0.0,
+       "id": "p45",
+       "first_name": "Player45",
+       "last_name": "Surname45",
+       "is_guest": false,
+       "mapped_skill_level": "1.0 - 1.5 (D2)",
+       "skill_tier": "bronze"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p46",
+       "first_name": "Player46",
+       "last_name": "Surname46",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #30"
+    },
+    {
+     "id": "1d55a90e-928e-4dfa-bbe2-da087432d338",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 3,
+     "round_name": "Group F",
+     "position_in_round": 2,
+     "match_number": 36,
+     "match_format": "tournament_group",
+     "team_a": {
+      "registration_id": "9975be33-1ff1-4c7b-b708-3149d006a147",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p47",
+       "first_name": "Player47",
+       "last_name": "Surname47",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p48",
+       "first_name": "Player48",
+       "last_name": "Surname48",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": "ebc6e58b-0c49-4d28-9016-73b9bed35894",
+      "team_name": null,
+      "player_1": {
+       "skill_level": 4.25,
+       "id": "p43",
+       "first_name": "Player43",
+       "last_name": "Surname43",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "player_2": {
+       "skill_level": 4.5,
+       "id": "p44",
+       "first_name": "Player44",
+       "last_name": "Surname44",
+       "is_guest": false,
+       "mapped_skill_level": "4.0 - 4.5 (B1)",
+       "skill_tier": "gold"
+      },
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #36"
+    }
+   ],
+   "standings": [
+    {
+     "position": 1,
+     "registration_id": "172477e7-8bba-488d-9d75-09cf708d5b21",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.25,
+      "id": "p41",
+      "first_name": "Player41",
+      "last_name": "Surname41",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p42",
+      "first_name": "Player42",
+      "last_name": "Surname42",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 2,
+     "registration_id": "ebc6e58b-0c49-4d28-9016-73b9bed35894",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.25,
+      "id": "p43",
+      "first_name": "Player43",
+      "last_name": "Surname43",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p44",
+      "first_name": "Player44",
+      "last_name": "Surname44",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 3,
+     "registration_id": "42d7f608-64d3-4d77-8214-814de12d285a",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 0.0,
+      "id": "p45",
+      "first_name": "Player45",
+      "last_name": "Surname45",
+      "is_guest": false,
+      "mapped_skill_level": "1.0 - 1.5 (D2)",
+      "skill_tier": "bronze"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p46",
+      "first_name": "Player46",
+      "last_name": "Surname46",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    },
+    {
+     "position": 4,
+     "registration_id": "9975be33-1ff1-4c7b-b708-3149d006a147",
+     "is_disqualified": false,
+     "team_name": null,
+     "player_1": {
+      "skill_level": 4.25,
+      "id": "p47",
+      "first_name": "Player47",
+      "last_name": "Surname47",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "player_2": {
+      "skill_level": 4.5,
+      "id": "p48",
+      "first_name": "Player48",
+      "last_name": "Surname48",
+      "is_guest": false,
+      "mapped_skill_level": "4.0 - 4.5 (B1)",
+      "skill_tier": "gold"
+     },
+     "matches_played": 0,
+     "wins": 0,
+     "losses": 0,
+     "sets_won": 0,
+     "sets_lost": 0,
+     "games_won": 0,
+     "games_lost": 0
+    }
+   ]
+  }
+ ],
+ "knockout_rounds": [
+  {
+   "round_number": 101,
+   "round_name": "Knockout Round 1",
+   "matches": [
+    {
+     "id": "65e5e42e-6fe4-4000-bb62-f34865ed4f5f",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 1,
+     "match_number": 37,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "580158bf-bdcb-4138-bde2-11ec406e9319",
+     "next_match_slot": "team_a",
+     "match_label": "Match #37"
+    },
+    {
+     "id": "7324d497-49fd-4d6c-bb36-e4b837beec64",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 2,
+     "match_number": 38,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "580158bf-bdcb-4138-bde2-11ec406e9319",
+     "next_match_slot": "team_b",
+     "match_label": "Match #38"
+    },
+    {
+     "id": "a861626f-8892-4a82-9f49-df39f4d8dd09",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 3,
+     "match_number": 39,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "61b1aad5-d291-48ec-a67c-bd7b486681f1",
+     "next_match_slot": "team_a",
+     "match_label": "Match #39"
+    },
+    {
+     "id": "08edb2aa-1abc-491f-88e1-8e0884668f3d",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 4,
+     "match_number": 40,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "61b1aad5-d291-48ec-a67c-bd7b486681f1",
+     "next_match_slot": "team_b",
+     "match_label": "Match #40"
+    },
+    {
+     "id": "6e745d28-ec86-4673-9661-0364fb85b848",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 5,
+     "match_number": 41,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "aea12656-6799-4ae7-9d50-fac29c484f55",
+     "next_match_slot": "team_a",
+     "match_label": "Match #41"
+    },
+    {
+     "id": "e50fa787-0b9d-4dc8-ba2e-f195a4554e8a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 6,
+     "match_number": 42,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "aea12656-6799-4ae7-9d50-fac29c484f55",
+     "next_match_slot": "team_b",
+     "match_label": "Match #42"
+    },
+    {
+     "id": "7e7b6ff9-350a-4310-a6a9-c9b078eaf76a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 7,
+     "match_number": 43,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "9c4a0e68-cc56-4696-8677-317e55535b00",
+     "next_match_slot": "team_a",
+     "match_label": "Match #43"
+    },
+    {
+     "id": "c86e6bb8-2c2d-4224-84cc-2e31df6cb99a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 101,
+     "round_name": "Knockout Round 1",
+     "position_in_round": 8,
+     "match_number": 44,
+     "match_format": "tournament_knockout",
+     "team_a": null,
+     "team_b": null,
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "9c4a0e68-cc56-4696-8677-317e55535b00",
+     "next_match_slot": "team_b",
+     "match_label": "Match #44"
+    }
+   ]
+  },
+  {
+   "round_number": 102,
+   "round_name": "Quarterfinal",
+   "matches": [
+    {
+     "id": "580158bf-bdcb-4138-bde2-11ec406e9319",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 102,
+     "round_name": "Quarterfinal",
+     "position_in_round": 1,
+     "match_number": 45,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #37",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #38",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "38c2eea4-aee3-4272-a228-b8c34bab9c52",
+     "next_match_slot": "team_a",
+     "match_label": "Match #45"
+    },
+    {
+     "id": "61b1aad5-d291-48ec-a67c-bd7b486681f1",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 102,
+     "round_name": "Quarterfinal",
+     "position_in_round": 2,
+     "match_number": 46,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #39",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #40",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "38c2eea4-aee3-4272-a228-b8c34bab9c52",
+     "next_match_slot": "team_b",
+     "match_label": "Match #46"
+    },
+    {
+     "id": "aea12656-6799-4ae7-9d50-fac29c484f55",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 102,
+     "round_name": "Quarterfinal",
+     "position_in_round": 3,
+     "match_number": 47,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #41",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #42",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "c1e3d716-63ba-444b-91ff-e3b8e658e08a",
+     "next_match_slot": "team_a",
+     "match_label": "Match #47"
+    },
+    {
+     "id": "9c4a0e68-cc56-4696-8677-317e55535b00",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 102,
+     "round_name": "Quarterfinal",
+     "position_in_round": 4,
+     "match_number": 48,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #43",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #44",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "c1e3d716-63ba-444b-91ff-e3b8e658e08a",
+     "next_match_slot": "team_b",
+     "match_label": "Match #48"
+    }
+   ]
+  },
+  {
+   "round_number": 103,
+   "round_name": "Semifinal",
+   "matches": [
+    {
+     "id": "38c2eea4-aee3-4272-a228-b8c34bab9c52",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 103,
+     "round_name": "Semifinal",
+     "position_in_round": 1,
+     "match_number": 49,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #45",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #46",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "604fe28b-23c7-4a94-a097-b12c2ccbee24",
+     "next_match_slot": "team_a",
+     "match_label": "Match #49"
+    },
+    {
+     "id": "c1e3d716-63ba-444b-91ff-e3b8e658e08a",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 103,
+     "round_name": "Semifinal",
+     "position_in_round": 2,
+     "match_number": 50,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #47",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #48",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": "604fe28b-23c7-4a94-a097-b12c2ccbee24",
+     "next_match_slot": "team_b",
+     "match_label": "Match #50"
+    }
+   ]
+  },
+  {
+   "round_number": 104,
+   "round_name": "Final",
+   "matches": [
+    {
+     "id": "604fe28b-23c7-4a94-a097-b12c2ccbee24",
+     "tournament_id": "ec7ef416-4d97-4c2d-8991-0b3d8aca9f61",
+     "round_number": 104,
+     "round_name": "Final",
+     "position_in_round": 1,
+     "match_number": 51,
+     "match_format": "tournament_knockout",
+     "team_a": {
+      "registration_id": null,
+      "team_name": "Winner of Match #49",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "team_b": {
+      "registration_id": null,
+      "team_name": "Winner of Match #50",
+      "player_1": null,
+      "player_2": null,
+      "is_lucky_loser": false
+     },
+     "winner_team": null,
+     "status": "not_scheduled",
+     "sets": [],
+     "scheduled_at": null,
+     "started_at": null,
+     "completed_at": null,
+     "court_name": null,
+     "next_match_id": null,
+     "next_match_slot": null,
+     "match_label": "Match #51"
+    }
+   ]
+  }
+ ],
+ "plate_rounds": null,
+ "league_standings": null,
+ "third_place_match": null
+}
