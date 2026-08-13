@@ -449,7 +449,18 @@
     "paymentDeferredNotice": "התשלום יפתח בקרוב — אנא המשיכו באפליקציית Rally לתשלום.",
     "close": "סגור",
     "termsOfUse": "תנאי שימוש",
-    "registrationStatus_rejected": "נדחה"
+    "registrationStatus_rejected": "נדחה",
+    "tournamentsFilterClubs": "מועדונים",
+    "tournamentsFilterSearchClub": "חיפוש מועדון…",
+    "tournamentsFilterClear": "ניקוי",
+    "tournamentsFilterApplyClubs": "הצגת {{count}} מועדונים",
+    "tournamentsFilterApplyClubs_one": "הצגת מועדון אחד",
+    "tournamentsFilterApplyClubs_two": "הצגת 2 מועדונים",
+    "tournamentsFilterApplyClubs_other": "הצגת {{count}} מועדונים",
+    "tournamentsFilterApplyBare": "הצגה",
+    "tournamentsSortSoonest": "הקרוב קודם",
+    "tournamentsSortLatest": "הרחוק קודם",
+    "tournamentsFilterEmptyCta": "ניקוי סינון"
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
