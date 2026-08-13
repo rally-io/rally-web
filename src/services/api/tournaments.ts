@@ -14,16 +14,23 @@ export interface TournamentListParams {
   club_id?: string
   /** See the default below — only pass this to opt *out*. */
   include_live?: boolean
+  club_ids?: string[]
+  sort?: 'soonest' | 'latest'
+}
+
+export interface TournamentFilterClub {
+  id: string
+  name: string
+  count: number
 }
 
 export async function getTournaments(
   params: TournamentListParams = {},
 ): Promise<ApiResponse<{ items: Tournament[]; next_cursor: string | null }>> {
   return client.get('/rally/v1/tournaments/', {
-    // Tournaments under way (status=in_progress) are in neither the open nor
-    // the past listing while they are being played. The site wants them —
-    // that is what the LIVE badge is for — so every web listing opts in.
     params: { include_live: true, ...params },
+    // FastAPI expects repeated club_ids=…&club_ids=…; axios default emits club_ids[]=
+    paramsSerializer: { indexes: null },
   })
 }
 
@@ -39,6 +46,15 @@ export async function getTournamentParticipants(
   // limit=100 covers realistic tournament sizes (~32 pairs max) in one page.
   return client.get(`/rally/v1/tournaments/${tournamentId}/participants`, {
     params: { limit: 100 },
+  })
+}
+
+export async function getTournamentFilterOptions(): Promise<
+  ApiResponse<{ clubs: TournamentFilterClub[] }>
+> {
+  // include_live mirrors the list call above so counts match what the list shows
+  return client.get('/rally/v1/tournaments/filter-options', {
+    params: { include_live: true },
   })
 }
 
