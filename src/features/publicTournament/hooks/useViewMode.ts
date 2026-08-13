@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublicBracketData } from '../types';
-import { hasAnyGroupResults } from '../utils';
 
 export type ViewMode = 'groups' | 'games' | 'standings' | 'knockout' | 'plate' | 'video';
 
@@ -27,16 +26,22 @@ export function getRotationPhase(bracket: PublicBracketData | null): RotationPha
  * Ordered list of views to cycle through for a given phase.
  *
  * The group phase has two screens — the standings tables and the match lanes — because each does
- * one job at a size readable across a hall. Before the first result there is nothing to rank, so
- * the list collapses to the schedule alone: a single-entry list makes `canAutoRotate` false
- * through the rule below, so nothing rotates and no toggle is offered, and the board never shows
- * a table of places that no game has earned.
+ * one job at a size readable across a hall. Both are worth rotating between from the moment the
+ * draw exists: before the first result the tables still answer "which pairs are in my group",
+ * which is the question the hall is asking while it waits. `GroupBoardCard` holds back the
+ * numerals, the cutoff line and the stat columns until a result earns them, so a pre-start
+ * rotation shows names — never an order no game has produced.
+ *
+ * This gates on the draw rather than on results because a bracket with no groups drawn yet has
+ * two empty screens to alternate between, and a toggle that swaps one blank for another is the
+ * "lights up and rotates nothing" case `canAutoRotate` exists to prevent. A single-entry list
+ * makes `canAutoRotate` false, so no toggle is offered and no interval starts.
  */
-export function getRotationViews(phase: RotationPhase, showPlate: boolean, hasResults: boolean): ViewMode[] {
+export function getRotationViews(phase: RotationPhase, showPlate: boolean, hasGroups: boolean): ViewMode[] {
     if (phase === 'knockout') {
         return showPlate ? ['knockout', 'plate', 'groups'] : ['knockout', 'groups'];
     }
-    return hasResults ? ['groups', 'games'] : ['games'];
+    return hasGroups ? ['groups', 'games'] : ['games'];
 }
 
 type UseViewModeResult = {
@@ -66,10 +71,10 @@ export function useViewMode(bracket: PublicBracketData | null, isBigScreen = fal
     const showPlate = (bracket?.plate_rounds.length ?? 0) > 0;
     const showVideo = (bracket?.videos.length ?? 0) > 0;
     const phase = useMemo(() => getRotationPhase(bracket), [bracket]);
-    const hasResults = useMemo(() => hasAnyGroupResults(bracket?.groups ?? []), [bracket]);
+    const hasGroups = (bracket?.groups?.length ?? 0) > 0;
     const rotationViews = useMemo(
-        () => getRotationViews(phase, showPlate, hasResults),
-        [phase, showPlate, hasResults],
+        () => getRotationViews(phase, showPlate, hasGroups),
+        [phase, showPlate, hasGroups],
     );
 
     // A phase flip (group stage finishing, knockout starting, or vice versa) makes
@@ -80,7 +85,7 @@ export function useViewMode(bracket: PublicBracketData | null, isBigScreen = fal
     }, [phase]);
 
     useEffect(() => {
-        // Nothing to rotate to (parked pre-start board, or a single-view phase) — don't spin up
+        // Nothing to rotate to (no groups drawn yet, or a single-view phase) — don't spin up
         // a no-op interval that ticks every 12s and never changes anything observable.
         if (!isAutoRotate || rotationViews.length <= 1) return;
         const id = setInterval(() => {

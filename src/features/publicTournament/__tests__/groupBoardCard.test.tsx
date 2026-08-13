@@ -86,18 +86,14 @@ describe('GroupBoardCard', () => {
         expect(screen.getByText('Solo Alpha')).toBeInTheDocument();
         expect(screen.getByText('Solo Beta')).toBeInTheDocument();
 
-        // Rank numerals live in the `.text-2xl` span; before any result it must render empty,
-        // never "1"/"2" — a numeral there reads as an earned ranking that no game has produced.
+        // The columns are up from the draw onward, reading 0 — not withheld until a result.
+        // Held back, the board was emptier before the tournament than during it, and the card
+        // changed shape under the hall the moment the first score landed.
         const rankSpans = container.querySelectorAll('.text-2xl');
         expect(rankSpans.length).toBeGreaterThan(0);
-        rankSpans.forEach(span => expect(span.textContent).toBe(''));
-
-        // Every numeric cell (MP / W / games / diff, header and rows) carries tabular-nums;
-        // pre-results none of them exist at all.
-        expect(container.querySelectorAll('.tabular-nums').length).toBe(0);
-        // The header row's labels are NOT tabular-nums, so the count above cannot see them —
-        // ungating the header would leave a row of column titles over four empty columns.
-        expect(screen.queryByText('Games')).toBeNull();
+        expect(Array.from(rankSpans).map(s => s.textContent)).toEqual(['1', '2']);
+        expect(container.querySelectorAll('.tabular-nums').length).toBeGreaterThan(0);
+        expect(screen.getByText('Games')).toBeInTheDocument();
     });
 
     it('shows matches-played, wins, the games distribution and the signed diff once results exist', () => {

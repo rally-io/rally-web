@@ -57,7 +57,11 @@ Run a single test file: `npx vitest run src/path/to/file.test.tsx`
 `http://localhost:5174/preview.html` (dev only — `src/preview.tsx`, not routed, not emitted into
 `dist`) renders the public live board's real components in the real TV shell at the real 1600×900
 canvas, driven by fixture data. Query params, also togglable from the on-page controls:
-`?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=he|en&cols=N`.
+`?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=he|en&cols=N&played=0&phone=1`
+
+`played=0` is the pre-start board (draw made, nothing scored) and `phone=1` swaps the TV canvas
+for the phone layout — which renders a *different* component (`StandingsTable`, not
+`GroupBoardCard`) for the same group, so a change to "the standings" usually needs both..
 
 Use it for **any** change to `src/features/publicTournament` layout. Two things make it necessary
 rather than convenient: the test suite runs in jsdom, which does no layout (`scrollWidth` and

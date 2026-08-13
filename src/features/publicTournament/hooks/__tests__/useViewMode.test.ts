@@ -57,14 +57,17 @@ describe('getRotationPhase', () => {
 });
 
 describe('getRotationViews', () => {
-    it('parks on the matches view before any group result exists', () => {
-        // Nothing has been played, so there is nothing to rank: showing a table of places
-        // would state an order no game has earned. The schedule is the whole screen.
+    it('collapses to the schedule while no groups have been drawn', () => {
+        // Two empty screens to alternate between is the "toggle that rotates nothing" case.
         expect(getRotationViews('group', false, false)).toEqual(['games']);
         expect(getRotationViews('group', true, false)).toEqual(['games']);
     });
 
-    it('rotates tables and matches once a result exists', () => {
+    it('rotates tables and matches from the draw onward, not from the first result', () => {
+        // Regression: this used to gate on results, which hid the Auto-rotate toggle on a
+        // venue TV for the whole pre-start evening — the busiest time for "which group am I
+        // in". The tables are safe to show early because GroupBoardCard holds back the
+        // numerals and the cutoff line until a result earns them.
         expect(getRotationViews('group', false, true)).toEqual(['groups', 'games']);
         expect(getRotationViews('group', true, true)).toEqual(['groups', 'games']);
     });
@@ -77,10 +80,10 @@ describe('getRotationViews', () => {
         expect(getRotationViews('knockout', false, true)).toEqual(['knockout', 'groups']);
     });
 
-    it('keeps the group tables reachable once they mean something', () => {
+    it('keeps the group tables reachable in every phase that has a draw', () => {
         // The final group standings are what players look for long after the last group match —
-        // the knockout starting must not hide them. Before any result there is no table worth
-        // reaching, which is why the no-results case is excluded here.
+        // the knockout starting must not hide them. The undrawn case is excluded because there
+        // is no table to reach at all.
         for (const views of [
             getRotationViews('group', false, true),
             getRotationViews('group', true, true),
@@ -104,7 +107,7 @@ describe('getRotationViews', () => {
         }
     });
 
-    it('marks the parked phase so the Auto-rotate toggle can be hidden', () => {
+    it('marks the undrawn phase so the Auto-rotate toggle can be hidden', () => {
         // `useViewMode` derives `canAutoRotate` from this length. At length 1, `(i + 1) % 1` is
         // the identity: offering the toggle would leave it reading as on with nothing moving.
         expect(getRotationViews('group', false, false).length > 1).toBe(false);
@@ -184,9 +187,9 @@ describe('rotation interval', () => {
     });
 
     it('never starts the 12s interval when the rotation list has collapsed to one entry', () => {
-        // Group phase, no result anywhere yet: getRotationViews('group', ..., false) is ['games']
-        // (length 1) — the parked pre-start board. A spinning interval here would be pure
-        // overhead: `(i + 1) % 1` is always 0, so nothing it does is ever observable.
+        // No groups drawn yet: getRotationViews('group', ..., false) is ['games'] (length 1).
+        // A spinning interval here would be pure overhead — `(i + 1) % 1` is always 0, so
+        // nothing it does is ever observable.
         const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
         const bracket = makeBracket({ knockout_rounds: [], groups: [] });
 
@@ -195,7 +198,22 @@ describe('rotation interval', () => {
         expect(setIntervalSpy).not.toHaveBeenCalled();
     });
 
-    it('starts the interval once the rotation list actually has more than one entry', () => {
+    it('rotates and offers the toggle on a drawn board before a single match is played', () => {
+        // The reported regression, end to end: this is the venue TV on the night, groups drawn
+        // and nothing played. It used to sit on one view with no toggle to be seen — and since
+        // tapping a tab sets isAutoRotate false with no visible control to undo it, the board
+        // then stayed parked even after results began arriving.
+        const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+        const group: PublicGroup = { group_name: 'Group A', matches: [makeMatch(true)], standings: [] };
+        const bracket = makeBracket({ knockout_rounds: [], groups: [group] });
+
+        const { result } = renderHook(() => useViewMode(bracket, true));
+
+        expect(result.current.canAutoRotate).toBe(true);
+        expect(setIntervalSpy).toHaveBeenCalled();
+    });
+
+    it('still rotates once results exist', () => {
         const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
         const playedMatch: PublicMatch = {
             id: 'm1',

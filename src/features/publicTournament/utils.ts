@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { PublicBracketData, PublicGroup, PublicMatch, PublicPlayer, PublicRound, PublicTeam } from './types';
+import type { PublicBracketData, PublicMatch, PublicPlayer, PublicRound, PublicTeam } from './types';
 
 export function playerFullName(p: Pick<PublicPlayer, 'first_name' | 'last_name'> | null | undefined): string {
     return [p?.first_name, p?.last_name].filter(Boolean).join(' ');
@@ -157,16 +157,6 @@ export function groupMatchesByRound(matches: PublicMatch[]): { rounds: MatchRoun
         .sort((a, b) => a[0] - b[0])
         .map(([roundNumber, list]) => ({ roundNumber, matches: list }));
     return { rounds, hasRealRounds: true };
-}
-
-/** Has this group produced anything to rank on yet? Mirrors what the standings card shows. */
-export function groupHasResults(group: PublicGroup): boolean {
-    return group.matches.some(m => m.sets.length > 0 || m.status === 'walkover');
-}
-
-/** Any group with a result — the signal that a standings screen is worth rotating to. */
-export function hasAnyGroupResults(groups: PublicGroup[]): boolean {
-    return groups.some(groupHasResults);
 }
 
 /**
