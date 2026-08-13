@@ -5,11 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import TournamentsPage from './TournamentsPage'
 import { getTournaments, getTournamentFilterOptions } from '@/services/api/tournaments'
+import { useAppSession } from '@/hooks/useAppSession'
 
 vi.mock('@/services/api/tournaments')
-vi.mock('@/hooks/useAppSession', () => ({
-  useAppSession: () => ({ status: 'signed_out' }),
-}))
+vi.mock('@/hooks/useAppSession', () => ({ useAppSession: vi.fn() }))
 
 const emptyPage = { success: true, data: { items: [], next_cursor: null } }
 
@@ -32,6 +31,7 @@ describe('TournamentsPage filters', () => {
       success: true,
       data: { clubs: [{ id: 'c1', name: 'Padel Time', count: 4 }] },
     } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
   })
 
   it('bare URL queries with default sort and no club filter', async () => {
@@ -64,5 +64,18 @@ describe('TournamentsPage filters', () => {
       const calls = vi.mocked(getTournaments).mock.calls
       expect(calls[calls.length - 1][0]!.sort).toBe('latest')
     })
+  })
+
+  it('my tab ignores club/sort URL params and hides the toolbar', async () => {
+    vi.mocked(useAppSession).mockReturnValue({ status: 'ready' } as never)
+    renderPage('/tournaments?tab=my&clubs=c1&sort=latest')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    const params = vi.mocked(getTournaments).mock.calls[0][0]!
+    expect(params.club_ids).toBeUndefined()
+    expect(params.sort).toBeUndefined()
+    expect(screen.queryByRole('button', { name: 'Clubs' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /הקרוב קודם|הרחוק קודם|Soonest first|Latest first/ }),
+    ).not.toBeInTheDocument()
   })
 })
