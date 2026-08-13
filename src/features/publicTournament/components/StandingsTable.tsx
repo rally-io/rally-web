@@ -20,6 +20,9 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
     const { t } = useTranslation();
     const nameText = large ? 'text-sm' : 'text-xs';
     const namePx = large ? 14 : 12;
+    // Same rule as GroupBoardCard, derived the same way from the same rows, so the phone and the
+    // TV cannot disagree about which pairs are shown as through. See the comment there.
+    const ranked = standings.some(s => s.wins + s.losses > 0);
     return (
         <div className="overflow-hidden rounded-xl border border-(--pb-border) bg-(--pb-card)">
             <div className="flex items-center justify-between border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-2">
@@ -36,7 +39,7 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                 // A disqualified row is numbered last, so in a small enough group
                 // its position still falls inside qualifyCount — guard explicitly.
                 const dq = s.is_disqualified === true;
-                const qualifies = !dq && qualifyCount != null && s.position <= qualifyCount;
+                const qualifies = ranked && !dq && qualifyCount != null && s.position <= qualifyCount;
                 // Games, not sets — the TV board's diff is games-based and the two
                 // surfaces may not disagree about a pair's balance.
                 const diff = s.games_won - s.games_lost;
