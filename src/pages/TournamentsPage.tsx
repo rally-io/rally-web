@@ -4,6 +4,8 @@ import { useSearchParams } from 'react-router-dom'
 import { Search, Lock, Calendar, MapPin } from 'lucide-react'
 import { useTournaments } from '@/hooks/useTournaments'
 import { useAppSession } from '@/hooks/useAppSession'
+import { ClubFilterDropdown } from '@/components/tournaments/ClubFilterDropdown'
+import { SortToggle } from '@/components/tournaments/SortToggle'
 import { TournamentCard } from '@/components/tournaments/TournamentCard'
 import {
   TournamentUpdatesModal,
@@ -29,6 +31,25 @@ export default function TournamentsPage() {
     else next.set('tab', key)
     setSearchParams(next, { replace: true })
   }
+  const sort: 'soonest' | 'latest' =
+    searchParams.get('sort') === 'latest' ? 'latest' : 'soonest' // unknown → default
+  const clubIds = useMemo(
+    () => (searchParams.get('clubs') ?? '').split(',').filter(Boolean),
+    [searchParams],
+  )
+
+  const setSort = (next: 'soonest' | 'latest') => {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'soonest') params.delete('sort') // bare URL = enforced default
+    else params.set('sort', next)
+    setSearchParams(params, { replace: true })
+  }
+  const setClubIds = (ids: string[]) => {
+    const params = new URLSearchParams(searchParams)
+    if (ids.length === 0) params.delete('clubs')
+    else params.set('clubs', ids.join(','))
+    setSearchParams(params, { replace: true })
+  }
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
 
@@ -40,8 +61,10 @@ export default function TournamentsPage() {
     () => ({
       type: tab,
       ...(debounced ? { search: debounced.slice(0, 100) } : {}),
+      ...(tab === 'upcoming' && clubIds.length ? { club_ids: clubIds } : {}),
+      ...(tab === 'upcoming' && sort === 'latest' ? { sort } : {}),
     }),
-    [tab, debounced],
+    [tab, debounced, clubIds, sort],
   )
 
   const enabled = !(tab === 'my' && signedOut)
@@ -114,6 +137,13 @@ export default function TournamentsPage() {
           />
         </div>
 
+        {tab === 'upcoming' && (
+          <div className="mb-8 flex flex-wrap items-center gap-3">
+            <ClubFilterDropdown selected={clubIds} onApply={setClubIds} />
+            <SortToggle value={sort} onChange={setSort} />
+          </div>
+        )}
+
         {isError ? (
           <>
             <div className="text-center py-8">
@@ -164,6 +194,11 @@ export default function TournamentsPage() {
                 </p>
                 <TournamentUpdatesTrigger onClick={() => setUpdatesOpen(true)} />
               </div>
+              {clubIds.length > 0 && (
+                <Button variant="outline" onClick={() => setClubIds([])} className="mb-6">
+                  {t('tournament.tournamentsFilterEmptyCta')}
+                </Button>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {TEASER_CONFIGS.map((cfg, i) => (
                   <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
