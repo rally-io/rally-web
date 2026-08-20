@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
+import { trackLead } from '@/lib/analytics'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { ISRAEL_REGIONS } from '@/constants/israelRegions'
 import { ISRAELI_CITIES } from '@/constants/israeliCities'
@@ -282,6 +283,7 @@ function CoachApplicationForm() {
       return
     }
 
+    trackLead('coach_application')
     setAppNumber(`RC-${Date.now().toString(36).toUpperCase().slice(-6)}`)
     setSubmitted(true)
     setSubmitting(false)

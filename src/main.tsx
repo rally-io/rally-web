@@ -8,6 +8,9 @@ import { AppSessionProvider } from './contexts/AppSessionContext'
 import { AuthGateProvider } from './contexts/AuthGateContext'
 import './i18n'
 import './App.css'
+import { initDownloadClickTracking } from './lib/analytics'
+
+initDownloadClickTracking()
 
 const queryClient = new QueryClient({
   defaultOptions: {
