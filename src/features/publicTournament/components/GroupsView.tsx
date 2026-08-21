@@ -18,17 +18,36 @@ type GroupsViewProps = {
 /**
  * Column count tuned so every group fits on one screen without scrolling.
  *
- * Four groups sit 2×2 rather than in one row of four. The canvas is 1600×900 and a group of
- * four pairs is about 280px tall, so a single row gave each card 369×625 — starving it of the
- * width the pair names need while wasting more than half its height. Measured at 2×2 the card
- * is roughly 758×302: the names get about four times the room, and the empty space disappears
- * because the card is finally the shape of its contents.
+ * The rule is "never more than two rows". The canvas is 1600×900 and the board gets ~644px of it
+ * after the header, tabs and footer; a group of four pairs needs ~275px of card (header, column
+ * labels, four two-line rows, the cutoff line), so two rows fit with room to spare and a third
+ * does not — at three rows each card got 193px and clipped its last two pairs off the bottom of
+ * an unattended screen, which is how an eight-group tournament shipped showing two pairs per group.
+ *
+ * Four groups sit 2×2 rather than in one row of four. A single row gave each card 369×625 —
+ * starving it of the width the pair names need while wasting more than half its height. At 2×2
+ * the card is roughly 758×302: the names get about four times the room, and the empty space
+ * disappears because the card is finally the shape of its contents.
+ *
+ * Seven and eight groups go four across (369px per card, the width `GroupBoardCard`'s column
+ * chrome is pared for). Measured at 8×4 pairs: every card fits with ~28px spare, and the longest
+ * realistic pair name bottoms out at FitText's 9px floor without clipping.
+ *
+ * Nine or more groups is NOT handled: five across leaves ~30px for a name, so the card would
+ * need paging instead (rotate pages of eight on the auto-rotate clock). No such tournament has
+ * existed yet; if one does, the ninth group's row clips exactly the way eight used to.
+ *
+ * Literal class strings on purpose: Tailwind v4 only emits utilities it finds written out in
+ * source, so a `grid-cols-${n}` assembled at runtime is silently absent from the stylesheet
+ * and the grid falls back to one column.
  */
-function tvGridCols(count: number): string {
+// eslint-disable-next-line react-refresh/only-export-components -- layout rule, not a component; the /preview.html harness renders the same grid
+export function tvGridCols(count: number): string {
     if (count <= 1) return 'mx-auto w-full max-w-2xl grid-cols-1';
     if (count === 2) return 'grid-cols-2';
     if (count === 4) return 'grid-cols-2';
-    return 'grid-cols-3';
+    if (count <= 6) return 'grid-cols-3';
+    return 'grid-cols-4';
 }
 
 /** Rotating per-group accent hue, defined per theme in themes.css. Shared by both group views. */
