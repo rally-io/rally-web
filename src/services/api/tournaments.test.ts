@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { AxiosRequestConfig } from 'axios'
 import client from './client'
-import { getTournaments, getTournamentFilterOptions } from './tournaments'
+import { getTournaments, getTournamentFilterOptions, registerTournament } from './tournaments'
 
-vi.mock('./client', () => ({ default: { get: vi.fn().mockResolvedValue({ success: true }) } }))
+vi.mock('./client', () => ({
+  default: {
+    get: vi.fn().mockResolvedValue({ success: true }),
+    post: vi.fn().mockResolvedValue({ success: true }),
+  },
+}))
 
 describe('tournaments api params', () => {
   beforeEach(() => vi.mocked(client.get).mockClear())
@@ -41,6 +46,17 @@ describe('tournaments api params', () => {
     expect((config as AxiosRequestConfig).params).toEqual({
       include_live: true,
       search: 'zcz',
+    })
+  })
+})
+
+describe('registerTournament', () => {
+  beforeEach(() => vi.mocked(client.post).mockClear())
+
+  it('posts the payload to the correct registration endpoint', async () => {
+    await registerTournament('t-1', { partner_type: 'none' })
+    expect(client.post).toHaveBeenCalledWith('/rally/v1/tournaments/t-1/register', {
+      partner_type: 'none',
     })
   })
 })

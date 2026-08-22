@@ -6,11 +6,19 @@ import {
 } from 'lucide-react'
 import { useTournament } from '@/hooks/useTournament'
 import { useRtl } from '@/hooks/useRtl'
-import { AppDownloadModal, type AppDownloadVariant } from '@/components/app-download/AppDownloadModal'
-import { tryOpenInApp } from '@/lib/appLinks'
+import { useAuthGate } from '@/hooks/useAuthGate'
+import { useAppSession } from '@/hooks/useAppSession'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
-import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
+// Temporarily hidden — see the commented-out render below.
+// import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
+import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
+import { registerTournament } from '@/services/api/tournaments'
+import { confirmTournamentZeroPayment } from '@/services/api/payments'
+import { translateRegistrationError } from '@/lib/registrationErrors'
+import type { PartnerSelectionState } from '@/types/partner'
+import type { RegisterPayload } from '@/types/api'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
@@ -20,19 +28,112 @@ import { PrizesGrid } from '@/components/tournaments/PrizesGrid'
 import { LiveBadge } from '@/components/tournaments/LiveBadge'
 import { formatLabelKey, structureLabelKey } from '@/lib/tournamentTheme'
 
+// Pure helper — no side-effects, fully testable in isolation.
+function buildRegisterPayload(
+  format: string,
+  state: PartnerSelectionState,
+): RegisterPayload {
+  const needsPartner = format === 'doubles' || format === 'mixed'
+  if (!needsPartner) return { partner_type: 'none' }
+
+  if (state.phase === 'selected') {
+    if (state.partner.type === 'existing') {
+      return { partner_type: 'existing', partner_player_id: state.partner.id }
+    }
+    return {
+      partner_type: 'invite',
+      invite_first_name: state.partner.firstName,
+      invite_last_name: state.partner.lastName,
+      invite_country_code: state.partner.countryCode,
+      invite_phone: state.partner.phone,
+    }
+  }
+  // Guard — unreachable when the partner-required gate below is enforced.
+  return { partner_type: 'none' }
+}
+
 export default function TournamentDetailPage() {
   const { t } = useTranslation()
   const { locale } = useRtl()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: tr, isLoading, isError } = useTournament(id!)
-  const [appModal, setAppModal] = useState<AppDownloadVariant | null>(null)
+  const { requireSignIn } = useAuthGate()
+  const { status: sessionStatus, refetchOnboarding } = useAppSession()
 
-  // Mobile goes straight to the tournament in the app (OneLink handles the
-  // not-installed → store fallback); desktop gets the app-download modal.
-  const handleAppCta = (variant: AppDownloadVariant) => {
-    if (!tr || tryOpenInApp(`/tournaments/${tr.id}`)) return
-    setAppModal(variant)
+  const [partnerState, setPartnerState] = useState<PartnerSelectionState>({ phase: 'idle' })
+  const [isRegistering, setIsRegistering] = useState(false)
+  const [registerError, setRegisterError] = useState<string | null>(null)
+
+  const isPartneredFormat = tr?.format === 'doubles' || tr?.format === 'mixed'
+  const partnerRequired = isPartneredFormat && partnerState.phase === 'idle'
+
+  // Web registration: gate on sign-in only (no profile-completeness check).
+  // requireSignIn() resolves immediately if already authenticated, otherwise
+  // opens the auth gate modal and resolves once sign-in/sign-up succeeds.
+  const handleRegisterNow = () => {
+    void requireSignIn()
+      .then(async () => {
+        if (!tr) return
+        if (partnerRequired) {
+          document
+            .getElementById('partner-section')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+        setIsRegistering(true)
+        setRegisterError(null)
+        try {
+          const payload = buildRegisterPayload(tr.format, partnerState)
+          const result = await registerTournament(tr.id, payload)
+          if (!result.success) {
+            setRegisterError(translateRegistrationError(result.error.message, t))
+            return
+          }
+          const reg = result.data
+          const amountToPay = reg.amount_to_pay ?? 0
+          // No intermediate summary screen — go straight from Register Now to
+          // the add-card step (or, for a free tournament, straight to confirming).
+          if (amountToPay < 0.01) {
+            const zeroResult = await confirmTournamentZeroPayment(reg.id)
+            if (!zeroResult.success) {
+              setRegisterError(zeroResult.error.message)
+              return
+            }
+            const sp = new URLSearchParams({
+              type: 'tournament_registration',
+              id: reg.id,
+              tournament_id: tr.id,
+            })
+            navigate(`/payments/confirming?${sp.toString()}`)
+            return
+          }
+          const sp = new URLSearchParams({
+            registration_id: reg.id,
+            tournament_id: tr.id,
+            amount: String(amountToPay),
+          })
+          navigate(`/payment-method?${sp.toString()}`)
+        } catch (e) {
+          // Validation failures (partner already registered, tournament closed,
+          // etc.) are RallyException on rally-api — a non-2xx response, which the
+          // axios client's interceptor turns into a rejected plain object
+          // ({status, code, message, details}), not an Error instance. Extract
+          // the real backend message and translate it — rally-api sends plain
+          // English text with no distinct error code for most of these.
+          const message = (e as { message?: string } | null)?.message
+          setRegisterError(
+            message
+              ? translateRegistrationError(message, t)
+              : t('tournament.registrationFailedTitle'),
+          )
+        } finally {
+          setIsRegistering(false)
+        }
+      })
+      .catch(() => {
+        // USER_CANCELLED or SUPERSEDED — stay on the page as-is.
+      })
   }
 
   if (isLoading) {
@@ -225,7 +326,45 @@ export default function TournamentDetailPage() {
           />
         )}
 
-        <ParticipantsSection tournamentId={tr.id} />
+        {!myReg && isPartneredFormat && open && sessionStatus !== 'loading' && (
+          <section id="partner-section">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-rally-text mb-2">
+              {t('tournament.tournamentPartner')}
+            </h2>
+            {sessionStatus === 'signed_out' ? (
+              <SignInRequiredPanel
+                message={t('tournament.partnerSignInPrompt')}
+                ctaLabel={t('auth.gate.sign_in_button')}
+                onSignIn={() => {
+                  void requireSignIn()
+                    .then(() => refetchOnboarding())
+                    .catch(() => {
+                      // USER_CANCELLED — section stays as-is.
+                    })
+                }}
+              />
+            ) : sessionStatus === 'profile_incomplete' ? (
+              <SignInRequiredPanel
+                message={t('tournament.partnerCompleteProfilePrompt')}
+                ctaLabel={t('user_menu.complete_profile')}
+                onSignIn={() =>
+                  navigate(`/profile/edit?returnTo=${encodeURIComponent(`/tournaments/${tr.id}`)}`)
+                }
+              />
+            ) : sessionStatus === 'ready' ? (
+              <>
+                {partnerState.phase === 'idle' && (
+                  <p className="text-sm text-rally-accent font-semibold mb-3">
+                    {t('tournament.tournamentPartnerRequiredHint')}
+                  </p>
+                )}
+                <PartnerSection selectionState={partnerState} onPartnerChange={setPartnerState} />
+              </>
+            ) : null}
+          </section>
+        )}
+
+        {/* Temporarily hidden — <ParticipantsSection tournamentId={tr.id} /> */}
 
         {tr.prizes.length > 0 && (
           <section>
@@ -293,10 +432,17 @@ export default function TournamentDetailPage() {
             </div>
             {payState ? (
               <button
-                onClick={() => handleAppCta('pay')}
+                onClick={() =>
+                  navigate(
+                    `/payment-method?${new URLSearchParams({
+                      tournament_id: tr.id,
+                      registration_id: myReg!.id,
+                    }).toString()}`,
+                  )
+                }
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
               >
-                {t('appDownload.cta_pay')}
+                {t('tournament.tournamentPayNow')}
               </button>
             ) : live && liveHref && (myReg || !open) ? (
               // Where the bar would otherwise sit dead ("already registered" /
@@ -328,24 +474,23 @@ export default function TournamentDetailPage() {
               </button>
             ) : (
               <button
-                onClick={() => handleAppCta('register')}
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+                onClick={handleRegisterNow}
+                disabled={isRegistering}
+                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"
               >
-                {t('appDownload.cta_register')}
+                {isRegistering
+                  ? t('tournament.tournamentDetailRegistering')
+                  : partnerRequired
+                  ? t('tournament.ctaMissingPartner')
+                  : t('tournament.tournamentDetailRegisterNow')}
               </button>
             )}
           </div>
+          {registerError && (
+            <p className="mt-2 text-sm text-rally-error text-center">{registerError}</p>
+          )}
         </div>
       </div>
-
-      <AppDownloadModal
-        open={appModal !== null}
-        variant={appModal ?? 'register'}
-        deepLinkPath={`/tournaments/${tr.id}`}
-        onOpenChange={(o) => {
-          if (!o) setAppModal(null)
-        }}
-      />
     </main>
   )
 }

@@ -69,7 +69,11 @@ export function parseSkillLevel(
   return { range: null, level: str.trim() }
 }
 
-export function formatTournamentSkillRange(min: number, max: number): string {
+export function formatTournamentSkillRange(
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string {
+  if (min == null || max == null) return ''
   const lo = min.toFixed(1)
   const hi = max.toFixed(1)
   if (lo === hi) return lo

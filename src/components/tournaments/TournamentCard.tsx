@@ -50,21 +50,20 @@ export function TournamentCard({
       })
   }
 
-  const payState =
-    tr.registration_status === 'payment_pending' ||
-    tr.registration_status === 'approved' ||
-    tr.registration_status === 'registered'
+  // Only payment_pending still needs a card added — registered/approved/etc.
+  // already have a registration in hand, so the card is just informational.
+  const needsPayment = tr.registration_status === 'payment_pending'
 
-  const ctaLabel = payState
-    ? t('appDownload.cta_pay')
-    : tab === 'my'
+  const ctaLabel = needsPayment
+    ? t('tournament.tournamentsCompleteRegistration')
+    : tr.registration_status || tab === 'my'
     ? t('tournament.tournamentsViewDetails')
     : open
     ? t('tournament.tournamentsRegister')
     : t('tournament.tournamentsViewDetails')
 
-  // Payment completion happens in the mobile app; the detail page's sticky CTA
-  // opens the app-download modal, so every card routes to the detail page.
+  // The detail page's sticky CTA handles payment completion directly (Pay Now
+  // → Add Card), so every card just routes to the detail page.
   const linkTo = `/tournaments/${tr.id}`
 
   return (
@@ -165,7 +164,7 @@ export function TournamentCard({
           ) : (
             <span
               className={`inline-flex items-center justify-center min-w-[120px] h-10 rounded-full bg-rally-accent text-rally-accent-text font-bold ${
-                payState ? 'shadow-[0_0_20px_rgba(204,255,0,0.5)]' : ''
+                needsPayment ? 'shadow-[0_0_20px_rgba(204,255,0,0.5)]' : ''
               }`}
             >
               {ctaLabel}

@@ -1,13 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@/i18n'
 import EditProfilePage from './EditProfilePage'
 import * as profileApi from '@/services/api/profile'
 import * as authApi from '@/services/api/auth'
+import * as playersApi from '@/services/api/players'
 import type { PlayerMe } from '@/types/api'
+
+// Drives a freshly-typed phone number through the OTP verification gate so a
+// test can reach an enabled Save button — mirrors the real user flow instead
+// of bypassing it, since Save is now blocked until the phone is verified.
+async function verifyPhoneInUi(user: ReturnType<typeof import('@testing-library/user-event').default.setup>) {
+  vi.spyOn(playersApi, 'checkPhoneAvailable').mockResolvedValue({
+    success: true, data: { available: true }, meta: null, error: null,
+  } as any)
+  vi.spyOn(playersApi, 'requestPhoneVerificationOtp').mockResolvedValue({
+    success: true, data: { message: 'sent' }, meta: null, error: null,
+  } as any)
+  vi.spyOn(playersApi, 'verifyPhoneVerificationOtp').mockResolvedValue({
+    success: true, data: { verified: true }, meta: null, error: null,
+  } as any)
+
+  await user.click(screen.getByRole('button', { name: /verify phone number/i }))
+  const otpInput = await screen.findByPlaceholderText(/6-digit code/i)
+  await user.type(otpInput, '123456')
+  await user.click(screen.getByRole('button', { name: /verify code/i }))
+  await screen.findByText(/phone verified/i)
+}
 
 const requireSignIn = vi.fn()
 const sessionState: {
@@ -36,12 +58,20 @@ vi.mock('@/hooks/useAuthGate', () => ({
   useAuthGate: () => ({ requireSignIn }),
 }))
 
-function renderPage() {
+function TournamentProbe() {
+  const [params] = useSearchParams()
+  return <div data-testid="tournament-probe">{params.toString()}</div>
+}
+
+function renderPage(initialPath = '/profile/edit') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/profile/edit']}>
-        <EditProfilePage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path="/profile/edit" element={<EditProfilePage />} />
+          <Route path="/tournaments/:id" element={<TournamentProbe />} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -87,6 +117,7 @@ describe('EditProfilePage — profile_incomplete branch', () => {
     await user.type(firstName, 'Dana')
     await user.type(lastName, 'Levi')
     await user.type(phone, '501234567')
+    await verifyPhoneInUi(user)
 
     const save = screen.getByRole('button', { name: /save changes/i })
     await waitFor(() => expect(save).not.toBeDisabled())
@@ -191,6 +222,27 @@ describe('EditProfilePage — submit', () => {
     updateSpy.mockRestore()
   })
 
+  it('navigates back to returnTo after a successful save (resuming e.g. tournament registration)', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    const updateSpy = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({
+      success: true,
+      data: {},
+      meta: null,
+      error: null,
+    } as any)
+    renderPage(`/profile/edit?returnTo=${encodeURIComponent('/tournaments/t-1')}`)
+    const lastName = screen.getByLabelText(/last name/i) as HTMLInputElement
+    await user.clear(lastName)
+    await user.type(lastName, 'Cohen')
+    const save = screen.getByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    updateSpy.mockRestore()
+  })
+
   it('shows the API error message when the call fails', async () => {
     const user = userEvent.setup()
     sessionState.status = 'ready'
@@ -263,6 +315,7 @@ describe('EditProfilePage — partial edits on ready profile with gaps', () => {
     renderPage()
     const phone = screen.getByLabelText(/phone number/i) as HTMLInputElement
     await user.type(phone, '501234567')
+    await verifyPhoneInUi(user)
     const save = await screen.findByRole('button', { name: /save changes/i })
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)

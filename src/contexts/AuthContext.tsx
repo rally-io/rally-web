@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useEffect, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import type { Session, User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -31,13 +31,16 @@ function isSupabaseAuthError(e: unknown): e is AuthError {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const didInit = useRef(false)
 
-  // Initial bootstrap + subscription.
+  // Initial bootstrap + subscription. Deliberately no "run once" ref guard here:
+  // under React 18 StrictMode, dev mounts this effect, runs its cleanup, then
+  // mounts it again. A guard that skips the second run also skips resubscribing
+  // — the first subscription was already torn down by the cleanup in between,
+  // so the app is left with NO onAuthStateChange listener at all: sign-in still
+  // succeeds against Supabase, but nothing in the UI ever reflects it again.
+  // Subscribing fresh on every effect run is safe — cleanup unsubscribes the
+  // previous one each time — so there is exactly one live subscription always.
   useEffect(() => {
-    if (didInit.current) return
-    didInit.current = true
-
     // Subscribe first so detectSessionInUrl's SIGNED_IN event is never missed.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)

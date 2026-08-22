@@ -36,3 +36,49 @@ describe('axios client request interceptor', () => {
     expect(config.headers.Authorization).toBeUndefined()
   })
 })
+
+describe('axios client response interceptor — profile-edit redirect bridge', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('redirects to profile edit on a 422 PROFILE_FIELDS_REQUIRED (e.g. tournament registration)', async () => {
+    const { default: client, __setApiBridge } = await import('./client')
+    const redirectToProfileEdit = vi.fn()
+    __setApiBridge({ redirectToProfileEdit, forceSignOut: vi.fn() })
+
+    // @ts-expect-error — private but stable.
+    const rejected = client.interceptors.response.handlers[0].rejected
+    await rejected!({
+      response: {
+        status: 422,
+        data: {
+          success: false,
+          error: { code: 'PROFILE_FIELDS_REQUIRED', message: 'Profile fields required', details: null },
+        },
+      },
+    }).catch(() => {})
+
+    expect(redirectToProfileEdit).toHaveBeenCalledTimes(1)
+  })
+
+  it('still redirects on the pre-existing 403 PLAYER_NOT_FOUND case', async () => {
+    const { default: client, __setApiBridge } = await import('./client')
+    const redirectToProfileEdit = vi.fn()
+    __setApiBridge({ redirectToProfileEdit, forceSignOut: vi.fn() })
+
+    // @ts-expect-error — private but stable.
+    const rejected = client.interceptors.response.handlers[0].rejected
+    await rejected!({
+      response: {
+        status: 403,
+        data: {
+          success: false,
+          error: { code: 'PLAYER_NOT_FOUND', message: 'Player not found', details: null },
+        },
+      },
+    }).catch(() => {})
+
+    expect(redirectToProfileEdit).toHaveBeenCalledTimes(1)
+  })
+})

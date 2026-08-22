@@ -29,9 +29,11 @@ describe('TournamentCard CTA', () => {
     expect(screen.getByRole('link', { name: /Rally Open/i })).toBeInTheDocument()
     expect(screen.getByText('Register')).toBeInTheDocument()
   })
-  it('payment_pending shows the complete-in-app label and links to detail', () => {
+  it('payment_pending shows the complete-registration label and links to detail', () => {
     renderCard({ registration_status: 'payment_pending', registration_id: 'r-1' })
-    expect(screen.getByText(i18n.t('appDownload.cta_pay'))).toBeInTheDocument()
+    expect(
+      screen.getByText(i18n.t('tournament.tournamentsCompleteRegistration')),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Rally Open/i })).toHaveAttribute(
       'href',
       '/tournaments/t1',
@@ -40,6 +42,24 @@ describe('TournamentCard CTA', () => {
   it('closed registration shows View', () => {
     renderCard({ registration_deadline: '2000-01-01' })
     expect(screen.getByText('View')).toBeInTheDocument()
+  })
+  it('registered (payment already held/complete) shows View Details, not Complete Registration', () => {
+    renderCard({ registration_status: 'registered', registration_id: 'r-1' })
+    expect(
+      screen.getByText(i18n.t('tournament.tournamentsViewDetails')),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(i18n.t('tournament.tournamentsCompleteRegistration')),
+    ).not.toBeInTheDocument()
+  })
+  it('approved also shows View Details, not Complete Registration', () => {
+    renderCard({ registration_status: 'approved', registration_id: 'r-1' })
+    expect(
+      screen.getByText(i18n.t('tournament.tournamentsViewDetails')),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(i18n.t('tournament.tournamentsCompleteRegistration')),
+    ).not.toBeInTheDocument()
   })
   it('my tab base label is View', () => {
     renderCard({}, 'my')
@@ -78,6 +98,19 @@ describe('TournamentCard past variant', () => {
       'href',
       '/tournaments/t1',
     )
+  })
+})
+
+describe('TournamentCard status pill', () => {
+  it('shows "registered" as a success (green) pill, matching approved/confirmed — not the neutral info blue', () => {
+    renderCard({ registration_status: 'registered', registration_id: 'r-1' })
+    const pill = screen.getByText(i18n.t('tournament.registrationStatus_registered'))
+    expect(pill.className).toContain('bg-rally-success')
+  })
+  it('keeps "payment_pending" as the accent (attention) color', () => {
+    renderCard({ registration_status: 'payment_pending', registration_id: 'r-1' })
+    const pill = screen.getByText(i18n.t('tournament.registrationStatus_payment_pending'))
+    expect(pill.className).toContain('bg-rally-accent')
   })
 })
 

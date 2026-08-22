@@ -67,13 +67,17 @@ client.interceptors.response.use(
       })
     }
 
-    // --- 403 — missing players row, redirect to the profile edit page ---
+    // --- missing/incomplete player profile, redirect to the profile edit page ---
+    // PROFILE_FIELDS_REQUIRED is raised by rally-api as a 422 (e.g. tournament
+    // registration missing contact_number/skill_level) — PLAYER_NOT_FOUND-style
+    // checks are 403. Catch both; this used to only check 403, which meant the
+    // 422 case never actually triggered the redirect.
     const needsPlayerRow =
       code === 'PROFILE_FIELDS_REQUIRED' ||
       code === 'PLAYER_NOT_FOUND' ||
       (typeof detailMsg === 'string' && /player.*(not.*found|profile.*incomplete)/i.test(detailMsg))
 
-    if (status === 403 && needsPlayerRow) {
+    if ((status === 403 || status === 422) && needsPlayerRow) {
       _bridge?.redirectToProfileEdit()
     }
 

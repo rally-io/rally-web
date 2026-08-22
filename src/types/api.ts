@@ -232,6 +232,39 @@ export interface RegistrationDetail {
   requires_approval_event?: boolean
 }
 
+// --- Tournament registration request ---
+
+export type RegisterPayload =
+  | { partner_type: 'none' }
+  | { partner_type: 'existing'; partner_player_id: string }
+  | {
+      partner_type: 'invite'
+      invite_first_name: string
+      invite_last_name: string
+      invite_country_code: string
+      invite_phone: string
+    }
+
+export interface TournamentRegistrationResult {
+  id: string
+  tournament_id: string
+  status: string
+  payment_status: string | null
+  credits_applied: number
+  service_fee: number
+  amount_to_pay: number | null
+  entry_fee: number | null
+}
+
+// --- Player search (partner selection) ---
+
+export interface PlayerSearchResult {
+  id: string
+  first_name: string
+  last_name: string
+  avatar_url: string | null
+}
+
 // Profile update
 export interface ProfileUpdateRequest {
   first_name?: string
@@ -306,10 +339,12 @@ export interface SupabaseUserSummary {
 }
 
 // --- Payments ---
-// Web no longer initiates payments (all transactional flows live in the mobile
-// app); this type survives only for the grace-period return/confirming pages.
 
 export type PaymentEntityType =
   | 'booking'
   | 'tournament_registration'
   | 'event_participation'
+
+export interface InitiatePaymentResponse {
+  payment_url: string | null
+}

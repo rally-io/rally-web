@@ -25,10 +25,9 @@ import ClubTournamentsPage from './pages/ClubTournamentsPage'
 import ClubEventsPage from './pages/ClubEventsPage'
 import TournamentsPage from './pages/TournamentsPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
-import RegistrationSummaryPage from './pages/RegistrationSummaryPage'
 import MyActivityPage from './pages/MyActivityPage'
 import EditProfilePage from './pages/EditProfilePage'
-import PaymentsMovedPage from './pages/payment/PaymentsMovedPage'
+import PaymentMethodPage from './pages/payment/PaymentMethodPage'
 import PaymentReturnPage from './pages/payment/PaymentReturnPage'
 import PaymentConfirmingPage from './pages/payment/PaymentConfirmingPage'
 import PaymentFailedPage from './pages/payment/PaymentFailedPage'
@@ -93,11 +92,10 @@ export default function App() {
           <Route path="/clubs/:id/tournaments" element={<ClubTournamentsPage />} />
           <Route path="/clubs/:id/events" element={<ClubEventsPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
-          <Route path="/tournaments/summary" element={<RegistrationSummaryPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
           <Route path="/my-activity" element={<MyActivityPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
-          <Route path="/payment-method" element={<PaymentsMovedPage />} />
+          <Route path="/payment-method" element={<PaymentMethodPage />} />
           <Route path="/payments/return" element={<PaymentReturnPage />} />
           <Route path="/payments/confirming" element={<PaymentConfirmingPage />} />
           <Route path="/payments/failed" element={<PaymentFailedPage />} />

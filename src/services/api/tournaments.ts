@@ -2,6 +2,7 @@
 import client from './client'
 import type {
   ApiResponse, Tournament, TournamentDetail, RegistrationDetail, TournamentParticipants,
+  RegisterPayload, TournamentRegistrationResult,
 } from '@/types/api'
 
 export interface TournamentListParams {
@@ -69,4 +70,11 @@ export async function getRegistration(
   return client.get(
     `/rally/v1/tournaments/${tournamentId}/registrations/${registrationId}`,
   )
+}
+
+export async function registerTournament(
+  tournamentId: string,
+  payload: RegisterPayload,
+): Promise<ApiResponse<TournamentRegistrationResult>> {
+  return client.post(`/rally/v1/tournaments/${tournamentId}/register`, payload)
 }
