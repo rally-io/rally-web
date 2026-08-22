@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackLead } from '@/lib/analytics'
 import { Bell, CheckCircle2 } from 'lucide-react'
 import {
   Dialog,
@@ -67,6 +68,9 @@ export function TournamentUpdatesModal({ open, onOpenChange }: Props) {
       console.error('[update_leads] insert threw:', err)
     }
 
+    // This form is optimistic (success is shown even if the insert failed),
+    // so the Lead fires on the same optimistic path.
+    trackLead('tournament_updates')
     setSubmitted(true)
     setSubmitting(false)
   }

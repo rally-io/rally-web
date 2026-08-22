@@ -1,3 +1,5 @@
+import { trackDownload } from './analytics'
+
 // Single source of truth for the mobile app store links + badge art.
 export const APP_STORE_URL = 'https://apps.apple.com/il/app/rally/id6762743900'
 export const PLAY_STORE_URL =
@@ -50,6 +52,7 @@ export function isMobileDevice(): boolean {
  */
 export function tryOpenInApp(inAppPath: string): boolean {
   if (!isMobileDevice()) return false
+  trackDownload('onelink')
   window.location.assign(buildAppDeepLink(inAppPath))
   return true
 }

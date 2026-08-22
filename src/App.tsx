@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Layout } from './components/layout/Layout'
 import { AuthGateModal } from './components/auth/AuthGateModal'
+import RouteTracker from './components/analytics/RouteTracker'
 
 // Lazy on purpose: this feature ships its own theme stylesheet, which @imports the
 // Karantina display face. A static import would make every marketing page fetch it.
@@ -49,6 +50,7 @@ export default function App() {
       {/* Mounted once — opens when any page calls requireSignIn() from useAuthGate */}
       <AuthGateModal />
 
+      <RouteTracker />
       <Routes>
         {/* Bare auth screens (no Layout/Navbar/Footer) */}
         <Route path="/login" element={<LoginPage />} />
