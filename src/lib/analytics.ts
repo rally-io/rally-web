@@ -118,9 +118,13 @@ export interface LeadDetails {
  * signup). Call it only after the lead was actually persisted — firing on
  * failed submits would train ad delivery on broken conversions.
  *
- * Email / phone (when the form has them) go to Meta as advanced-matching
- * parameters — the pixel hashes them client-side, the CAPI relay hashes them
- * server-side — which is what lifts Event Match Quality for a lead campaign.
+ * Email / phone (when the form has them) go to the CAPI relay, which hashes
+ * them server-side as advanced-matching parameters — that is what lifts Event
+ * Match Quality for a lead campaign. They are deliberately NOT passed to the
+ * browser pixel: re-calling `fbq('init', id, {em, ph})` after the base code
+ * silently stops every later event in the current fbevents.js (verified on a
+ * preview deploy), so pixel-side matching is left to Events Manager's
+ * "Automatic advanced matching" toggle instead.
  */
 export function trackLead(source: string, details: LeadDetails = {}) {
   const eventId = newEventId()
@@ -132,15 +136,6 @@ export function trackLead(source: string, details: LeadDetails = {}) {
   if (details.segment) pixelParams.content_name = details.segment
 
   try {
-    if (em || ph) {
-      // Re-initialising with user data is Meta's documented way to attach
-      // advanced matching after the base code ran (Pixel Helper logs a
-      // "duplicate pixel id" notice that can be ignored).
-      const userData: Record<string, string> = {}
-      if (em) userData.em = em
-      if (ph) userData.ph = ph
-      window.fbq?.('init', META_PIXEL_ID, userData)
-    }
     window.fbq?.('track', 'Lead', pixelParams, { eventID: eventId })
   } catch {
     /* ignore */

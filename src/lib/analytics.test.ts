@@ -40,8 +40,8 @@ describe('trackLead', () => {
   it('fires the pixel, GA4 and the CAPI relay with one shared event id', () => {
     trackLead('contact_form', { segment: 'club', email: 'A@B.com', phone: '0501234567' })
 
-    // advanced matching re-init, then the Lead event
-    expect(fbq).toHaveBeenCalledWith('init', META_PIXEL_ID, { em: 'a@b.com', ph: '972501234567' })
+    // never re-init the pixel (it stalls fbevents.js); matching goes via CAPI
+    expect(fbq).not.toHaveBeenCalledWith('init', META_PIXEL_ID, expect.anything())
     const lead = fbq.mock.calls.find((c) => c[0] === 'track' && c[1] === 'Lead')!
     expect(lead[2]).toEqual({ content_category: 'contact_form', content_name: 'club' })
     const eventId = (lead[3] as { eventID: string }).eventID
@@ -62,9 +62,10 @@ describe('trackLead', () => {
     expect(body.user_data).toEqual({ em: 'a@b.com', ph: '972501234567' })
   })
 
-  it('skips advanced matching when the form has no contact details', () => {
+  it('sends no user_data to CAPI when the form has no contact details', () => {
     trackLead('tournament_updates')
-    expect(fbq).not.toHaveBeenCalledWith('init', expect.anything(), expect.anything())
+    const body = JSON.parse((fetchSpy.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.user_data).toBeUndefined()
     expect(fbq).toHaveBeenCalledWith(
       'track',
       'Lead',
