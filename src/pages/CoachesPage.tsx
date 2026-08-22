@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
 import { trackLead } from '@/lib/analytics'
+import { getAttribution } from '@/lib/attribution'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { ISRAEL_REGIONS } from '@/constants/israelRegions'
 import { ISRAELI_CITIES } from '@/constants/israeliCities'
@@ -252,6 +253,7 @@ function CoachApplicationForm() {
       about: about.trim(),
       source: 'coach_application',
       created_at: new Date().toISOString(),
+      ...getAttribution(),
     }
 
     // Safety net: persist locally so an application is never silently lost.
@@ -283,7 +285,7 @@ function CoachApplicationForm() {
       return
     }
 
-    trackLead('coach_application')
+    trackLead('coach_application', { email: lead.email, phone: lead.phone })
     setAppNumber(`RC-${Date.now().toString(36).toUpperCase().slice(-6)}`)
     setSubmitted(true)
     setSubmitting(false)

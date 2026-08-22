@@ -9,7 +9,11 @@ import { AuthGateProvider } from './contexts/AuthGateContext'
 import './i18n'
 import './App.css'
 import { initDownloadClickTracking } from './lib/analytics'
+import { captureAttribution } from './lib/attribution'
 
+// Remember utm_* / fbclid / gclid from the landing URL so every lead row in
+// the Sheet says which campaign it came from.
+captureAttribution()
 initDownloadClickTracking()
 
 const queryClient = new QueryClient({

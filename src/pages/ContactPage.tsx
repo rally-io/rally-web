@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Sparkles,
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
 import { trackLead } from '@/lib/analytics'
+import { getAttribution } from '@/lib/attribution'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 
 type SegmentId = 'club' | 'tournament' | 'coach' | 'sponsor' | 'partnership'
@@ -136,7 +138,13 @@ function AnimatedBackground() {
 function ContactForm() {
   const { t } = useTranslation()
   const { isRTL } = useRtl()
-  const [segment, setSegment] = useState<SegmentId>('club')
+  // Ads can deep-link to a persona (`/contact?segment=club`) so the visitor
+  // lands with the right form already selected.
+  const [searchParams] = useSearchParams()
+  const [segment, setSegment] = useState<SegmentId>(() => {
+    const requested = searchParams.get('segment')
+    return SEGMENTS.some((s) => s.id === requested) ? (requested as SegmentId) : 'club'
+  })
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -161,6 +169,7 @@ function ContactForm() {
       message: message.trim(),
       source: 'contact_form',
       created_at: new Date().toISOString(),
+      ...getAttribution(),
     }
 
     // Safety net: persist locally so a lead is never silently lost.
@@ -189,7 +198,7 @@ function ContactForm() {
       return
     }
 
-    trackLead('contact_form')
+    trackLead('contact_form', { segment, email: lead.email, phone: lead.phone })
     setSubmitted(true)
     setSubmitting(false)
   }

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useRtl } from '@/hooks/useRtl'
 import { submitLead } from '@/services/api/leads'
 import { trackLead } from '@/lib/analytics'
+import { getAttribution } from '@/lib/attribution'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { ISRAELI_CITIES } from '@/constants/israeliCities'
 
@@ -270,6 +271,7 @@ function LeadCaptureForm() {
       city,
       source: 'crm_waitlist',
       created_at: new Date().toISOString(),
+      ...getAttribution(),
     }
 
     // Safety net: always persist locally so a lead is never silently lost
@@ -299,7 +301,7 @@ function LeadCaptureForm() {
       return
     }
 
-    trackLead('crm_waitlist')
+    trackLead('crm_waitlist', { email: lead.email, phone: lead.phone })
     setSubmitted(true)
     setSubmitting(false)
   }
