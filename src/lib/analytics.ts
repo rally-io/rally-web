@@ -121,10 +121,11 @@ export interface LeadDetails {
  * Email / phone (when the form has them) go to the CAPI relay, which hashes
  * them server-side as advanced-matching parameters — that is what lifts Event
  * Match Quality for a lead campaign. They are deliberately NOT passed to the
- * browser pixel: re-calling `fbq('init', id, {em, ph})` after the base code
- * silently stops every later event in the current fbevents.js (verified on a
- * preview deploy), so pixel-side matching is left to Events Manager's
- * "Automatic advanced matching" toggle instead.
+ * browser pixel: Meta's pixel is initialised once in index.html, a second
+ * `fbq('init', id, {em, ph})` logs a duplicate-pixel warning and its effect on
+ * later events could not be confirmed on a preview deploy, so pixel-side
+ * matching is left to Events Manager's "Automatic advanced matching" (ON for
+ * this pixel: email, phone, name, …) instead.
  */
 export function trackLead(source: string, details: LeadDetails = {}) {
   const eventId = newEventId()

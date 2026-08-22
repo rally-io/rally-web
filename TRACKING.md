@@ -49,10 +49,10 @@ Recommended B2B URL:
 2. Optional while verifying: Test events tab → copy the `TEST…` code → Vercel
    `META_CAPI_TEST_CODE` → submit a test lead → see "Lead" arrive with
    "Server" + "Browser" deduplicated → remove the env var.
-3. Settings → **Automatic advanced matching** → ON (email, phone). This is the
-   only pixel-side matching we use: re-initialising the pixel with `em`/`ph`
-   after the base code stalls all later events (verified), so the hashed
-   email/phone travel through the CAPI relay instead.
+3. Settings → **Automatic advanced matching** → ON (already on: email, phone,
+   name, …). This is the only pixel-side matching we use — we do not re-init
+   the pixel with `em`/`ph`; the hashed email/phone travel through the CAPI
+   relay instead.
 4. Ads Manager campaign: objective Leads → Conversion location Website →
    pixel → event **Lead**.
 
