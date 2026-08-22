@@ -17,6 +17,11 @@ export interface AuthGateContextValue {
 interface AuthGateInternals {
   open: boolean
   cancel: () => void
+  // Called when the modal's own sign-in/sign-up flow just succeeded — resolves
+  // the pending requireSignIn() promise directly instead of waiting on the
+  // `open && session` effect below, which can lose the race against a modal
+  // step that closes itself in the same synchronous callback (see cancel()).
+  confirmSignIn: () => void
 }
 
 export const AuthGateContext = createContext<AuthGateContextValue | null>(null)
@@ -56,8 +61,17 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     pendingRef.current = null
   }, [])
 
+  const confirmSignIn = useCallback(() => {
+    setOpen(false)
+    pendingRef.current?.resolve()
+    pendingRef.current = null
+  }, [])
+
   const value = useMemo<AuthGateContextValue>(() => ({ requireSignIn }), [requireSignIn])
-  const internals = useMemo<AuthGateInternals>(() => ({ open, cancel }), [open, cancel])
+  const internals = useMemo<AuthGateInternals>(
+    () => ({ open, cancel, confirmSignIn }),
+    [open, cancel, confirmSignIn],
+  )
 
   return (
     <AuthGateContext.Provider value={value}>

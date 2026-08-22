@@ -4,8 +4,12 @@ export type RallyStatusColor = 'success' | 'accent' | 'error' | 'info' | 'muted'
 
 export function statusColor(status: string | null | undefined): RallyStatusColor {
   switch (status) {
+    // 'registered' groups with the other "nothing left to do" states — a card
+    // showing it means the registration is in hand, only payment_pending
+    // still needs a card added (see needsPayment in TournamentCard).
     case 'confirmed':
     case 'approved':
+    case 'registered':
       return 'success'
     case 'payment_pending':
       return 'accent'
@@ -14,8 +18,6 @@ export function statusColor(status: string | null | undefined): RallyStatusColor
     case 'rejected':
     case 'disqualified':
       return 'error'
-    case 'registered':
-      return 'info'
     default:
       return 'muted'
   }

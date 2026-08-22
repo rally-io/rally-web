@@ -62,6 +62,32 @@ describe('AuthGateContext', () => {
     expect(result.current.internals.open).toBe(false)
   })
 
+  it('confirmSignIn resolves even when called in the same tick as the session update (the modal race)', async () => {
+    // Regression test: AuthGateModal's onSignInSucceeded/onSignUpSucceededWithSession
+    // fire synchronously in the same callback that sets the new session, racing the
+    // `open && session` effect below. Before this fix, that path called cancel() and
+    // always rejected requireSignIn() with USER_CANCELLED even on a successful login.
+    const { result } = renderHook(
+      () => ({ gate: useAuthGate(), internals: useAuthGateInternals() }),
+      { wrapper: ({ children }) => <Harness initialSession={null}>{children}</Harness> },
+    )
+
+    let promise!: Promise<void>
+    act(() => {
+      promise = result.current.gate.requireSignIn()
+    })
+
+    act(() => {
+      ;(globalThis as any).__setSession({ user: { id: 'u1' } })
+      // Called in the same act() as the session update, mirroring the modal
+      // closing itself immediately after a successful sign-in/sign-up.
+      result.current.internals.confirmSignIn()
+    })
+
+    await expect(promise).resolves.toBeUndefined()
+    expect(result.current.internals.open).toBe(false)
+  })
+
   it('rejects with USER_CANCELLED when the user dismisses the modal', async () => {
     const { result } = renderHook(
       () => ({ gate: useAuthGate(), internals: useAuthGateInternals() }),

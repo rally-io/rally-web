@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthGate } from '@/hooks/useAuthGate'
@@ -15,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
+import { PhoneOtpVerification } from '@/components/profile/PhoneOtpVerification'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import { SKILL_DEFAULT } from '@/lib/skillLevel'
 import { editProfileSchema, type EditProfileFormValues } from '@/lib/editProfileSchema'
@@ -96,10 +98,19 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  // Set by AppSessionContext's redirectToProfileEdit bridge (a 403/422 profile-
+  // incomplete error) or by a page that sends the user here directly (e.g. the
+  // tournament partner section) — send them straight back once profile is complete.
+  const returnTo = params.get('returnTo')
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
   const isCreate = profile === null
 
   const defaults = defaultsFromProfile(profile, user)
+  // An existing saved number is trusted already — only a freshly typed number
+  // needs (re-)verifying. Mirrors mobile's EditProfileScreen/PhoneVerificationField.
+  const [phoneVerified, setPhoneVerified] = useState(Boolean(profile?.contact_number))
 
   const form = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
@@ -174,6 +185,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       void queryClient.invalidateQueries({ queryKey: ['onboarding-status'] })
       void queryClient.invalidateQueries({ queryKey: ['player-profile-me'] })
       form.reset({ ...form.getValues(), ...applied } as EditProfileFormValues)
+      if (returnTo) navigate(returnTo)
     },
     onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : t('edit_profile.saveError')
@@ -219,7 +231,18 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   // stored phone that violates the regex, or an out-of-range skill_level from
   // legacy data) must block save even if the user hasn't touched it.
   const globalInvalid = Object.keys(form.formState.errors).length > 0
-  const canSubmit = form.formState.isDirty && !hasDirtyError && !globalInvalid && !mutation.isPending
+  // A freshly-entered phone number must be OTP-verified before it can be saved —
+  // mirrors mobile's EditProfileScreen.validate() checking phoneVerified.
+  const phoneDirtyUnverified =
+    !!form.formState.dirtyFields.contact_number &&
+    !!values.contact_number?.trim() &&
+    !phoneVerified
+  const canSubmit =
+    form.formState.isDirty &&
+    !hasDirtyError &&
+    !globalInvalid &&
+    !phoneDirtyUnverified &&
+    !mutation.isPending
   const showSave = isCreate || form.formState.isDirty
 
   return (
@@ -298,6 +321,21 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="mt-2">
+            <PhoneOtpVerification
+              countryCode={values.country_code ?? DEFAULT_COUNTRY.dial}
+              phone={values.contact_number ?? ''}
+              verified={phoneVerified}
+              onVerifiedChange={setPhoneVerified}
+              initiallyVerified={Boolean(profile?.contact_number)}
+            />
+            {phoneDirtyUnverified && (
+              <p className="text-sm text-red-400 mt-1">
+                {t('edit_profile.validation.phoneNotVerified')}
+              </p>
+            )}
           </div>
         </Card>
 

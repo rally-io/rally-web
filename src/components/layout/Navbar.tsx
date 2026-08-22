@@ -108,9 +108,10 @@ export function Navbar() {
     } catch (err) {
       console.error('[Navbar] Sign out failed:', err)
     }
-    // Navigate unconditionally — if sign-out failed the user is still shown the
-    // home page (signed-in state) which is less confusing than being stuck.
-    navigate('/')
+    // Full page reload (not a client-side navigate) — guarantees every
+    // provider/query cache remounts from scratch with no stale signed-in state
+    // left over anywhere, rather than relying on each context to clear itself.
+    window.location.href = '/'
   }
 
   const handleMenuNavigate = (to: string) => {

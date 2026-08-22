@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { getOnboardingStatus, getMyPlayerProfile } from '@/services/api/profile'
 import { __setApiBridge } from '@/services/api/client'
@@ -29,6 +29,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const { session, isLoading: authLoading, signOut } = useAuth()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const isSignedIn = !!session
 
   const {
@@ -83,11 +84,16 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     queryClient.removeQueries({ queryKey: ['player-profile-me'] })
   }, [queryClient])
 
-  // Wire the axios bridge so the 403 interceptor can redirect to /profile/edit and 401 can force-sign-out.
+  // Wire the axios bridge so the 403/422 interceptor can redirect to /profile/edit
+  // and 401 can force-sign-out.
   useEffect(() => {
     __setApiBridge({
       redirectToProfileEdit: () => {
-        navigate('/profile/edit')
+        // Carry the page the user was on (e.g. a tournament they were trying to
+        // register for) so EditProfilePage can send them straight back once
+        // their profile is complete, instead of stranding them on /profile/edit.
+        const returnTo = `${location.pathname}${location.search}`
+        navigate(`/profile/edit?returnTo=${encodeURIComponent(returnTo)}`)
       },
       forceSignOut: async () => {
         await signOut()
@@ -95,7 +101,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       },
     })
     return () => __setApiBridge(null)
-  }, [navigate, signOut, queryClient])
+  }, [navigate, signOut, queryClient, location.pathname, location.search])
 
   // When session becomes null, drop all cached profile data.
   useEffect(() => {

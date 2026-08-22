@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom'
 import i18n from '@/i18n'
 
 vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
@@ -10,37 +10,47 @@ vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
 vi.mock('@/hooks/useTournamentParticipants', () => ({
   useTournamentParticipants: () => ({ data: null }),
 }))
-// ParticipantsSection also calls useAppSession/useAuthGate directly (no
-// providers mounted here). Mock a fully-onboarded session ('ready') so the
-// section takes the data-gated branch above (null data ⇒ hidden) instead of
-// rendering the signed-out or complete-your-profile prompt, both out of
-// scope for these CTA-focused tests.
-vi.mock('@/hooks/useAppSession', () => ({
-  useAppSession: () => ({
-    status: 'ready',
+// ParticipantsSection and the partner-selection gate both call useAppSession
+// directly (no providers mounted here). Default to a fully-onboarded session
+// ('ready') so ParticipantsSection takes its data-gated branch (null data ⇒
+// hidden) and PartnerSection renders normally; individual tests override this
+// to exercise the signed-out / profile-incomplete panels.
+vi.mock('@/hooks/useAppSession', () => ({ useAppSession: vi.fn() }))
+vi.mock('@/hooks/useAuthGate', () => ({ useAuthGate: vi.fn() }))
+// PartnerSection's search box calls this — stub it out (its own test file
+// covers usePlayerSearch itself); a test that needs search results overrides
+// the return value per-test via mockReturnValueOnce.
+vi.mock('@/hooks/usePlayerSearch', () => ({
+  usePlayerSearch: vi.fn(() => ({ results: [], isLoading: false, isActive: false })),
+}))
+vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
+vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
+
+import TournamentDetailPage from './TournamentDetailPage'
+import { useTournament } from '@/hooks/useTournament'
+import { useAuthGate } from '@/hooks/useAuthGate'
+import { useAppSession } from '@/hooks/useAppSession'
+import { usePlayerSearch } from '@/hooks/usePlayerSearch'
+import { registerTournament } from '@/services/api/tournaments'
+import { confirmTournamentZeroPayment } from '@/services/api/payments'
+
+const mockUseTournament = vi.mocked(useTournament)
+const mockUseAuthGate = vi.mocked(useAuthGate)
+const mockUseAppSession = vi.mocked(useAppSession)
+const mockUsePlayerSearch = vi.mocked(usePlayerSearch)
+const mockRegisterTournament = vi.mocked(registerTournament)
+const mockConfirmZeroPayment = vi.mocked(confirmTournamentZeroPayment)
+const mockRequireSignIn = vi.fn()
+
+function session(status: string) {
+  return {
+    status,
     onboardingStatus: null,
     playerProfile: null,
     refetchOnboarding: vi.fn(),
     clearSession: vi.fn(),
-  }),
-}))
-vi.mock('@/hooks/useAuthGate', () => ({
-  useAuthGate: () => ({ requireSignIn: vi.fn() }),
-}))
-// window.location.assign is unforgeable in jsdom — mock the helper instead;
-// its own behavior is covered by the appLinks/AppDownloadModal tests.
-vi.mock('@/lib/appLinks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/appLinks')>()
-  return { ...actual, tryOpenInApp: vi.fn(() => false) }
-})
-
-import TournamentDetailPage from './TournamentDetailPage'
-import { useTournament } from '@/hooks/useTournament'
-import { tryOpenInApp } from '@/lib/appLinks'
-
-const mockTryOpenInApp = vi.mocked(tryOpenInApp)
-
-const mockUseTournament = vi.mocked(useTournament)
+  } as any
+}
 
 function tr(over: Record<string, unknown> = {}) {
   return {
@@ -60,11 +70,21 @@ function tr(over: Record<string, unknown> = {}) {
   } as any
 }
 
+// Stands in for PaymentMethodPage / PaymentConfirmingPage so navigation can be
+// asserted without pulling in those pages' own dependencies.
+function RouteProbe() {
+  const [params] = useSearchParams()
+  return <div data-testid="route-probe">{params.toString()}</div>
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/tournaments/t-1']}>
       <Routes>
         <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
+        <Route path="/payment-method" element={<RouteProbe />} />
+        <Route path="/payments/confirming" element={<RouteProbe />} />
+        <Route path="/profile/edit" element={<RouteProbe />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -72,7 +92,12 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockTryOpenInApp.mockReturnValue(false)
+  mockRequireSignIn.mockResolvedValue(undefined)
+  mockUseAuthGate.mockReturnValue({ requireSignIn: mockRequireSignIn })
+  mockUsePlayerSearch.mockReturnValue({ results: [], isLoading: false, isActive: false })
+  mockUseAppSession.mockReturnValue(session('ready'))
+  // jsdom doesn't implement scrollIntoView — the partner-required gate calls it.
+  Element.prototype.scrollIntoView = vi.fn()
 })
 
 afterEach(() => {
@@ -80,26 +105,14 @@ afterEach(() => {
 })
 
 describe('TournamentDetailPage CTA', () => {
-  it('open registration shows the app CTA and opens the modal', () => {
-    mockUseTournament.mockReturnValue(tr())
+  it('open registration shows the Register Now CTA and gates it behind sign-in', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
     renderPage()
     const cta = screen.getByRole('button', {
-      name: i18n.t('appDownload.cta_register'),
+      name: i18n.t('tournament.tournamentDetailRegisterNow'),
     })
     fireEvent.click(cta)
-    expect(
-      screen.getByText(i18n.t('appDownload.title_register')),
-    ).toBeInTheDocument()
-  })
-
-  it('pay-pending registration shows the complete-in-app CTA with pay copy', () => {
-    mockUseTournament.mockReturnValue(
-      tr({ my_registration: { id: 'r-1', status: 'payment_pending', payment_status: 'pending' } }),
-    )
-    renderPage()
-    const cta = screen.getByRole('button', { name: i18n.t('appDownload.cta_pay') })
-    fireEvent.click(cta)
-    expect(screen.getByText(i18n.t('appDownload.title_pay'))).toBeInTheDocument()
+    expect(mockRequireSignIn).toHaveBeenCalledTimes(1)
   })
 
   it('closed registration shows a disabled button and no modal trigger', () => {
@@ -112,17 +125,6 @@ describe('TournamentDetailPage CTA', () => {
     ).toBeDisabled()
   })
 
-  it('on mobile the CTA opens the tournament deep link directly, no modal', () => {
-    mockTryOpenInApp.mockReturnValue(true) // helper navigated (mobile device)
-    mockUseTournament.mockReturnValue(tr())
-    renderPage()
-    fireEvent.click(
-      screen.getByRole('button', { name: i18n.t('appDownload.cta_register') }),
-    )
-    expect(mockTryOpenInApp).toHaveBeenCalledWith('/tournaments/t-1')
-    expect(screen.queryByText(i18n.t('appDownload.title_register'))).toBeNull()
-  })
-
   it('paid registration shows the already-registered disabled button', () => {
     mockUseTournament.mockReturnValue(
       tr({ my_registration: { id: 'r-1', status: 'registered', payment_status: 'completed' } }),
@@ -133,6 +135,206 @@ describe('TournamentDetailPage CTA', () => {
         name: i18n.t('tournament.tournamentDetailAlreadyRegistered'),
       }),
     ).toBeDisabled()
+  })
+
+  it('pay-pending registration shows a Pay Now CTA that resumes straight to the Add Card page', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ my_registration: { id: 'r-1', status: 'payment_pending', payment_status: 'pending' } }),
+    )
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentPayNow') }))
+    const probe = screen.getByTestId('route-probe')
+    expect(probe.textContent).toContain('tournament_id=t-1')
+    expect(probe.textContent).toContain('registration_id=r-1')
+  })
+
+  it('a doubles tournament blocks registration until a partner is chosen', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.ctaMissingPartner') }),
+    )
+    await waitFor(() => expect(mockRequireSignIn).toHaveBeenCalledTimes(1))
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('shows a sign-in prompt instead of the partner form when signed out', () => {
+    mockUseAppSession.mockReturnValue(session('signed_out'))
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    renderPage()
+    const partnerSection = document.getElementById('partner-section') as HTMLElement
+    expect(
+      within(partnerSection).getByText(i18n.t('tournament.partnerSignInPrompt')),
+    ).toBeInTheDocument()
+    const cta = within(partnerSection).getByRole('button', {
+      name: i18n.t('auth.gate.sign_in_button'),
+    })
+    fireEvent.click(cta)
+    expect(mockRequireSignIn).toHaveBeenCalledTimes(1)
+  })
+
+  it('refetches onboarding status right after sign-in succeeds, so the partner form appears without waiting on the reactive query toggle', async () => {
+    const signedOutSession = session('signed_out')
+    mockUseAppSession.mockReturnValue(signedOutSession)
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    renderPage()
+    const partnerSection = document.getElementById('partner-section') as HTMLElement
+    const cta = within(partnerSection).getByRole('button', {
+      name: i18n.t('auth.gate.sign_in_button'),
+    })
+    fireEvent.click(cta)
+    await waitFor(() => expect(signedOutSession.refetchOnboarding).toHaveBeenCalledTimes(1))
+  })
+
+  it('the profile-incomplete "Complete Profile" CTA carries a returnTo back to this tournament', () => {
+    mockUseAppSession.mockReturnValue(session('profile_incomplete'))
+    mockUseTournament.mockReturnValue(tr({ id: 't-1', format: 'doubles' }))
+    renderPage()
+    const partnerSection = document.getElementById('partner-section') as HTMLElement
+    const cta = within(partnerSection).getByRole('button', {
+      name: i18n.t('user_menu.complete_profile'),
+    })
+    fireEvent.click(cta)
+    const probe = screen.getByTestId('route-probe')
+    expect(probe.textContent).toContain(encodeURIComponent('/tournaments/t-1'))
+  })
+
+  it('shows a complete-profile prompt instead of the partner form when onboarding is incomplete', () => {
+    mockUseAppSession.mockReturnValue(session('profile_incomplete'))
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    renderPage()
+    const partnerSection = document.getElementById('partner-section') as HTMLElement
+    expect(
+      within(partnerSection).getByText(i18n.t('tournament.partnerCompleteProfilePrompt')),
+    ).toBeInTheDocument()
+    expect(
+      within(partnerSection).getByRole('button', { name: i18n.t('user_menu.complete_profile') }),
+    ).toBeInTheDocument()
+  })
+
+  it('a singles tournament registers immediately and goes straight to the Add Card page', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'r-9', tournament_id: 't-1', status: 'registered', payment_status: 'pending',
+        credits_applied: 0, service_fee: 5, amount_to_pay: 150, entry_fee: 150,
+      },
+      meta: null,
+      error: null,
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    await waitFor(() => expect(mockRegisterTournament).toHaveBeenCalledWith('t-1', { partner_type: 'none' }))
+    const probe = await screen.findByTestId('route-probe')
+    expect(probe.textContent).toContain('registration_id=r-9')
+    expect(probe.textContent).toContain('amount=150')
+  })
+
+  it('a free (zero amount) registration confirms directly and goes to the confirming page', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'r-9', tournament_id: 't-1', status: 'registered', payment_status: 'pending',
+        credits_applied: 0, service_fee: 0, amount_to_pay: 0, entry_fee: 0,
+      },
+      meta: null,
+      error: null,
+    })
+    mockConfirmZeroPayment.mockResolvedValue({ success: true, data: { confirmed: true }, meta: null, error: null })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    await waitFor(() => expect(mockConfirmZeroPayment).toHaveBeenCalledWith('r-9'))
+    const probe = await screen.findByTestId('route-probe')
+    expect(probe.textContent).toContain('id=r-9')
+    expect(probe.textContent).toContain('tournament_id=t-1')
+  })
+
+  it('a doubles tournament with an existing partner selected registers with partner_player_id', async () => {
+    mockUsePlayerSearch.mockReturnValue({
+      results: [{ id: 'p-2', first_name: 'Dana', last_name: 'Levi', avatar_url: null }],
+      isLoading: false,
+      isActive: true,
+    })
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    mockRegisterTournament.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'r-9', tournament_id: 't-1', status: 'registered', payment_status: 'pending',
+        credits_applied: 0, service_fee: 5, amount_to_pay: 150, entry_fee: 150,
+      },
+      meta: null,
+      error: null,
+    })
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /Dana Levi/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith('t-1', {
+        partner_type: 'existing',
+        partner_player_id: 'p-2',
+      }),
+    )
+  })
+
+  it('shows an error message when registration resolves with success: false', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockResolvedValue({
+      success: false,
+      error: { code: 'REGISTRATION_CLOSED', message: 'Registration just closed.', details: null },
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(await screen.findByText('Registration just closed.')).toBeInTheDocument()
+  })
+
+  it('shows the translated backend message when registration rejects (RallyException path, e.g. partner already registered)', async () => {
+    // rally-api's validation errors (partner already registered, tournament
+    // closed, already registered, etc.) are RallyException — a non-2xx HTTP
+    // response — which the axios client's interceptor turns into a REJECTED
+    // plain object ({status, code, message, details}), not a resolved
+    // { success: false } value and not a thrown Error instance either. rally-api
+    // sends plain English text with no distinct error code, so it must be run
+    // through translateRegistrationError() to show localized text.
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockRejectedValue({
+      status: 400,
+      code: 'BAD_REQUEST',
+      message: 'Selected partner is already registered for this tournament',
+      details: null,
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(
+      await screen.findByText(i18n.t('tournament.registrationErrors.partnerAlreadyRegistered')),
+    ).toBeInTheDocument()
+  })
+
+  it('falls back to the raw backend message when it is not a recognized registration error', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockRejectedValue({
+      status: 500,
+      code: 'SERVER_ERROR',
+      message: 'Something unexpected broke',
+      details: null,
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(await screen.findByText('Something unexpected broke')).toBeInTheDocument()
   })
 })
 
@@ -196,7 +398,7 @@ describe('TournamentDetailPage live results', () => {
     )
     renderPage()
     expect(
-      screen.getByRole('button', { name: i18n.t('appDownload.cta_pay') }),
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentPayNow') }),
     ).toBeInTheDocument()
     expect(screen.queryByTestId('live-results-sticky-link')).toBeNull()
     // The in-page call-out still offers the scoreboard.

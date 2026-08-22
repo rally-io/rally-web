@@ -15,7 +15,7 @@ type Step =
 export function AuthGateModal() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { open, cancel } = useAuthGateInternals()
+  const { open, cancel, confirmSignIn } = useAuthGateInternals()
   const [step, setStep] = useState<Step>({ kind: 'options' })
 
   useEffect(() => {
@@ -74,12 +74,12 @@ export function AuthGateModal() {
                 cancel()
                 navigate(`/auth/forgot-password?email=${encodeURIComponent(step.email)}`)
               }}
-              onSignUpSucceededWithSession={() => cancel()}
+              onSignUpSucceededWithSession={() => confirmSignIn()}
               onSignUpNeedsVerification={(email) => {
                 cancel()
                 navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`)
               }}
-              onSignInSucceeded={() => cancel()}
+              onSignInSucceeded={() => confirmSignIn()}
             />
           )}
         </div>
