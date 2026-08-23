@@ -336,6 +336,95 @@ describe('TournamentDetailPage CTA', () => {
     )
     expect(await screen.findByText('Something unexpected broke')).toBeInTheDocument()
   })
+
+  it('offers the waiting list when the tournament is full', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ status: 'registration_open', is_full: true, waitlist_enabled: true }),
+    )
+    renderPage()
+    expect(screen.getByText(/waiting list|רשימת המתנה/i)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    ).toBeNull()
+  })
+
+  it('still routes into the app from the waiting-list CTA — web never joins the queue itself', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ status: 'registration_open', is_full: true, waitlist_enabled: true }),
+    )
+    renderPage()
+    fireEvent.click(screen.getByText(/waiting list|רשימת המתנה/i))
+    expect(screen.getByText(i18n.t('appDownload.title_join'))).toBeInTheDocument()
+  })
+
+  it('falls back to the disabled full button when the waiting-list kill switch is off', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ status: 'registration_open', is_full: true, waitlist_enabled: false }),
+    )
+    renderPage()
+    expect(screen.getByText(/Full|מלא/)).toBeInTheDocument()
+    expect(screen.queryByText(/waiting list|רשימת המתנה/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    ).toBeNull()
+  })
+
+  it('falls back to the disabled full button when waitlist_enabled is absent — pre-Task-11 API must not read as enabled', () => {
+    // Once the waitlist feature ships, the API always sends a real boolean
+    // here. The only way it's absent is a client talking to an API build
+    // with no waitlist endpoints at all (independent deploy pipelines, no
+    // ordering guarantee) — in that window this must NOT route someone into
+    // the app to join a queue that doesn't exist yet.
+    mockUseTournament.mockReturnValue(tr({ status: 'registration_open', is_full: true }))
+    renderPage()
+    expect(screen.getByText(/Full|מלא/)).toBeInTheDocument()
+    expect(screen.queryByText(/waiting list|רשימת המתנה/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    ).toBeNull()
+  })
+
+  it('still invites registration when there is room', () => {
+    mockUseTournament.mockReturnValue(tr({ status: 'registration_open', is_full: false }))
+    renderPage()
+    expect(screen.queryByText(/Full|מלא/)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    ).toBeInTheDocument()
+  })
+
+  it('invites registration when is_full is absent — an older API must not read as full', () => {
+    mockUseTournament.mockReturnValue(tr({ status: 'registration_open' }))
+    renderPage()
+    expect(screen.queryByText(/Full|מלא/)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    ).toBeInTheDocument()
+  })
+
+  it('does not say Full for a full tournament that is not registration_open (completed)', () => {
+    // Reachable-but-wrong case: deadline is still in the future (tr()'s default),
+    // is_full is true, but the tournament's lifecycle status has moved past
+    // registration_open (e.g. it finished early). "Full" is a claim about a
+    // tournament you could still join if a seat opened — wrong sentence for one
+    // that's already over.
+    mockUseTournament.mockReturnValue(tr({ status: 'completed', is_full: true }))
+    renderPage()
+    expect(screen.queryByText(/Full|מלא/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/waiting list|רשימת המתנה/i)).not.toBeInTheDocument()
+  })
+
+  it('does not say Full when status is absent, even if is_full is true', () => {
+    // Absent status must not be treated as registration_open — fall back to
+    // today's behaviour (invite registration), same as absent is_full does.
+    mockUseTournament.mockReturnValue(tr({ status: undefined, is_full: true }))
+    renderPage()
+    expect(screen.queryByText(/Full|מלא/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/waiting list|רשימת המתנה/i)).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: i18n.t('appDownload.cta_register') }),
+    ).toBeInTheDocument()
+  })
 })
 
 /** A tournament that is being played right now, with a live-results token. */
@@ -385,6 +474,14 @@ describe('TournamentDetailPage live results', () => {
 
   it('does not go live for a tournament that has not started', () => {
     mockUseTournament.mockReturnValue(tr({ share_token: 'abc123' }))
+    renderPage()
+    expect(screen.queryByTestId('live-results-link')).toBeNull()
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).toBeNull()
+  })
+
+  it('stays off inside the date window when status is not in_progress — dates alone do not count', () => {
+    // Same date window liveTr() uses, but no `status` field.
+    mockUseTournament.mockReturnValue(liveTr({ status: undefined }))
     renderPage()
     expect(screen.queryByTestId('live-results-link')).toBeNull()
     expect(screen.queryByText(i18n.t('tournament.liveBadge'))).toBeNull()

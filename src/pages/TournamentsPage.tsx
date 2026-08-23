@@ -13,7 +13,7 @@ import {
 } from '@/components/tournaments/TournamentUpdatesModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isTournamentLive } from '@/lib/tournamentHelpers'
+import { isTournamentInProgress } from '@/lib/tournamentHelpers'
 import type { Tournament } from '@/types/api'
 
 type TournamentsTab = 'upcoming' | 'my'
@@ -105,9 +105,11 @@ export default function TournamentsPage() {
   // LAST server-side, so this bubbling is load-bearing: a live tournament
   // that "load more" pulls in on page 3 still jumps straight to position 0
   // here — "load more" can reorder the visible list, not just append to it.
+  // Same predicate the LiveBadge uses (isTournamentInProgress) — otherwise a
+  // tournament can show LIVE without sorting as live, or vice versa.
   const tournaments: Tournament[] = [
-    ...loaded.filter(isTournamentLive),
-    ...loaded.filter((tr) => !isTournamentLive(tr)),
+    ...loaded.filter(isTournamentInProgress),
+    ...loaded.filter((tr) => !isTournamentInProgress(tr)),
   ]
 
   const [updatesOpen, setUpdatesOpen] = useState(false)

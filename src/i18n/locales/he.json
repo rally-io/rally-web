@@ -414,6 +414,8 @@
     "tournamentDetailNoSponsors": "אין נותני חסויות רשומים",
     "tournamentDetailRegisterNow": "הרשמה עכשיו",
     "tournamentDetailAlreadyRegistered": "כבר רשום",
+    "tournamentDetailFull": "הטורניר מלא",
+    "tournamentDetailJoinWaitlist": "הצטרפות לרשימת המתנה",
     "tournamentDetailNoImage": "אין תמונה",
     "registrationStatus_registered": "רשום",
     "registrationStatus_confirmed": "מאושר",

@@ -116,7 +116,8 @@ describe('TournamentCard status pill', () => {
 
 describe('TournamentCard live badge', () => {
   const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString()
-  const running = { start_date: hours(-1), end_date: hours(3) }
+  // The badge keys off `status`, not the date window — see below.
+  const running = { start_date: hours(-1), end_date: hours(3), status: 'in_progress' }
 
   it('flags a tournament being played right now', () => {
     renderCard(running)
@@ -138,5 +139,15 @@ describe('TournamentCard live badge', () => {
   it('stays off in the past variant even inside the date window', () => {
     renderPast(running)
     expect(screen.queryByText(i18n.t('tournament.liveBadge'))).not.toBeInTheDocument()
+  })
+
+  it('stays off inside the date window when status is not in_progress — dates alone do not count', () => {
+    renderCard({ start_date: running.start_date, end_date: running.end_date })
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).not.toBeInTheDocument()
+  })
+
+  it('flags a tournament with status in_progress even outside the date window — status alone decides', () => {
+    renderCard({ status: 'in_progress' })
+    expect(screen.getByText(i18n.t('tournament.liveBadge'))).toBeInTheDocument()
   })
 })

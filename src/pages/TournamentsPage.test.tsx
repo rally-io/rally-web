@@ -6,6 +6,7 @@ import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-d
 import TournamentsPage from './TournamentsPage'
 import { getTournaments, getTournamentFilterOptions } from '@/services/api/tournaments'
 import { useAppSession } from '@/hooks/useAppSession'
+import type { Tournament } from '@/types/api'
 
 vi.mock('@/services/api/tournaments')
 vi.mock('@/hooks/useAppSession', () => ({ useAppSession: vi.fn() }))
@@ -214,5 +215,90 @@ describe('TournamentsPage filters', () => {
     // And confirm truncation actually happened (proves this isn't a vacuous
     // pass from a short, untruncated string being trivially equal to itself).
     expect(listSearch!.length).toBeLessThan(longTerm.length)
+  })
+})
+
+// Coherence: the list ordering must read the same live signal as the
+// LiveBadge (isTournamentInProgress), or a tournament can show LIVE while
+// sorting as not-live.
+describe('TournamentsPage live ordering', () => {
+  const baseTr: Tournament = {
+    id: 't-base', name: 'Base', format: 'doubles',
+    start_date: '2999-06-01', end_date: '2999-06-02',
+    registration_deadline: '2999-05-25',
+    skill_level_min: 2.5, skill_level_max: 3.8, skill_level: '2.5 - 3.8 (C2)',
+    entry_fee: 150, image_url: null, thumb_url: null, structure: 'single_elimination',
+    club_name: 'Padel TLV', registration_id: null, registration_status: null,
+    available_seats: 4,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getTournamentFilterOptions).mockResolvedValue({
+      success: true, data: { clubs: [] },
+    } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+  })
+
+  it('bubbles an in_progress tournament with a future start date above a not-live one', async () => {
+    // Phase A: a manager can start play ahead of schedule, so a future
+    // start_date must not stop an in_progress tournament from being live —
+    // this is exactly what the old isTournamentLive date heuristic got wrong.
+    const scheduledSoon: Tournament = {
+      ...baseTr, id: 't-soon', name: 'Scheduled Soon Cup',
+      start_date: '2999-01-10', end_date: '2999-01-11',
+    }
+    const liveButFuture: Tournament = {
+      ...baseTr, id: 't-future-live', name: 'Future Live Cup',
+      start_date: '2999-12-01', end_date: '2999-12-02', status: 'in_progress',
+    }
+    // Server order (e.g. sort=soonest) puts the earlier date first.
+    vi.mocked(getTournaments).mockResolvedValue({
+      success: true, data: { items: [scheduledSoon, liveButFuture], next_cursor: null },
+    } as never)
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={['/tournaments']}>
+          <TournamentsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByText('Future Live Cup')).toBeInTheDocument())
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(headings.indexOf('Future Live Cup')).toBeLessThan(headings.indexOf('Scheduled Soon Cup'))
+  })
+
+  it('does not bubble a tournament whose dates overlap now but is not in_progress', async () => {
+    // Discriminates against reverting to the date-window heuristic: a
+    // tournament "running" by dates alone must not outrank an actually
+    // in_progress one that starts later.
+    const now = new Date()
+    const runningByDateOnly: Tournament = {
+      ...baseTr, id: 't-date-only', name: 'Old Heuristic Cup',
+      start_date: new Date(now.getTime() - 3_600_000).toISOString(),
+      end_date: new Date(now.getTime() + 3_600_000).toISOString(),
+      status: 'registration_open',
+    }
+    const actuallyLive: Tournament = {
+      ...baseTr, id: 't-actually-live', name: 'Actually Live Cup',
+      start_date: '2999-12-01', end_date: '2999-12-02', status: 'in_progress',
+    }
+    vi.mocked(getTournaments).mockResolvedValue({
+      success: true, data: { items: [runningByDateOnly, actuallyLive], next_cursor: null },
+    } as never)
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={['/tournaments']}>
+          <TournamentsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByText('Actually Live Cup')).toBeInTheDocument())
+    const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(headings.indexOf('Actually Live Cup')).toBeLessThan(headings.indexOf('Old Heuristic Cup'))
   })
 })

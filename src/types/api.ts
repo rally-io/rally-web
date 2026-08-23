@@ -69,8 +69,10 @@ export interface Tournament {
   available_seats: number
   /**
    * Lifecycle status (`registration_open | in_progress | completed | …`).
-   * Feature-detected: absent on API builds predating the field, so never
-   * branch on it without a date-based fallback.
+   * Authoritative for live-ness (see `isTournamentInProgress`) — no
+   * date-based fallback. Feature-detected: absent on API builds predating
+   * the field, which is treated as not live rather than falling back to a
+   * date window.
    */
   status?: string
   /**
@@ -81,6 +83,25 @@ export interface Tournament {
   share_token?: string | null
   description?: string
   max_participants?: number
+  /**
+   * Capacity. Feature-detected: absent on API builds predating the field,
+   * which must be treated as not-full — never fall back to inviting-full.
+   */
+  is_full?: boolean
+  /** `null` means unlimited capacity — never render it as `0` or as full. */
+  seats_left?: number | null
+  /**
+   * Waiting-list kill switch. Once the waitlist feature is deployed, the API
+   * always sends a real boolean here — it is never `Optional[bool] = None`
+   * on the wire. Feature-detected only for a client hitting an API build
+   * that predates the waitlist endpoints entirely (rally-api and rally-web
+   * deploy through independent pipelines with no ordering guarantee), in
+   * which case it is ABSENT and must be treated as NOT enabled — same
+   * convention as `is_full`, and the one mobile's `ctaFor` uses for this
+   * same field (`waitlistEnabled ? 'join_waitlist' : 'none'`). Always
+   * compare `=== true`; never treat an absent/false value as enabled.
+   */
+  waitlist_enabled?: boolean
   prizes?: Prize[]
   sponsors?: Sponsor[]
   my_registration?: any

@@ -410,6 +410,8 @@
     "tournamentDetailNoSponsors": "No sponsors listed",
     "tournamentDetailRegisterNow": "Register Now",
     "tournamentDetailAlreadyRegistered": "Already Registered",
+    "tournamentDetailFull": "Tournament Full",
+    "tournamentDetailJoinWaitlist": "Join Waiting List",
     "tournamentDetailNoImage": "No image",
     "registrationStatus_registered": "Registered",
     "registrationStatus_confirmed": "Confirmed",

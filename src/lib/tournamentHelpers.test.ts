@@ -1,66 +1,30 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
+  isRegistrationOpen, isTournamentInProgress, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange,
   getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
 } from './tournamentHelpers'
 
-/** ISO-ish local timestamp `offsetHours` from now, in the API's format. */
-function hoursFromNow(offsetHours: number): string {
-  const d = new Date(Date.now() + offsetHours * 3_600_000)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T` +
-    `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
-}
-
-describe('isTournamentLive', () => {
-  it('live while now sits inside the date window', () => {
-    expect(isTournamentLive({
-      start_date: hoursFromNow(-2), end_date: hoursFromNow(2),
-    })).toBe(true)
+describe('isTournamentInProgress', () => {
+  it('is live when status is in_progress, regardless of the date window', () => {
+    // Phase A: a manager can start play ahead of schedule, so a future
+    // start date must not veto a live in_progress tournament.
+    expect(isTournamentInProgress({
+      start_date: '2999-01-01', end_date: '2999-01-02', status: 'in_progress',
+    } as never)).toBe(true)
   })
-  it('not live before it starts or after it ends', () => {
-    expect(isTournamentLive({
-      start_date: hoursFromNow(2), end_date: hoursFromNow(4),
-    })).toBe(false)
-    expect(isTournamentLive({
-      start_date: hoursFromNow(-4), end_date: hoursFromNow(-2),
-    })).toBe(false)
-  })
-  it('in_progress alone does not make it live — a bracket can be published early', () => {
-    expect(isTournamentLive({
-      start_date: hoursFromNow(2), end_date: hoursFromNow(4),
-      status: 'in_progress',
-    })).toBe(false)
-    // …and a tournament left on in_progress forever stops being live on time.
-    expect(isTournamentLive({
-      start_date: hoursFromNow(-30), end_date: hoursFromNow(-25),
-      status: 'in_progress',
-    })).toBe(false)
-  })
-
-  it('is live when in_progress and inside the window', () => {
-    expect(isTournamentLive({
-      start_date: hoursFromNow(-1), end_date: hoursFromNow(3),
-      status: 'in_progress',
-    })).toBe(true)
-  })
-  it('completed or cancelled is never live, whatever the dates say', () => {
-    for (const status of ['completed', 'cancelled', 'rejected']) {
-      expect(isTournamentLive({
-        start_date: hoursFromNow(-2), end_date: hoursFromNow(2), status,
-      })).toBe(false)
+  it('is not live for any other status, even inside the date window', () => {
+    const now = new Date()
+    const start = new Date(now.getTime() - 3_600_000).toISOString()
+    const end = new Date(now.getTime() + 3_600_000).toISOString()
+    for (const status of ['registration_open', 'completed', 'cancelled', 'rejected']) {
+      expect(isTournamentInProgress({ start_date: start, end_date: end, status } as never))
+        .toBe(false)
     }
   })
-  it('falls back to the window when status is absent (older API)', () => {
-    expect(isTournamentLive({
-      start_date: hoursFromNow(-1), end_date: hoursFromNow(1),
-      status: undefined,
-    })).toBe(true)
-  })
-  it('is not live on unparseable dates', () => {
-    expect(isTournamentLive({ start_date: '', end_date: '' })).toBe(false)
+  it('is not live when status is absent (older API build)', () => {
+    expect(isTournamentInProgress({} as never)).toBe(false)
   })
 })
 

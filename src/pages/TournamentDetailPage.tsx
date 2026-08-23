@@ -20,7 +20,7 @@ import { translateRegistrationError } from '@/lib/registrationErrors'
 import type { PartnerSelectionState } from '@/types/partner'
 import type { RegisterPayload } from '@/types/api'
 import {
-  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
+  isRegistrationOpen, isTournamentInProgress, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
   formatTournamentCardDate, formatCurrency,
 } from '@/lib/tournamentHelpers'
@@ -152,10 +152,14 @@ export default function TournamentDetailPage() {
   }
 
   const open = isRegistrationOpen(tr.registration_deadline)
-  const live = isTournamentLive(tr)
+  const live = isTournamentInProgress(tr)
   // No token ⇒ nothing to link to. Never render a dead "watch live" button.
   const liveHref = tr.share_token ? liveResultsPath(tr.share_token) : null
   const skill = parseSkillLevel(tr.skill_level)
+  // Single source of truth for the "full" gate — duplicating this compound
+  // across the two full-state branches below let them silently drift if a
+  // future change to how "full" is computed only touched one arm.
+  const isFullOpen = tr.status === 'registration_open' && tr.is_full
   const myReg = tr.my_registration
   const payState =
     myReg?.status === 'payment_pending' ||
@@ -471,6 +475,44 @@ export default function TournamentDetailPage() {
                 className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
               >
                 {t('tournament.tournamentDetailRegistrationClosed')}
+              </button>
+            ) : isFullOpen && tr.waitlist_enabled === true ? (
+              // Explicit status gate, not just branch-order luck (matches
+              // mobile's `status === 'registration_open' && !isLive && isFull`) —
+              // "Full" is a claim about a tournament you could still join if a
+              // seat opened, so it must never render for one that's closed,
+              // completed or cancelled, even if `is_full` is stale/true there.
+              // `is_full`/`status` are feature-detected: either being absent
+              // must fall through to the register CTA below exactly as it
+              // does today, not read as full.
+              // `waitlist_enabled` requires an explicit `true` — NOT the
+              // inverted "absent means on" convention `is_full` uses. Once
+              // Task 11 ships, the API always sends a real boolean here, so
+              // the only way this field is absent is a client talking to an
+              // API build that predates the waitlist endpoints entirely
+              // (independent deploy pipelines, no ordering guarantee between
+              // rally-api and rally-web). A tournament that was already full
+              // before that field existed must NOT show "Join Waiting List"
+              // and route someone into the app to hit a request the API
+              // can't serve — same convention mobile's ctaFor uses
+              // (`waitlistEnabled ? 'join_waitlist' : 'none'`): missing or
+              // falsy hides the CTA rather than showing it.
+              <button
+                onClick={() => handleAppCta('join')}
+                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+              >
+                {t('tournament.tournamentDetailJoinWaitlist')}
+              </button>
+            ) : isFullOpen ? (
+              // waitlist_enabled is `false` (kill switch off) or absent
+              // (pre-Task-11 API / deploy skew): fall back to B1's plain
+              // disabled "full" state rather than routing into the app for a
+              // queue it may not be able to add anyone to.
+              <button
+                disabled
+                className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
+              >
+                {t('tournament.tournamentDetailFull')}
               </button>
             ) : (
               <button

@@ -5,7 +5,7 @@ import type { Tournament } from '@/types/api'
 import { useRtl } from '@/hooks/useRtl'
 import {
   isRegistrationOpen,
-  isTournamentLive,
+  isTournamentInProgress,
   formatCurrency,
   formatTournamentCardDate,
 } from '@/lib/tournamentHelpers'
@@ -28,7 +28,9 @@ export function TournamentCard({
   const { t } = useTranslation()
   const { locale } = useRtl()
   const open = isRegistrationOpen(tr.registration_deadline)
-  const live = !isPast && isTournamentLive(tr)
+  // `!isPast` is display logic for this card variant, not live-ness — the
+  // "past" variant never shows LIVE even if status somehow says in_progress.
+  const live = !isPast && isTournamentInProgress(tr)
   const img = tr.thumb_url ?? tr.image_url
   const dateLine = formatTournamentCardDate(tr.start_date, tr.end_date, locale)
 
