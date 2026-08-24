@@ -230,6 +230,41 @@ export interface RegistrationDetail {
   within_cancellation_window: boolean
   /** True ⇒ pre-auth (J4/J5 hold) entity: saved-card capture is forbidden, hosted checkout only. (gap spec §2.5) */
   requires_approval_event?: boolean
+  /** Null for player_2/guest, who never pays a tournament registration. */
+  my_payment?: MyPayment | null
+}
+
+// --- Payment breakdown for the current viewer (mirrors rally-mobile's MyPayment) ---
+
+export interface MyPaymentRefund {
+  /** 'pending_choice' ⇒ money hasn't moved yet; 'resolved' ⇒ it has. */
+  status: string
+  mode_chosen: string | null
+  deadline: string | null
+  card_refunded: number | null
+  credit_refunded: number | null
+}
+
+export interface MyPayment {
+  base_amount: number
+  fee_portion: number
+  gross_amount: number
+  credits_applied: number
+  card_charged: number
+  auto_charged_amount: number
+  payment_status: string | null
+  refund?: MyPaymentRefund | null
+}
+
+// --- Withdraw / cancel registration ---
+
+export interface TournamentWithdrawResult {
+  id: string
+  tournament_id: string
+  status: string
+  credits_applied: number
+  tournament_name: string | null
+  my_payment: MyPayment | null
 }
 
 // --- Tournament registration request ---

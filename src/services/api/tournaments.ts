@@ -2,7 +2,7 @@
 import client from './client'
 import type {
   ApiResponse, Tournament, TournamentDetail, RegistrationDetail, TournamentParticipants,
-  RegisterPayload, TournamentRegistrationResult,
+  RegisterPayload, TournamentRegistrationResult, TournamentWithdrawResult,
 } from '@/types/api'
 
 export interface TournamentListParams {
@@ -77,4 +77,15 @@ export async function registerTournament(
   payload: RegisterPayload,
 ): Promise<ApiResponse<TournamentRegistrationResult>> {
   return client.post(`/rally/v1/tournaments/${tournamentId}/register`, payload)
+}
+
+export async function withdrawRegistration(
+  tournamentId: string,
+  registrationId: string,
+  refundTo: 'wallet' | 'source' = 'wallet',
+): Promise<ApiResponse<TournamentWithdrawResult>> {
+  return client.post(
+    `/rally/v1/tournaments/${tournamentId}/registrations/${registrationId}/cancel`,
+    { refund_to: refundTo },
+  )
 }
