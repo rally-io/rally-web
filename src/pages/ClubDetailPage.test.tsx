@@ -8,6 +8,12 @@ import type { Club, Tournament, ClubEvent } from '@/types/api'
 import * as clubsApi from '@/services/api/clubs'
 import * as tournamentsApi from '@/services/api/tournaments'
 import * as eventsApi from '@/services/api/events'
+import * as messagesApi from '@/features/screenMessages/api/messages'
+
+// A rendered ScreenMessageCard calls these — neither an AuthProvider nor an
+// AuthGateProvider is mounted in this test file.
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ session: null }) }))
+vi.mock('@/hooks/useAuthGate', () => ({ useAuthGate: () => ({ requireSignIn: vi.fn() }) }))
 
 const club: Club = {
   id: 'c1', name: 'Padel Time', city: 'Ramat Gan', address_line1: 'HaRokmim 26',
@@ -56,6 +62,9 @@ describe('ClubDetailPage', () => {
     })
     vi.spyOn(eventsApi, 'getEvents').mockResolvedValue({
       success: true, data: { items: [], count: 0 }, meta: null, error: null,
+    })
+    vi.spyOn(messagesApi, 'getScreenMessages').mockResolvedValue({
+      success: true, data: [], meta: null, error: null,
     })
   })
 
@@ -111,5 +120,54 @@ describe('ClubDetailPage', () => {
     expect(screen.getByText('Event 2')).toBeInTheDocument()
     expect(screen.getByText('Event 3')).toBeInTheDocument()
     expect(screen.queryByText('Event 4')).toBeNull()
+  })
+
+  it('queries by club scope and id, and renders a message the API returns', async () => {
+    vi.spyOn(messagesApi, 'getScreenMessages').mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: 'msg-1', version: 1, kind: 'warning', display_mode: 'inline',
+          title: 'Pool closed for cleaning', body: 'Back Monday.',
+          is_dismissible: false, requires_acknowledgment: false,
+          gate_actions: [], is_acknowledged: false, acknowledged_at: null,
+        },
+      ],
+      meta: null,
+      error: null,
+    })
+    renderPage()
+    expect(await screen.findByText('Pool closed for cleaning')).toBeInTheDocument()
+    expect(messagesApi.getScreenMessages).toHaveBeenCalledWith({ scope: 'club', id: 'c1' })
+  })
+
+  it('renders no wrapper at all when the list is empty', async () => {
+    renderPage()
+    expect(await screen.findByRole('heading', { name: 'Padel Time' })).toBeInTheDocument()
+    expect(screen.queryByTestId('screen-message-list')).toBeNull()
+  })
+
+  // Task 8 (SCREEN_MESSAGES_WEB_PLAN.md): the club page must also mount
+  // ScreenMessageModalHost — without this, a modal-mode club announcement
+  // silently renders nowhere, same defect as before this task existed.
+  it('mounts the modal surface: a modal message renders as a dialog', async () => {
+    vi.spyOn(messagesApi, 'getScreenMessages').mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: 'news-1', version: 1, kind: 'info', display_mode: 'modal',
+          title: 'New opening hours', body: 'We now open at 07:00.',
+          is_dismissible: true, requires_acknowledgment: false,
+          gate_actions: [], is_acknowledged: false, acknowledged_at: null,
+        },
+      ],
+      meta: null,
+      error: null,
+    })
+    renderPage()
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('New opening hours')).toBeInTheDocument()
+    // A non-gating modal has no inline duplicate (SCREEN_MESSAGES_WEB_SPEC.md §6b).
+    expect(screen.queryByTestId('screen-message-list')).toBeNull()
   })
 })

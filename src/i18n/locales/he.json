@@ -1066,5 +1066,21 @@
     "lane_no_matches_in_window": "אין משחקים בסבבים המוצגים",
     "court_next": "הבא בתור",
     "no_courts": "אין שיוך מגרשים"
+  },
+  "screenMessages": {
+    "accept": "אישור",
+    "accepted": "אושר",
+    "dismiss": "סגור",
+    "messageChanged": "ההודעה עודכנה. אנא קראו אותה שוב.",
+    "actionFailed": "משהו השתבש. נסו שוב.",
+    "requiredBadge": "חובה",
+    "registrationGateRequired": "יש לאשר את תקנון הטורניר כדי להמשיך",
+    "dontShowAgain": "לא להציג שוב",
+    "consent": {
+      "tournament_registration": "אני מאשר/ת את תנאי הטורניר",
+      "court_booking": "אני מאשר/ת את תנאי ההזמנה",
+      "event_join": "אני מאשר/ת את תנאי החוג",
+      "generic": "אני מאשר/ת את התנאים"
+    }
   }
 }

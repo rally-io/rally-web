@@ -54,9 +54,10 @@ describe('registerTournament', () => {
   beforeEach(() => vi.mocked(client.post).mockClear())
 
   it('posts the payload to the correct registration endpoint', async () => {
-    await registerTournament('t-1', { partner_type: 'none' })
+    await registerTournament('t-1', { partner_type: 'none', acknowledged_messages: [] })
     expect(client.post).toHaveBeenCalledWith('/rally/v1/tournaments/t-1/register', {
       partner_type: 'none',
+      acknowledged_messages: [],
     })
   })
 })
