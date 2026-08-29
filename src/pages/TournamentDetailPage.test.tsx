@@ -25,6 +25,28 @@ vi.mock('@/hooks/usePlayerSearch', () => ({
 }))
 vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
 vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
+// ScreenMessageList calls this real useQuery-backed hook — this file mounts no
+// QueryClientProvider, so it must be mocked like every other hook here.
+vi.mock('@/features/screenMessages/hooks/useScreenMessages', () => ({
+  useScreenMessages: vi.fn(),
+}))
+// A rendered ScreenMessageCard calls these — useAcknowledgeMessage/useDismissMessage
+// pull in useQueryClient (no provider mounted here) and useAuth needs an
+// AuthProvider that isn't mounted either. Stub both, mirroring
+// ScreenMessageCard.test.tsx's own mocking shapes.
+vi.mock('@/features/screenMessages/hooks/useMessageActions', () => ({
+  useAcknowledgeMessage: () => ({ mutate: vi.fn(), isPending: false }),
+  useDismissMessage: () => ({ mutate: vi.fn(), isPending: false }),
+}))
+// useRegistrationGate calls useQueryClient() directly (for invalidateQueries
+// on a 409) — same reason as the two mocks above: no QueryClientProvider is
+// mounted in this file. Its own state machine has its own test file
+// (useRegistrationGate.test.tsx); here it's a controllable stand-in so these
+// tests assert the WIRING (disabled state, payload attached, 409 handling).
+vi.mock('@/features/screenMessages/hooks/useRegistrationGate', () => ({
+  useRegistrationGate: vi.fn(),
+}))
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ session: null }) }))
 
 import TournamentDetailPage from './TournamentDetailPage'
 import { useTournament } from '@/hooks/useTournament'
@@ -33,6 +55,8 @@ import { useAppSession } from '@/hooks/useAppSession'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
 import { registerTournament } from '@/services/api/tournaments'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
+import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
+import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
 
 const mockUseTournament = vi.mocked(useTournament)
 const mockUseAuthGate = vi.mocked(useAuthGate)
@@ -40,7 +64,25 @@ const mockUseAppSession = vi.mocked(useAppSession)
 const mockUsePlayerSearch = vi.mocked(usePlayerSearch)
 const mockRegisterTournament = vi.mocked(registerTournament)
 const mockConfirmZeroPayment = vi.mocked(confirmTournamentZeroPayment)
+const mockUseScreenMessages = vi.mocked(useScreenMessages)
+const mockUseRegistrationGate = vi.mocked(useRegistrationGate)
 const mockRequireSignIn = vi.fn()
+
+// Default: nothing gates registration — every pre-existing test in this file
+// registers without a single tick, so isSatisfied must default true and
+// payload empty (buildRegisterPayload still attaches acknowledged_messages: []).
+function defaultGate() {
+  return {
+    blocking: [],
+    selectedIds: new Set<string>(),
+    toggle: vi.fn(),
+    isSatisfied: true,
+    payload: [],
+    outstanding: [],
+    handleGateError: vi.fn(() => false),
+    reset: vi.fn(),
+  } as any
+}
 
 function session(status: string) {
   return {
@@ -77,8 +119,11 @@ function RouteProbe() {
   return <div data-testid="route-probe">{params.toString()}</div>
 }
 
-function renderPage() {
-  return render(
+// Extracted so a test that needs to force a re-render after changing a mock's
+// return value (rerender(pageTree())) reconstructs the exact same tree —
+// same reason renderPage() itself uses it.
+function pageTree() {
+  return (
     <MemoryRouter initialEntries={['/tournaments/t-1']}>
       <Routes>
         <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
@@ -86,8 +131,12 @@ function renderPage() {
         <Route path="/payments/confirming" element={<RouteProbe />} />
         <Route path="/profile/edit" element={<RouteProbe />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   )
+}
+
+function renderPage() {
+  return render(pageTree())
 }
 
 beforeEach(() => {
@@ -96,6 +145,8 @@ beforeEach(() => {
   mockUseAuthGate.mockReturnValue({ requireSignIn: mockRequireSignIn })
   mockUsePlayerSearch.mockReturnValue({ results: [], isLoading: false, isActive: false })
   mockUseAppSession.mockReturnValue(session('ready'))
+  mockUseScreenMessages.mockReturnValue({ data: [] } as any)
+  mockUseRegistrationGate.mockReturnValue(defaultGate())
   // jsdom doesn't implement scrollIntoView — the partner-required gate calls it.
   Element.prototype.scrollIntoView = vi.fn()
 })
@@ -228,7 +279,12 @@ describe('TournamentDetailPage CTA', () => {
     fireEvent.click(
       screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
     )
-    await waitFor(() => expect(mockRegisterTournament).toHaveBeenCalledWith('t-1', { partner_type: 'none' }))
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith('t-1', {
+        partner_type: 'none',
+        acknowledged_messages: [],
+      }),
+    )
     const probe = await screen.findByTestId('route-probe')
     expect(probe.textContent).toContain('registration_id=r-9')
     expect(probe.textContent).toContain('amount=150')
@@ -281,6 +337,7 @@ describe('TournamentDetailPage CTA', () => {
       expect(mockRegisterTournament).toHaveBeenCalledWith('t-1', {
         partner_type: 'existing',
         partner_player_id: 'p-2',
+        acknowledged_messages: [],
       }),
     )
   })
@@ -403,5 +460,312 @@ describe('TournamentDetailPage live results', () => {
     expect(screen.queryByTestId('live-results-sticky-link')).toBeNull()
     // The in-page call-out still offers the scoreboard.
     expect(screen.getByTestId('live-results-link')).toBeInTheDocument()
+  })
+})
+
+describe('TournamentDetailPage screen messages', () => {
+  it('queries by tournament scope and id, and renders a message the hook returns', () => {
+    mockUseTournament.mockReturnValue(tr({ id: 't-1' }))
+    mockUseScreenMessages.mockReturnValue({
+      data: [
+        {
+          id: 'msg-1', version: 1, kind: 'info', display_mode: 'inline',
+          title: 'Courts closed this weekend', body: 'Maintenance in progress.',
+          is_dismissible: false, requires_acknowledgment: false,
+          gate_actions: [], is_acknowledged: false, acknowledged_at: null,
+        },
+      ],
+    } as any)
+    renderPage()
+    expect(screen.getByText('Courts closed this weekend')).toBeInTheDocument()
+    expect(mockUseScreenMessages).toHaveBeenCalledWith({ scope: 'tournament', id: 't-1' })
+  })
+
+  it('renders no wrapper at all when the list is empty', () => {
+    mockUseTournament.mockReturnValue(tr({ id: 't-1' }))
+    mockUseScreenMessages.mockReturnValue({ data: [] } as any)
+    renderPage()
+    expect(screen.queryByTestId('screen-message-list')).toBeNull()
+  })
+
+  // Task 8 (SCREEN_MESSAGES_WEB_PLAN.md): the page must actually mount
+  // ScreenMessageModalHost, and wire it to the SAME registration-gate
+  // selection as ScreenMessageList — otherwise a gating modal's checkbox
+  // would have nothing to toggle. Without this test, forgetting to mount
+  // the host is invisible: every other test in this file returns only
+  // inline messages.
+  it('a modal message renders as a dialog, and ticking a gating checkbox drives the SAME registration-gate toggle as the inline card', () => {
+    mockUseTournament.mockReturnValue(tr({ id: 't-1' }))
+    const mockToggle = vi.fn()
+    mockUseRegistrationGate.mockReturnValue({ ...defaultGate(), toggle: mockToggle } as any)
+    mockUseScreenMessages.mockReturnValue({
+      data: [
+        {
+          id: 'terms-1', version: 2, kind: 'terms', display_mode: 'modal',
+          title: 'Tournament terms', body: 'Please read before registering.',
+          is_dismissible: false, requires_acknowledgment: true,
+          gate_actions: ['tournament_registration'], is_acknowledged: false,
+          acknowledged_at: null,
+        },
+      ],
+    } as any)
+    renderPage()
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: i18n.t('screenMessages.consent.tournament_registration') }),
+    )
+    expect(mockToggle).toHaveBeenCalledWith('terms-1', 2)
+  })
+})
+
+describe('TournamentDetailPage registration gate', () => {
+  // useRegistrationGate itself is mocked (see the top of this file) — its
+  // own state machine (isSatisfied, payload, handleGateError) has its own
+  // test file. These tests assert the page WIRES that state to the right
+  // places: the disabled button + reason text, the register payload, and
+  // the 409 catch-block branch.
+  it('disables Register Now and states the reason next to it while the gate is unsatisfied', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [{ id: 'msg-1', version: 3, title: 'Tournament terms' }],
+      isSatisfied: false,
+    } as any)
+    renderPage()
+    const cta = screen.getByRole('button', {
+      name: i18n.t('tournament.tournamentDetailRegisterNow'),
+    })
+    expect(cta).toBeDisabled()
+    expect(cta).toHaveAttribute('aria-describedby', 'registration-gate-reason')
+    const reason = screen.getByText(i18n.t('screenMessages.registrationGateRequired'))
+    expect(reason).toHaveAttribute('id', 'registration-gate-reason')
+  })
+
+  // Review finding 4's other half: fail closed (button disabled) while the
+  // messages query hasn't resolved, WITHOUT flashing "you must accept the
+  // terms" on a page that turns out to have no gating message at all — the
+  // vast majority of tournament pages. `blocking: []` here is exactly what
+  // the real hook reports while loading; `isSatisfied: false` is the real
+  // hook's fail-closed result for that same state.
+  it('disables the button while unresolved, but does NOT show the terms reason text — no blocking message is known yet', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [],
+      isSatisfied: false,
+    } as any)
+    renderPage()
+    const cta = screen.getByRole('button', {
+      name: i18n.t('tournament.tournamentDetailRegisterNow'),
+    })
+    expect(cta).toBeDisabled()
+    expect(cta).not.toHaveAttribute('aria-describedby')
+    expect(
+      screen.queryByText(i18n.t('screenMessages.registrationGateRequired')),
+    ).not.toBeInTheDocument()
+  })
+
+  it('register sends acknowledged_messages built from the gate payload', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      selectedIds: new Set(['msg-1']),
+      isSatisfied: true,
+      payload: [{ id: 'msg-1', version: 3 }],
+    } as any)
+    mockRegisterTournament.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'r-9', tournament_id: 't-1', status: 'registered', payment_status: 'pending',
+        credits_applied: 0, service_fee: 5, amount_to_pay: 150, entry_fee: 150,
+      },
+      meta: null,
+      error: null,
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith('t-1', {
+        partner_type: 'none',
+        acknowledged_messages: [{ id: 'msg-1', version: 3 }],
+      }),
+    )
+  })
+
+  it('a 409 ACKNOWLEDGMENT_REQUIRED shows the gate prompt instead of the generic backend-error text, and never auto-retries', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    const handleGateError = vi.fn(() => true)
+    mockUseRegistrationGate.mockReturnValue({ ...defaultGate(), handleGateError } as any)
+    mockRegisterTournament.mockRejectedValue({
+      status: 409,
+      code: 'ACKNOWLEDGMENT_REQUIRED',
+      message: 'Acknowledgment required',
+      details: { messages: [{ id: 'msg-1', version: 4, title: 'Tournament terms' }] },
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(
+      await screen.findByText(i18n.t('screenMessages.registrationGateRequired')),
+    ).toBeInTheDocument()
+    expect(handleGateError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'ACKNOWLEDGMENT_REQUIRED' }),
+    )
+    // One attempt, one rejection — nothing here retries on its own.
+    expect(mockRegisterTournament).toHaveBeenCalledTimes(1)
+  })
+
+  it('a 409 that handleGateError does not recognize falls through to the ordinary backend-error text', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      handleGateError: vi.fn(() => false),
+    } as any)
+    mockRegisterTournament.mockRejectedValue({
+      status: 400,
+      code: 'BAD_REQUEST',
+      message: 'Selected partner is already registered for this tournament',
+      details: null,
+    })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(
+      await screen.findByText(i18n.t('tournament.registrationErrors.partnerAlreadyRegistered')),
+    ).toBeInTheDocument()
+  })
+
+  // Regression test for review finding 1: setRegisterError(null) only runs
+  // inside handleRegisterNow, past the isSatisfied guard — so a tick made
+  // AFTER a 409 (which never calls handleRegisterNow again on its own) used
+  // to leave the stale "you must accept the terms" sentence on screen under
+  // a button that had just re-enabled.
+  it('clears the 409 gate note once ticking makes the gate satisfied again, but not before', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    const handleGateError = vi.fn(() => true)
+    // Satisfied client-side at click time — the 409 is precisely the
+    // server-side race the client can't see coming.
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      isSatisfied: true,
+      blocking: [{ id: 'msg-1', version: 3, title: 'Tournament terms' }],
+      handleGateError,
+    } as any)
+    mockRegisterTournament.mockRejectedValue({
+      status: 409,
+      code: 'ACKNOWLEDGMENT_REQUIRED',
+      message: 'Acknowledgment required',
+      details: { messages: [{ id: 'msg-1', version: 4, title: 'Tournament terms' }] },
+    })
+    const { rerender } = renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(
+      await screen.findByText(i18n.t('screenMessages.registrationGateRequired')),
+    ).toBeInTheDocument()
+
+    // A real gate would have gone unsatisfied right here (handleGateError
+    // clears ticks) — simulate that landing. The note must still be showing.
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      isSatisfied: false,
+      blocking: [{ id: 'msg-1', version: 4, title: 'Tournament terms' }],
+      handleGateError,
+    } as any)
+    rerender(pageTree())
+    expect(
+      screen.getByText(i18n.t('screenMessages.registrationGateRequired')),
+    ).toBeInTheDocument()
+
+    // The player re-ticks the (new-version) box — isSatisfied flips true.
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      isSatisfied: true,
+      blocking: [{ id: 'msg-1', version: 4, title: 'Tournament terms' }],
+      handleGateError,
+    } as any)
+    rerender(pageTree())
+    await waitFor(() =>
+      expect(
+        screen.queryByText(i18n.t('screenMessages.registrationGateRequired')),
+      ).not.toBeInTheDocument(),
+    )
+    // And the button is live again, with nothing stale sitting under it.
+    expect(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    ).not.toBeDisabled()
+  })
+
+  // Regression coverage for spec item 5 / review finding 3: every other test
+  // here has outstanding: [], so the scroll effect never actually ran before.
+  it('scrolls to the outstanding card once it exists in the DOM, and only once', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    // Same array REFERENCE reused across every mock below on purpose: the
+    // real hook only calls setOutstanding() once, in handleGateError — a
+    // later blocking-only change (the refetch landing) does NOT produce a
+    // new `outstanding` reference in reality. If this test built a fresh
+    // `outstanding` array literal on every mockReturnValue call instead, the
+    // effect would re-run because THAT reference changed, not because
+    // `gate.blocking` is in its dependency array — masking exactly the bug
+    // this test exists to catch.
+    const outstanding = [{ id: 'msg-1', version: 4, title: 'Tournament terms' }]
+
+    // A 409 just named msg-1 as outstanding, but the refetch it triggered
+    // hasn't landed yet — the message isn't in the rendered list, so its
+    // card doesn't exist. This is the newly-published-message race; an
+    // edited message's card would already be there.
+    mockUseScreenMessages.mockReturnValue({ data: [] } as any)
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [],
+      outstanding,
+    } as any)
+    const { rerender } = renderPage()
+    await waitFor(() => expect(scrollIntoView).not.toHaveBeenCalled())
+
+    // The refetch lands: the card now exists. `outstanding` itself is the
+    // SAME array as before — only `blocking` changed.
+    mockUseScreenMessages.mockReturnValue({
+      data: [
+        {
+          id: 'msg-1', version: 4, kind: 'terms', display_mode: 'inline',
+          title: 'Tournament terms', body: 'Read the rules.', is_dismissible: false, requires_acknowledgment: true,
+          gate_actions: ['tournament_registration'], is_acknowledged: false,
+          acknowledged_at: null,
+        },
+      ],
+    } as any)
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [{ id: 'msg-1', version: 4, title: 'Tournament terms' }],
+      outstanding,
+    } as any)
+    rerender(pageTree())
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1))
+    expect(document.getElementById('screen-message-msg-1')).toBeInTheDocument()
+
+    // A further, unrelated background refetch — a NEW `blocking` array
+    // reference (e.g. some other field on the same message changed), same
+    // `outstanding` target. This is what actually exercises the one-shot
+    // guard: it changes the effect's own dependencies, so the effect DOES
+    // re-run, and only the guard stops it from scrolling a second time.
+    // (Re-rendering with nothing at all changed doesn't exercise this at
+    // all — the effect wouldn't even re-run.)
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [{ id: 'msg-1', version: 4, title: 'Tournament terms' }],
+      outstanding,
+    } as any)
+    rerender(pageTree())
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
   })
 })

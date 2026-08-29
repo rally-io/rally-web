@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,6 +10,9 @@ import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAppSession } from '@/hooks/useAppSession'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
+import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
+import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
+import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
 // Temporarily hidden — see the commented-out render below.
 // import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
@@ -18,7 +21,7 @@ import { registerTournament } from '@/services/api/tournaments'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
 import { translateRegistrationError } from '@/lib/registrationErrors'
 import type { PartnerSelectionState } from '@/types/partner'
-import type { RegisterPayload } from '@/types/api'
+import type { AcknowledgedMessageRef, RegisterPayload } from '@/types/api'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
@@ -28,17 +31,27 @@ import { PrizesGrid } from '@/components/tournaments/PrizesGrid'
 import { LiveBadge } from '@/components/tournaments/LiveBadge'
 import { formatLabelKey, structureLabelKey } from '@/lib/tournamentTheme'
 
+// The only gate action web can ever reach — see SCREEN_MESSAGES_WEB_SPEC.md
+// §1/§3: web has no booking-create or event-join call, so those gate_actions
+// are unreachable here even though the type admits them.
+const REGISTRATION_GATE_ACTION = 'tournament_registration' as const
+
 // Pure helper — no side-effects, fully testable in isolation.
 function buildRegisterPayload(
   format: string,
   state: PartnerSelectionState,
+  acknowledgedMessages: AcknowledgedMessageRef[],
 ): RegisterPayload {
   const needsPartner = format === 'doubles' || format === 'mixed'
-  if (!needsPartner) return { partner_type: 'none' }
+  if (!needsPartner) return { partner_type: 'none', acknowledged_messages: acknowledgedMessages }
 
   if (state.phase === 'selected') {
     if (state.partner.type === 'existing') {
-      return { partner_type: 'existing', partner_player_id: state.partner.id }
+      return {
+        partner_type: 'existing',
+        partner_player_id: state.partner.id,
+        acknowledged_messages: acknowledgedMessages,
+      }
     }
     return {
       partner_type: 'invite',
@@ -46,10 +59,11 @@ function buildRegisterPayload(
       invite_last_name: state.partner.lastName,
       invite_country_code: state.partner.countryCode,
       invite_phone: state.partner.phone,
+      acknowledged_messages: acknowledgedMessages,
     }
   }
   // Guard — unreachable when the partner-required gate below is enforced.
-  return { partner_type: 'none' }
+  return { partner_type: 'none', acknowledged_messages: acknowledgedMessages }
 }
 
 export default function TournamentDetailPage() {
@@ -60,13 +74,52 @@ export default function TournamentDetailPage() {
   const { data: tr, isLoading, isError } = useTournament(id!)
   const { requireSignIn } = useAuthGate()
   const { status: sessionStatus, refetchOnboarding } = useAppSession()
+  // Same query key as the ScreenMessageList mounted below (scope: 'tournament',
+  // id: tr.id) — react-query dedupes the two into one fetch. `tr?.id` is
+  // undefined while loading; useScreenMessages' own `enabled` handles that.
+  const gate = useRegistrationGate({ scope: 'tournament', id: tr?.id }, REGISTRATION_GATE_ACTION)
 
   const [partnerState, setPartnerState] = useState<PartnerSelectionState>({ phase: 'idle' })
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
+  // Separate from registerError on purpose: this is the ONE state a tick can
+  // retire on its own, without the player pressing anything. Overloading
+  // registerError meant a ticked, re-enabled button could still sit under a
+  // red "you must accept the terms" sentence from the 409 that led to the
+  // tick in the first place.
+  const [gateError, setGateError] = useState<string | null>(null)
 
   const isPartneredFormat = tr?.format === 'doubles' || tr?.format === 'mixed'
   const partnerRequired = isPartneredFormat && partnerState.phase === 'idle'
+
+  // The moment ticking satisfies the gate, any stale 409 note is wrong — the
+  // player just did the thing it was asking for.
+  useEffect(() => {
+    if (gate.isSatisfied) setGateError(null)
+  }, [gate.isSatisfied])
+
+  // The 409 safety net (SCREEN_MESSAGES_WEB_SPEC.md §6a) names which messages
+  // are outstanding; scroll to the first one once that state lands. This is
+  // the race the 409 exists to catch, so the card is not guaranteed to be in
+  // the DOM yet on the render `outstanding` lands (an EDITED message's card
+  // is already there — stale, but present; a NEWLY PUBLISHED one isn't, until
+  // the invalidated query's refetch lands it). Re-running on `gate.blocking`
+  // too gives it another look each time the message list actually changes,
+  // not on every unrelated render. `scrolledForRef` keeps it one-shot per
+  // outstanding target — it must not re-scroll on a later, unrelated refetch.
+  const scrolledForRef = useRef<string | null>(null)
+  useEffect(() => {
+    const first = gate.outstanding[0]
+    if (!first) {
+      scrolledForRef.current = null
+      return
+    }
+    if (scrolledForRef.current === first.id) return
+    const el = document.getElementById(`screen-message-${first.id}`)
+    if (!el) return // not rendered yet — retry when `gate.blocking` next changes
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    scrolledForRef.current = first.id
+  }, [gate.outstanding, gate.blocking])
 
   // Web registration: gate on sign-in only (no profile-completeness check).
   // requireSignIn() resolves immediately if already authenticated, otherwise
@@ -81,10 +134,19 @@ export default function TournamentDetailPage() {
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           return
         }
+        // Belt-and-suspenders alongside the disabled button below: a message
+        // could in principle finish loading (or a background refetch land)
+        // in the moment between click and here. Ticking never networks, so
+        // there is nothing to undo by bailing out here.
+        if (!gate.isSatisfied) return
         setIsRegistering(true)
         setRegisterError(null)
+        // Belt-and-suspenders: the isSatisfied effect above should already
+        // have cleared this by the time we get here, since we can only reach
+        // this line when isSatisfied is true.
+        setGateError(null)
         try {
-          const payload = buildRegisterPayload(tr.format, partnerState)
+          const payload = buildRegisterPayload(tr.format, partnerState, gate.payload)
           const result = await registerTournament(tr.id, payload)
           if (!result.success) {
             setRegisterError(translateRegistrationError(result.error.message, t))
@@ -118,13 +180,27 @@ export default function TournamentDetailPage() {
           // Validation failures (partner already registered, tournament closed,
           // etc.) are RallyException on rally-api — a non-2xx response, which the
           // axios client's interceptor turns into a rejected plain object
-          // ({status, code, message, details}), not an Error instance. Extract
-          // the real backend message and translate it — rally-api sends plain
-          // English text with no distinct error code for most of these.
-          const message = (e as { message?: string } | null)?.message
+          // ({status, code, message, details}), not an Error instance.
+          const err = e as { code?: string; message?: string; details?: unknown } | null
+          // The 409 safety net (SCREEN_MESSAGES_WEB_SPEC.md §6a): a message
+          // was published/edited between page load and register. Refetch,
+          // clear ticks, and say so — never auto-retry, the player hasn't
+          // seen the new text yet. Must run before the generic fallback below
+          // so ACKNOWLEDGMENT_REQUIRED never surfaces as raw backend text.
+          if (gate.handleGateError(err)) {
+            setGateError(
+              t('screenMessages.registrationGateRequired', {
+                defaultValue: 'You must accept the tournament terms to continue',
+              }),
+            )
+            return
+          }
+          // Extract the real backend message and translate it — rally-api
+          // sends plain English text with no distinct error code for most of
+          // these.
           setRegisterError(
-            message
-              ? translateRegistrationError(message, t)
+            err?.message
+              ? translateRegistrationError(err.message, t)
               : t('tournament.registrationFailedTitle'),
           )
         } finally {
@@ -163,6 +239,26 @@ export default function TournamentDetailPage() {
     (myReg?.status === 'registered' &&
       myReg?.payment_status !== 'payment_held' &&
       myReg?.payment_status !== 'completed')
+  // Mirrors the final `else` branch of the sticky-bar ternary below — the
+  // only state in which the actual Register Now button renders, so the gate
+  // reason text (and the button's own disabled state) only ever appears
+  // alongside it, never on an already-registered or closed tournament.
+  const showRegisterCta = !payState && !myReg && open
+  const gateBlocking = showRegisterCta && !partnerRequired && !gate.isSatisfied
+  // gate.isSatisfied is also false while the messages query is loading/erroring
+  // (fail closed — see useRegistrationGate) even though nothing is blocking
+  // yet. Requiring an actual blocking message keeps the reason text off the
+  // vast majority of tournament pages, which have none, during that window —
+  // only the disabled button (gateBlocking above) reflects "not resolved yet".
+  const showGateReason = gateBlocking && gate.blocking.length > 0
+  const gateReasonText = t('screenMessages.registrationGateRequired', {
+    defaultValue: 'You must accept the tournament terms to continue',
+  })
+  // One paragraph, one id, one aria-describedby target — a 409's gateError
+  // takes priority over the plain "still unticked" reason when both would
+  // otherwise apply, so the player never sees the same sentence rendered
+  // twice.
+  const gateMessage = gateError ?? (showGateReason ? gateReasonText : null)
 
   return (
     <main className="min-h-screen bg-rally-bg pb-28">
@@ -199,6 +295,24 @@ export default function TournamentDetailPage() {
           </p>
         </div>
       </section>
+
+      <ScreenMessageList
+        query={{ scope: 'tournament', id: tr.id }}
+        className="container mx-auto px-4 max-w-3xl mt-6"
+        selection={{
+          action: REGISTRATION_GATE_ACTION,
+          selectedIds: gate.selectedIds,
+          onToggle: gate.toggle,
+        }}
+      />
+      <ScreenMessageModalHost
+        query={{ scope: 'tournament', id: tr.id }}
+        selection={{
+          action: REGISTRATION_GATE_ACTION,
+          selectedIds: gate.selectedIds,
+          onToggle: gate.toggle,
+        }}
+      />
 
       <div className="container mx-auto px-4 max-w-3xl space-y-10 mt-10">
         <section className="rounded-2xl bg-rally-surface border border-rally-border p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -475,7 +589,8 @@ export default function TournamentDetailPage() {
             ) : (
               <button
                 onClick={handleRegisterNow}
-                disabled={isRegistering}
+                disabled={isRegistering || gateBlocking}
+                aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"
               >
                 {isRegistering
@@ -486,6 +601,20 @@ export default function TournamentDetailPage() {
               </button>
             )}
           </div>
+          {gateMessage && (
+            // The reason lives as real text next to the button, not only in a
+            // hover title, and is tied to the button via aria-describedby so
+            // a screen-reader user gets it too (SCREEN_MESSAGES_WEB_SPEC.md
+            // §6a). aria-live announces it the moment a 409 lands one, not
+            // only when the button happens to have focus.
+            <p
+              id="registration-gate-reason"
+              aria-live="polite"
+              className="mt-2 text-sm text-rally-error text-center"
+            >
+              {gateMessage}
+            </p>
+          )}
           {registerError && (
             <p className="mt-2 text-sm text-rally-error text-center">{registerError}</p>
           )}

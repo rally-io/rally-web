@@ -13,6 +13,8 @@ import { TournamentCard } from '@/components/tournaments/TournamentCard'
 import { AppDownloadModal } from '@/components/app-download/AppDownloadModal'
 import { Skeleton } from '@/components/ui/skeleton'
 import { tryOpenInApp } from '@/lib/appLinks'
+import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
+import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
 
 const EVENTS_ON_PAGE = 3
 const TOURNAMENTS_ON_PAGE = 2
@@ -103,6 +105,12 @@ export default function ClubDetailPage() {
         addressLine1={club.address_line1}
         thumbUrl={club.thumb_url}
       />
+
+      <ScreenMessageList
+        query={{ scope: 'club', id: clubId }}
+        className="container mx-auto px-4 max-w-5xl mt-6"
+      />
+      <ScreenMessageModalHost query={{ scope: 'club', id: clubId }} />
 
       <div className="container mx-auto px-4 max-w-5xl mt-6 lg:mt-10">
         <div className="flex flex-col lg:flex-row lg:items-start gap-8">

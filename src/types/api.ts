@@ -234,7 +234,17 @@ export interface RegistrationDetail {
 
 // --- Tournament registration request ---
 
-export type RegisterPayload =
+/** `TournamentRegisterRequest.acknowledged_messages` entry
+ *  (app/schemas/mobile/screen_message.py:34 on rally-api). `assert_gate_satisfied`
+ *  writes the acceptance receipt from this list inside the registration's own
+ *  transaction, so a version that doesn't match the message's current version
+ *  simply fails to satisfy the gate — see SCREEN_MESSAGES_WEB_SPEC.md §6a. */
+export interface AcknowledgedMessageRef {
+  id: string
+  version: number
+}
+
+export type RegisterPayload = { acknowledged_messages: AcknowledgedMessageRef[] } & (
   | { partner_type: 'none' }
   | { partner_type: 'existing'; partner_player_id: string }
   | {
@@ -244,6 +254,7 @@ export type RegisterPayload =
       invite_country_code: string
       invite_phone: string
     }
+)
 
 export interface TournamentRegistrationResult {
   id: string

@@ -1061,5 +1061,21 @@
     "lane_no_matches_in_window": "No matches in this round window",
     "court_next": "Next",
     "no_courts": "No court assignments"
+  },
+  "screenMessages": {
+    "accept": "Accept",
+    "accepted": "Accepted",
+    "dismiss": "Dismiss",
+    "messageChanged": "This message was updated. Please read it again.",
+    "actionFailed": "Something went wrong. Please try again.",
+    "requiredBadge": "Required",
+    "registrationGateRequired": "You must accept the tournament terms to continue",
+    "dontShowAgain": "Don't show again",
+    "consent": {
+      "tournament_registration": "I accept the tournament terms",
+      "court_booking": "I accept the booking terms",
+      "event_join": "I accept the class terms",
+      "generic": "I accept the terms"
+    }
   }
 }
