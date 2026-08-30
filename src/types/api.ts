@@ -79,11 +79,22 @@ export interface Tournament {
    * token, absent on API builds predating the field.
    */
   share_token?: string | null
+  organizer_name?: string | null
+  organizer_slug?: string | null
+  organizer_avatar_url?: string | null
   description?: string
   max_participants?: number
   prizes?: Prize[]
   sponsors?: Sponsor[]
   my_registration?: any
+}
+
+export interface Organizer {
+  id: string
+  name: string
+  slug?: string | null
+  avatar_url?: string | null
+  tournaments_count: number
 }
 
 export interface Prize {

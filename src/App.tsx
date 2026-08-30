@@ -25,6 +25,7 @@ import ClubTournamentsPage from './pages/ClubTournamentsPage'
 import ClubEventsPage from './pages/ClubEventsPage'
 import TournamentsPage from './pages/TournamentsPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
+import OrganizerTournamentsPage from './pages/OrganizerTournamentsPage'
 import MyActivityPage from './pages/MyActivityPage'
 import EditProfilePage from './pages/EditProfilePage'
 import PaymentMethodPage from './pages/payment/PaymentMethodPage'
@@ -93,6 +94,7 @@ export default function App() {
           <Route path="/clubs/:id/events" element={<ClubEventsPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
+          <Route path="/organizers/:slug" element={<OrganizerTournamentsPage />} />
           <Route path="/my-activity" element={<MyActivityPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/payment-method" element={<PaymentMethodPage />} />
