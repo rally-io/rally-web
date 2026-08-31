@@ -187,7 +187,18 @@ describe('useRegistrationGate', () => {
     expect(result.current.payload).toEqual([{ id: 'msg-1', version: 3 }])
   })
 
-  it('is not satisfied while the messages query is loading, even with no known blocking messages yet', () => {
+  it('IS satisfied while the messages query is loading, so the press is never swallowed', () => {
+    // This used to assert `false`, which pinned a bug rather than a behaviour.
+    // In that state `blocking` is ALSO [], and every press handler is written as
+    // "if not satisfied, scroll to blocking[0]" — so the handler read undefined
+    // and bare-returned: no submit, no scroll, no error, no spinner.
+    //
+    // The old rationale ("avoids flashing an enabled Register that is about to
+    // sprout a mandatory checkbox") assumed the gate DISABLES the button. Since
+    // 2026-08-29 it never does, so closed-while-loading held nothing back and
+    // only ate the click. Reachable: after requireSignIn() resolves, user.id
+    // flips, the ['screenMessages', userId, …] key changes, and the refetch runs
+    // with no cached data — the click right after sign-in lands in this window.
     mockUseScreenMessages.mockReturnValue({ data: undefined, isLoading: true, isError: false })
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -201,7 +212,35 @@ describe('useRegistrationGate', () => {
       },
     )
     expect(result.current.blocking).toEqual([])
-    expect(result.current.isSatisfied).toBe(false)
+    expect(result.current.isSatisfied).toBe(true)
+  })
+
+  it('never reports unsatisfied with an empty blocking list', () => {
+    // The invariant behind that bug, stated directly rather than case by case.
+    // Every press handler reads `blocking[0]` when `!isSatisfied`, so
+    // "unsatisfied with nothing to point at" is by construction a dead press.
+    // Covers the loading window, the error window, and the ordinary empty case.
+    for (const state of [
+      { data: undefined, isLoading: true, isError: false },
+      { data: undefined, isLoading: false, isError: true },
+      { data: [], isLoading: false, isError: false },
+    ]) {
+      mockUseScreenMessages.mockReturnValue(state)
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      })
+      const { result } = renderHook(
+        () => useRegistrationGate({ scope: 'tournament', id: 't-1' }, 'tournament_registration'),
+        {
+          wrapper: ({ children }: { children: ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+          ),
+        },
+      )
+      if (!result.current.isSatisfied) {
+        expect(result.current.blocking.length).toBeGreaterThan(0)
+      }
+    }
   })
 
   it('IS satisfied when the messages query has errored — fail open, not closed', () => {
@@ -233,7 +272,11 @@ describe('useRegistrationGate', () => {
     expect(result.current.blocking).toEqual([])
   })
 
-  it('is satisfied once loading finishes with no gating messages — the fail-closed window is loading only, not permanent', () => {
+  it('closes again once loading resolves to a real gating message — open-while-loading is a window, not a permanent pass', () => {
+    // The counterpart to the fail-open change, and the more important half: the
+    // gate must go BACK to unsatisfied the moment the fetch delivers something
+    // that actually blocks. Otherwise "open while loading" would be a permanent
+    // hole rather than a transient one, and the checkbox would never appear.
     mockUseScreenMessages.mockReturnValue({ data: undefined, isLoading: true, isError: false })
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -246,10 +289,19 @@ describe('useRegistrationGate', () => {
         ),
       },
     )
-    expect(result.current.isSatisfied).toBe(false)
+    expect(result.current.isSatisfied).toBe(true)
 
+    // Resolves to nothing blocking: still satisfied, and now for the real reason.
     mockUseScreenMessages.mockReturnValue({ data: [], isLoading: false, isError: false })
     rerender()
     expect(result.current.isSatisfied).toBe(true)
+
+    // Resolves to a genuine gating message: closed, with something to point at.
+    mockUseScreenMessages.mockReturnValue({
+      data: [gatingMessage()], isLoading: false, isError: false,
+    })
+    rerender()
+    expect(result.current.isSatisfied).toBe(false)
+    expect(result.current.blocking.length).toBeGreaterThan(0)
   })
 })

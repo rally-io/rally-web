@@ -134,11 +134,20 @@ export default function TournamentDetailPage() {
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           return
         }
-        // Belt-and-suspenders alongside the disabled button below: a message
-        // could in principle finish loading (or a background refetch land)
-        // in the moment between click and here. Ticking never networks, so
-        // there is nothing to undo by bailing out here.
-        if (!gate.isSatisfied) return
+        // An unsatisfied gate scrolls to the blocking card instead of
+        // submitting — the button is never disabled. Rationale on
+        // `useRegistrationGate.isSatisfied`, which also guarantees the
+        // invariant this branch depends on: unsatisfied implies `blocking` is
+        // non-empty, so there is always something to scroll to.
+        if (!gate.isSatisfied) {
+          const first = gate.blocking[0]
+          if (first) {
+            document
+              .getElementById(`screen-message-${first.id}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          return
+        }
         setIsRegistering(true)
         setRegisterError(null)
         // Belt-and-suspenders: the isSatisfied effect above should already
@@ -239,26 +248,18 @@ export default function TournamentDetailPage() {
     (myReg?.status === 'registered' &&
       myReg?.payment_status !== 'payment_held' &&
       myReg?.payment_status !== 'completed')
-  // Mirrors the final `else` branch of the sticky-bar ternary below — the
-  // only state in which the actual Register Now button renders, so the gate
-  // reason text (and the button's own disabled state) only ever appears
-  // alongside it, never on an already-registered or closed tournament.
-  const showRegisterCta = !payState && !myReg && open
-  const gateBlocking = showRegisterCta && !partnerRequired && !gate.isSatisfied
-  // gate.isSatisfied is also false while the messages query is loading/erroring
-  // (fail closed — see useRegistrationGate) even though nothing is blocking
-  // yet. Requiring an actual blocking message keeps the reason text off the
-  // vast majority of tournament pages, which have none, during that window —
-  // only the disabled button (gateBlocking above) reflects "not resolved yet".
-  const showGateReason = gateBlocking && gate.blocking.length > 0
-  const gateReasonText = t('screenMessages.registrationGateRequired', {
-    defaultValue: 'You must accept the tournament terms to continue',
-  })
-  // One paragraph, one id, one aria-describedby target — a 409's gateError
-  // takes priority over the plain "still unticked" reason when both would
-  // otherwise apply, so the player never sees the same sentence rendered
-  // twice.
-  const gateMessage = gateError ?? (showGateReason ? gateReasonText : null)
+  // The message gate never disables the Register Now button and never shows
+  // a standing reason text under it (product decision, 2026-08-29 — mirrors
+  // rally-mobile commit f27c8c2, superseding the original "disable on
+  // !isSatisfied" / "show reason text while blocking" design). An
+  // unsatisfied gate is handled entirely at press time in handleRegisterNow:
+  // scroll to the blocking card, whose own error-toned border + Required
+  // badge is the explanation — a red line under an enabled button would read
+  // as "broken" before the player has done anything wrong.
+  //
+  // gateMessage is now ONLY the 409 safety net's note (SCREEN_MESSAGES_WEB_SPEC.md
+  // §6a): a real submit reached the server with something still outstanding.
+  const gateMessage = gateError
 
   return (
     <main className="min-h-screen bg-rally-bg pb-28">
@@ -589,7 +590,7 @@ export default function TournamentDetailPage() {
             ) : (
               <button
                 onClick={handleRegisterNow}
-                disabled={isRegistering || gateBlocking}
+                disabled={isRegistering}
                 aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"
               >

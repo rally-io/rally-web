@@ -124,10 +124,15 @@ describe('TournamentDetailPage registration gate — real ScreenMessageCard + re
     const cta = screen.getByRole('button', {
       name: i18n.t('tournament.tournamentDetailRegisterNow'),
     })
-    expect(cta).toBeDisabled()
+    // The gate never disables this button (product decision, 2026-08-29) —
+    // pressing it before ticking scrolls to the real card instead of
+    // submitting.
+    expect(cta).not.toBeDisabled()
+    fireEvent.click(cta)
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled())
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
 
     fireEvent.click(checkbox)
-    await waitFor(() => expect(cta).not.toBeDisabled())
 
     fireEvent.click(cta)
     await waitFor(() =>
@@ -156,7 +161,7 @@ describe('TournamentDetailPage registration gate — real ScreenMessageCard + re
     expect(vi.mocked(messagesApi.acknowledgeMessage)).not.toHaveBeenCalled()
   })
 
-  it('a real 409 from the register call disables the button again and shows the gate note', async () => {
+  it('a real 409 from the register call shows the gate note but never disables the button, and a second press does not resubmit', async () => {
     mockGetScreenMessages.mockResolvedValue({
       success: true,
       data: [gatingMessage()],
@@ -176,7 +181,7 @@ describe('TournamentDetailPage registration gate — real ScreenMessageCard + re
       name: i18n.t('tournament.tournamentDetailRegisterNow'),
     })
     fireEvent.click(checkbox)
-    await waitFor(() => expect(cta).not.toBeDisabled())
+    expect(cta).not.toBeDisabled()
 
     fireEvent.click(cta)
 
@@ -184,7 +189,14 @@ describe('TournamentDetailPage registration gate — real ScreenMessageCard + re
       await screen.findByText(i18n.t('screenMessages.registrationGateRequired')),
     ).toBeInTheDocument()
     // The real hook actually cleared the tick, so the real gate is
-    // unsatisfied again — the button must reflect that, not just the note.
-    await waitFor(() => expect(cta).toBeDisabled())
+    // unsatisfied again — but the button must stay live (product decision,
+    // 2026-08-29), never a dead grey button.
+    expect(cta).not.toBeDisabled()
+
+    // Pressing again must not auto-retry — the player hasn't re-read the
+    // new text yet. It scrolls to the (now-unticked) card instead.
+    fireEvent.click(cta)
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled())
+    expect(mockRegisterTournament).toHaveBeenCalledTimes(1)
   })
 })

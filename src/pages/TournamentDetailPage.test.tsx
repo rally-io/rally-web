@@ -523,9 +523,16 @@ describe('TournamentDetailPage registration gate', () => {
   // useRegistrationGate itself is mocked (see the top of this file) — its
   // own state machine (isSatisfied, payload, handleGateError) has its own
   // test file. These tests assert the page WIRES that state to the right
-  // places: the disabled button + reason text, the register payload, and
-  // the 409 catch-block branch.
-  it('disables Register Now and states the reason next to it while the gate is unsatisfied', () => {
+  // places: the button's disabled state, the press-time scroll, the
+  // register payload, and the 409 catch-block branch.
+  //
+  // Product decision, 2026-08-29 (mirrors rally-mobile commit f27c8c2): the
+  // message gate must never disable this button or grey it out — a gated
+  // CTA the player can't press reads as broken, not as "there's a step
+  // left." An unsatisfied gate is handled entirely at press time instead:
+  // scroll to the blocking card (whose own error-toned border + Required
+  // badge is the explanation) and never submit.
+  it('never disables Register Now while the gate is unsatisfied, and shows no standing reason text', () => {
     mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
     mockUseRegistrationGate.mockReturnValue({
       ...defaultGate(),
@@ -536,19 +543,18 @@ describe('TournamentDetailPage registration gate', () => {
     const cta = screen.getByRole('button', {
       name: i18n.t('tournament.tournamentDetailRegisterNow'),
     })
-    expect(cta).toBeDisabled()
-    expect(cta).toHaveAttribute('aria-describedby', 'registration-gate-reason')
-    const reason = screen.getByText(i18n.t('screenMessages.registrationGateRequired'))
-    expect(reason).toHaveAttribute('id', 'registration-gate-reason')
+    expect(cta).not.toBeDisabled()
+    expect(cta).not.toHaveAttribute('aria-describedby')
+    expect(
+      screen.queryByText(i18n.t('screenMessages.registrationGateRequired')),
+    ).not.toBeInTheDocument()
   })
 
-  // Review finding 4's other half: fail closed (button disabled) while the
-  // messages query hasn't resolved, WITHOUT flashing "you must accept the
-  // terms" on a page that turns out to have no gating message at all — the
-  // vast majority of tournament pages. `blocking: []` here is exactly what
-  // the real hook reports while loading; `isSatisfied: false` is the real
-  // hook's fail-closed result for that same state.
-  it('disables the button while unresolved, but does NOT show the terms reason text — no blocking message is known yet', () => {
+  // Same "never disabled" guarantee while the messages query itself hasn't
+  // resolved yet (`blocking: []` + `isSatisfied: false` is exactly what the
+  // real hook reports mid-fetch — see useRegistrationGate's fail-closed
+  // comment). Nothing to scroll to yet, but the button must stay live.
+  it('never disables Register Now while the gate is unresolved (messages still loading)', () => {
     mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
     mockUseRegistrationGate.mockReturnValue({
       ...defaultGate(),
@@ -559,11 +565,83 @@ describe('TournamentDetailPage registration gate', () => {
     const cta = screen.getByRole('button', {
       name: i18n.t('tournament.tournamentDetailRegisterNow'),
     })
-    expect(cta).toBeDisabled()
+    expect(cta).not.toBeDisabled()
     expect(cta).not.toHaveAttribute('aria-describedby')
-    expect(
-      screen.queryByText(i18n.t('screenMessages.registrationGateRequired')),
-    ).not.toBeInTheDocument()
+  })
+
+  it('pressing Register Now while the gate is unsatisfied does not call the register API, and scrolls to the blocking message', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockUseScreenMessages.mockReturnValue({
+      data: [
+        {
+          id: 'msg-1', version: 3, kind: 'terms', display_mode: 'inline',
+          title: 'Tournament terms', body: 'Read the rules.', is_dismissible: false,
+          requires_acknowledgment: true, gate_actions: ['tournament_registration'],
+          is_acknowledged: false, acknowledged_at: null,
+        },
+      ],
+    } as any)
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [{ id: 'msg-1', version: 3, title: 'Tournament terms' }],
+      isSatisfied: false,
+    } as any)
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    // handleRegisterNow runs past requireSignIn's `.then()`, a microtask —
+    // wait for the scroll (its last observable effect) before asserting.
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled())
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
+
+  it('disables Register Now while a registration is already in flight', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    let resolveRegister: (value: unknown) => void = () => {}
+    mockRegisterTournament.mockImplementation(
+      () => new Promise((resolve) => { resolveRegister = resolve }) as any,
+    )
+    renderPage()
+    const cta = screen.getByRole('button', {
+      name: i18n.t('tournament.tournamentDetailRegisterNow'),
+    })
+    fireEvent.click(cta)
+    await waitFor(() => expect(cta).toBeDisabled())
+    // Let the pending mutation resolve so it doesn't leak into later tests.
+    resolveRegister({
+      success: true,
+      data: {
+        id: 'r-9', tournament_id: 't-1', status: 'registered', payment_status: 'pending',
+        credits_applied: 0, service_fee: 5, amount_to_pay: 150, entry_fee: 150,
+      },
+      meta: null,
+      error: null,
+    })
+  })
+
+  it('the partner check still wins when both a partner and the gate are missing', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    const scrolledIds: string[] = []
+    Element.prototype.scrollIntoView = vi.fn(function (this: HTMLElement) {
+      scrolledIds.push(this.id)
+    })
+    mockUseRegistrationGate.mockReturnValue({
+      ...defaultGate(),
+      blocking: [{ id: 'msg-1', version: 3, title: 'Tournament terms' }],
+      isSatisfied: false,
+    } as any)
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.ctaMissingPartner') }),
+    )
+    // Same microtask gap as above — requireSignIn's `.then()` runs the scroll.
+    await waitFor(() => expect(scrolledIds.length).toBeGreaterThan(0))
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+    // Only the partner section was scrolled to — the gate's own scroll
+    // branch in handleRegisterNow is never reached while a partner is
+    // required, same as before the gate existed.
+    expect(scrolledIds).toEqual(['partner-section'])
   })
 
   it('register sends acknowledged_messages built from the gate payload', async () => {
