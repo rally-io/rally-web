@@ -20,7 +20,8 @@ export function ClubFilterDropdown({
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<string[]>(selected)
   const [query, setQuery] = useState('')
-  const { data: clubs = [], isError, isPending, refetch } = useTournamentFilterOptions(open, search)
+  const { data, isError, isPending, refetch } = useTournamentFilterOptions(open, search)
+  const clubs = data?.clubs ?? []
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
