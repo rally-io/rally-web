@@ -23,6 +23,10 @@ interface Props {
   search?: string
   sort?: TournamentSort
   onSortChange?: (next: TournamentSort) => void
+  /** What "clear all" resets. Defaults to emptying the filters; the page
+   * passes its own so the reset also drops a non-default sort, matching the
+   * empty-state clear CTA. */
+  onClearAll?: () => void
 }
 
 /**
@@ -37,6 +41,7 @@ export function TournamentFilterBar({
   search = '',
   sort,
   onSortChange,
+  onClearAll,
 }: Props) {
   const { t } = useTranslation()
   const total = activeFilterCount(filters)
@@ -81,7 +86,7 @@ export function TournamentFilterBar({
       {total > 0 && (
         <button
           type="button"
-          onClick={() => onChange(EMPTY_FILTERS)}
+          onClick={() => (onClearAll ? onClearAll() : onChange(EMPTY_FILTERS))}
           className="inline-flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-rally-text-2 transition-colors hover:text-rally-text"
         >
           <X className="h-4 w-4" />
