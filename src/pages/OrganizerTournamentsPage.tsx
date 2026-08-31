@@ -6,6 +6,8 @@ import { useOrganizer } from '@/hooks/useOrganizer'
 import { useOrganizerTournaments } from '@/hooks/useOrganizerTournaments'
 import { useOrganizerPastTournaments } from '@/hooks/useOrganizerPastTournaments'
 import { TournamentCard } from '@/components/tournaments/TournamentCard'
+import { isPastTournament } from '@/lib/tournamentHelpers'
+import { useAutoDrainPages } from '@/hooks/useAutoDrainPages'
 import { ArchiveFilterChips, useArchiveStatus } from '@/components/clubs/ArchiveFilterChips'
 import { MonthSection } from '@/components/clubs/MonthSection'
 import { MonthScrubber } from '@/components/clubs/MonthScrubber'
@@ -33,22 +35,21 @@ export default function OrganizerTournamentsPage() {
   const showPast = status !== 'open'
 
   // Pre-fetch all upcoming pages for the month scrubber
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = upcoming
-  useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+  // The upcoming feed is grouped by month on the client, so a single page
+  // would render a partial "March".
+  useAutoDrainPages(upcoming)
 
   const upcomingItems = useMemo(
     () =>
       (upcoming.data?.pages.flatMap((p) => (p && 'items' in p ? p.items : [])) ?? []).filter(
-        (t) => new Date(t.end_date).getTime() >= Date.now(),
+        (tr) => !isPastTournament(tr),
       ),
     [upcoming.data],
   )
   const pastItems = useMemo(
     () =>
       (past.data?.pages.flatMap((p) => (p && 'items' in p ? p.items : [])) ?? []).filter(
-        (t) => new Date(t.end_date).getTime() < Date.now(),
+        isPastTournament,
       ),
     [past.data],
   )
