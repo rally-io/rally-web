@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Calendar, MapPin, Clock, Flame } from 'lucide-react'
+import { Calendar, MapPin, Clock, Flame, User } from 'lucide-react'
 import type { Tournament } from '@/types/api'
 import { useRtl } from '@/hooks/useRtl'
 import {
@@ -25,6 +25,7 @@ export function TournamentCard({
   variant = 'default',
 }: Props) {
   const isPast = variant === 'past'
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const { locale } = useRtl()
   const open = isRegistrationOpen(tr.registration_deadline)
@@ -131,6 +132,25 @@ export function TournamentCard({
           <MapPin className="w-4 h-4 shrink-0" />
           <span className="line-clamp-1">{tr.club_name}</span>
         </p>
+        {tr.organizer_name && (
+          <p className="mt-1 text-sm text-rally-text-2 flex items-center gap-1.5">
+            <User className="w-4 h-4 shrink-0 text-rally-accent/80" />
+            {tr.organizer_slug ? (
+              <span
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  navigate(`/organizers/${tr.organizer_slug}`)
+                }}
+                className="line-clamp-1 hover:text-rally-accent hover:underline transition-colors cursor-pointer"
+              >
+                {tr.organizer_name}
+              </span>
+            ) : (
+              <span className="line-clamp-1">{tr.organizer_name}</span>
+            )}
+          </p>
+        )}
         {countdownText && !isPast && !live && (
           <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rally-blue/15 text-rally-blue text-xs font-semibold">
             <Clock className="w-3.5 h-3.5" />

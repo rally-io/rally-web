@@ -13,6 +13,8 @@ export interface TournamentListParams {
   search?: string
   show_cancelled?: boolean
   club_id?: string
+  manager_slug?: string
+  manager_id?: string
   /** See the default below — only pass this to opt *out*. */
   include_live?: boolean
   club_ids?: string[]
@@ -77,4 +79,10 @@ export async function registerTournament(
   payload: RegisterPayload,
 ): Promise<ApiResponse<TournamentRegistrationResult>> {
   return client.post(`/rally/v1/tournaments/${tournamentId}/register`, payload)
+}
+
+export async function getOrganizer(
+  slug: string,
+): Promise<ApiResponse<import('@/types/api').Organizer>> {
+  return client.get(`/rally/v1/organizers/${slug}`)
 }
