@@ -237,6 +237,17 @@
     "showAll": "הצגת הכל",
     "jumpToMonth": "קפיצה לחודש"
   },
+  "organizer": {
+    "allTournamentsTitle": "כל הטורנירים",
+    "tournamentsCount_one": "טורניר אחד",
+    "tournamentsCount_two": "{{count}} טורנירים",
+    "tournamentsCount_many": "{{count}} טורנירים",
+    "tournamentsCount_other": "{{count}} טורנירים",
+    "upcomingTournaments": "טורנירים קרובים",
+    "pastTournaments": "טורנירים שהסתיימו",
+    "noTournamentsYet": "אין עדיין טורנירים",
+    "noTournamentsDesc": "המארגן הזה עדיין לא פרסם טורנירים. תחזרו בקרוב!"
+  },
   "tournaments": {
     "title": "טורנירים",
     "empty": "לא נמצאו טורנירים",

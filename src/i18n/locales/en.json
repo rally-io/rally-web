@@ -233,6 +233,15 @@
     "showAll": "Show all",
     "jumpToMonth": "Jump to month"
   },
+  "organizer": {
+    "allTournamentsTitle": "Tournaments",
+    "tournamentsCount_one": "1 tournament",
+    "tournamentsCount_other": "{{count}} tournaments",
+    "upcomingTournaments": "Upcoming Tournaments",
+    "pastTournaments": "Past Tournaments",
+    "noTournamentsYet": "No tournaments yet",
+    "noTournamentsDesc": "This organizer hasn't published any tournaments yet. Check back soon!"
+  },
   "tournaments": {
     "title": "Tournaments",
     "empty": "No tournaments found",
