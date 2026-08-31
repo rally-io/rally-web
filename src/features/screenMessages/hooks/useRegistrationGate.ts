@@ -90,19 +90,29 @@ export function useRegistrationGate(query: ScreenMessagesQuery, action: GateActi
     setOutstanding([])
   }, [])
 
-  // Closed while LOADING, open on ERROR — and the asymmetry is deliberate.
+  // Open on ERROR and open while LOADING. The asymmetry that used to live here
+  // was deliberate, but its reason expired.
   //
-  // Loading is transient and short: holding the button for a moment avoids
-  // flashing an enabled Register that is about to sprout a mandatory checkbox.
+  // An ERRORED query was always an outage waiting to happen. `blocking` is `[]`
+  // on error, and the reason text is driven by `blocking.length > 0`, so a
+  // failing endpoint disabled Register on EVERY tournament page with no message
+  // on screen explaining why, permanently (`refetchOnWindowFocus` is off, and
+  // react-query only retries twice). Deploy the web app before the messages
+  // table exists — the default here, since nothing runs `alembic upgrade` on
+  // deploy — and every web registration dies behind a grey button.
   //
-  // An ERRORED query is a different situation, and treating it like loading was
-  // an outage waiting to happen. `blocking` is `[]` on error, and the reason
-  // text is driven by `blocking.length > 0`, so a failing endpoint disabled
-  // Register on EVERY tournament page with no message on screen explaining why,
-  // permanently (`refetchOnWindowFocus` is off, and react-query only retries
-  // twice). Deploy the web app before the messages table exists — the default
-  // here, since nothing runs `alembic upgrade` on deploy — and every web
-  // registration dies behind a grey button.
+  // LOADING was held closed to avoid "flashing an enabled Register that is about
+  // to sprout a mandatory checkbox". That rationale assumed the gate DISABLES
+  // the button. It no longer does (product decision, 2026-08-29): the button is
+  // always enabled and an unsatisfied gate is handled at press time by scrolling
+  // to the blocking card. So closed-while-loading stopped holding anything and
+  // started swallowing presses — `isSatisfied` false AND `blocking` empty in the
+  // same window means the handler reads `blocking[0]`, finds undefined, and bare
+  // returns. No submit, no scroll, no error, no spinner. Not hypothetical: after
+  // `requireSignIn()` resolves, `user.id` flips, the query key
+  // ['screenMessages', userId, scope, id] changes, and the refetch runs with no
+  // cached data (main.tsx sets no `placeholderData`) — so the click that follows
+  // sign-in lands in exactly this window.
   //
   // Failing open is not a compliance hole, because THIS IS NOT THE GATE. The
   // gate is `assert_gate_satisfied` inside the register transaction: if terms
@@ -111,7 +121,7 @@ export function useRegistrationGate(query: ScreenMessagesQuery, action: GateActi
   // tick. The worst case for failing open is one refused registration with a
   // clear reason; the worst case for failing closed is silent, total, and
   // affects tournaments that have no terms at all.
-  const isSatisfied = !isLoading && blocking.every((m) => selectedVersions.has(m.id))
+  const isSatisfied = isLoading || blocking.every((m) => selectedVersions.has(m.id))
 
   // Only the ticked messages that are actually blocking on this page — never
   // every message the player has ever seen (MAX_INLINE_ACKNOWLEDGEMENTS is a
