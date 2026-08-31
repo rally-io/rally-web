@@ -30,7 +30,7 @@ export function ArchiveFilterChips() {
   return (
     <div className="sticky top-16 md:top-[76px] z-30 -mx-4 px-4 py-3 bg-gradient-to-b from-rally-bg from-75% to-transparent">
       <div
-        className="flex gap-2 overflow-x-auto [scrollbar-width:none]"
+        className="flex gap-2 overflow-x-auto py-1.5 -my-1.5 [scrollbar-width:none]"
         role="group"
         aria-label={t('clubs.filterLabel')}
       >
@@ -42,6 +42,7 @@ export function ArchiveFilterChips() {
             onClick={() => setStatus(o.value)}
             className={cn(
               'h-9 shrink-0 rounded-full px-5 text-sm transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rally-text-2 focus-visible:ring-offset-2 focus-visible:ring-offset-rally-bg',
               status === o.value
                 ? 'bg-rally-accent text-rally-accent-text font-bold'
                 : 'bg-rally-surface border border-rally-border text-rally-text-2 font-semibold hover:text-rally-text hover:border-rally-border-strong',
