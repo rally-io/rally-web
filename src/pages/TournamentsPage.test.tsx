@@ -221,6 +221,8 @@ describe('TournamentsPage filters', () => {
   })
 })
 
+const MY_TAB = /My Tournaments|הטורנירים שלי/i
+
 describe('TournamentsPage history tab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -233,12 +235,22 @@ describe('TournamentsPage history tab', () => {
   })
 
   it('is offered to signed-out visitors, unlike the "my tournaments" tab', async () => {
+    // The `my` matcher is deliberately checked positively first: an
+    // absence assertion on a label that never matches anything passes for
+    // the wrong reason, and the tab copy has already changed once.
+    vi.mocked(useAppSession).mockReturnValue({ status: 'ready' } as never)
+    const { unmount } = renderPage()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: MY_TAB })).toBeInTheDocument()
+    unmount()
+
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
     renderPage()
     await waitFor(() => expect(getTournaments).toHaveBeenCalled())
-    expect(screen.getByRole('button', { name: /History|היסטוריה/ })).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /My tournaments|הטורנירים שלי/ }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('button', { name: /Past Tournaments|טורנירים שהסתיימו/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: MY_TAB })).not.toBeInTheDocument()
   })
 
   it('queries the past scope', async () => {
@@ -268,7 +280,7 @@ describe('TournamentsPage history tab', () => {
   it('switching to history rewrites the URL and re-queries', async () => {
     const router = renderPageWithRouter()
     await waitFor(() => expect(getTournaments).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: /History|היסטוריה/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Past Tournaments|טורנירים שהסתיימו/ }))
     await waitFor(() => expect(router.state.location.search).toContain('tab=history'))
     await waitFor(() => {
       const calls = vi.mocked(getTournaments).mock.calls
