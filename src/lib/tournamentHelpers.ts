@@ -65,6 +65,54 @@ export function isPastTournament(tr: { end_date: string }): boolean {
 }
 
 /**
+ * How full a tournament is, for the card: confirmed registrations and the cap
+ * they count against.
+ *
+ * Both numbers, always — a player judging a card needs the *size* of the draw
+ * ("is this a 16-pair evening or a 32-pair weekend?"), and a count with
+ * nothing to divide by does not tell them that. This is a deliberate
+ * amendment to the old "no fillness signals" rule; see CLAUDE.md.
+ *
+ * Counts *pairs/teams* for a doubles draw, not individuals — `max_participants`
+ * caps registrations, and the API rejects lowering it below "N pairs are
+ * already confirmed". Copy must match that unit.
+ */
+export interface RegistrationSummary {
+  registered: number
+  capacity: number
+}
+
+export function registrationSummary(tr: {
+  confirmed_registrations?: number | null
+  max_participants?: number | null
+}): RegistrationSummary | null {
+  const capacity = tr.max_participants ?? 0
+  // Feature detection, and it must be a null check rather than a falsy one:
+  // zero registrations is a real, displayable value now, while an API build
+  // predating the field must show nothing at all.
+  if (capacity <= 0 || tr.confirmed_registrations == null) return null
+  return { registered: tr.confirmed_registrations, capacity }
+}
+
+/** Under this many free seats, "last spots" is true rather than decorative. */
+export const LAST_SPOTS_THRESHOLD = 3
+
+/**
+ * Is the "last spots" badge honest right now?
+ *
+ * Deliberately *not* "registration is open", which is what the card used to
+ * ask: that badged every open tournament as nearly full regardless of seats.
+ * Zero seats means full, not nearly full, so it fails too.
+ */
+export function isLastSpots(availableSeats: number | null | undefined): boolean {
+  return (
+    typeof availableSeats === 'number' &&
+    availableSeats > 0 &&
+    availableSeats < LAST_SPOTS_THRESHOLD
+  )
+}
+
+/**
  * Path to the public live-results screen. Mirrors the CRM's
  * `buildLiveResultsUrl()`, which shares `<site>/live/<token>` links with
  * players — keep the two in step.

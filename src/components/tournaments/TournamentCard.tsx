@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Calendar, MapPin, Clock, Flame, User } from 'lucide-react'
+import { Calendar, MapPin, Clock, Flame, User, Users } from 'lucide-react'
 import type { Tournament } from '@/types/api'
 import { useRtl } from '@/hooks/useRtl'
 import {
   isRegistrationOpen,
   isTournamentLive,
+  isLastSpots,
+  registrationSummary,
   formatCurrency,
   formatTournamentCardDate,
 } from '@/lib/tournamentHelpers'
@@ -54,6 +56,18 @@ export function TournamentCard({
   // Only payment_pending still needs a card added — registered/approved/etc.
   // already have a registration in hand, so the card is just informational.
   const needsPayment = tr.registration_status === 'payment_pending'
+
+  // How full, and how big — a player sizing up a card needs the cap as much as
+  // the count. Shown on finished tournaments too: "that was a 24-pair event"
+  // is exactly as informative after the fact, just muted like the rest of the
+  // past card's chrome. Counted in pairs for a doubles draw, so the unit
+  // switches on the format rather than calling everything "players".
+  const fill = registrationSummary(tr)
+  const fillUnit = t(
+    tr.format === 'singles'
+      ? 'tournament.tournamentsRegisteredUnitPlayers'
+      : 'tournament.tournamentsRegisteredUnitPairs',
+  )
 
   const ctaLabel = needsPayment
     ? t('tournament.tournamentsCompleteRegistration')
@@ -104,7 +118,7 @@ export function TournamentCard({
             <LiveBadge />
           </div>
         ) : (
-          open && !isPast && (
+          open && !isPast && isLastSpots(tr.available_seats) && (
             <div className="absolute top-3 end-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rally-warning text-rally-text-on-light text-[11px] font-black uppercase tracking-wider shadow-md animate-pulse">
               <Flame className="w-3.5 h-3.5" />
               <span>{t('tournament.tournamentsLastSpots')}</span>
@@ -149,6 +163,23 @@ export function TournamentCard({
             ) : (
               <span className="line-clamp-1">{tr.organizer_name}</span>
             )}
+          </p>
+        )}
+        {fill && (
+          <p
+            className={`mt-1 text-sm flex items-center gap-1.5 font-semibold ${
+              isPast ? 'text-rally-text-2' : 'text-rally-accent'
+            }`}
+          >
+            <Users className="w-4 h-4 shrink-0" />
+            {/* dir="ltr" with the two numbers as separate children: joined as
+                one "12/16" string under the site's RTL this mirrors to
+                "16/12", which would read as over capacity. See
+                wiki/gotchas/web-rtl-score-string-mirroring. */}
+            <span dir="ltr" className="tabular-nums">
+              <span>{fill.registered}</span>/<span>{fill.capacity}</span>
+            </span>
+            <span>{fillUnit}</span>
           </p>
         )}
         {countdownText && !isPast && !live && (

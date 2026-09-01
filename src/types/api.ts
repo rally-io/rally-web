@@ -68,6 +68,14 @@ export interface Tournament {
   registration_status: string | null
   available_seats: number
   /**
+   * Confirmed registrations — *pairs/teams*, not individuals (the API's own
+   * capacity error says "N pairs are already confirmed"), counted against
+   * `max_participants` in the same unit. Feature-detected: absent on API
+   * builds predating the field, and meaningless without the cap, so read the
+   * two together or not at all.
+   */
+  confirmed_registrations?: number
+  /**
    * Lifecycle status (`registration_open | in_progress | completed | …`).
    * Feature-detected: absent on API builds predating the field, so never
    * branch on it without a date-based fallback.

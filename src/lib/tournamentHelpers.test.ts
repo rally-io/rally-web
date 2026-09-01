@@ -4,6 +4,8 @@ import {
   formatTournamentSkillRange,
   getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
+  registrationSummary,
+  isLastSpots,
 } from './tournamentHelpers'
 
 /** ISO-ish local timestamp `offsetHours` from now, in the API's format. */
@@ -153,3 +155,58 @@ describe('registrationSummaryKey', () => {
     expect(r.params).toEqual({ count: 5 })
   })
 })
+
+describe('registrationSummary', () => {
+  const t = (confirmed?: number | null, cap?: number | null) => ({
+    confirmed_registrations: confirmed,
+    max_participants: cap,
+  })
+
+  it('reports how full and how big, so a card can show the size of the draw', () => {
+    expect(registrationSummary(t(12, 16))).toEqual({ registered: 12, capacity: 16 })
+  })
+
+  it('reports zero registrations rather than hiding them', () => {
+    // A player still learns the size from "0/32", which is the point.
+    expect(registrationSummary(t(0, 32))).toEqual({ registered: 0, capacity: 32 })
+  })
+
+  it('reports a full draw', () => {
+    expect(registrationSummary(t(16, 16))).toEqual({ registered: 16, capacity: 16 })
+  })
+
+  it('stays quiet without a cap: a count with nothing to divide by has no size', () => {
+    expect(registrationSummary(t(9, 0))).toBeNull()
+    expect(registrationSummary(t(9, null))).toBeNull()
+  })
+
+  it('stays quiet on an API build that omits the count — not "0 of 16"', () => {
+    // The null check has to be explicit: zero is now a real value to show, so
+    // a falsy check would turn "field absent" into "nobody registered".
+    expect(registrationSummary(t(null, 16))).toBeNull()
+    expect(registrationSummary({ max_participants: 16 })).toBeNull()
+    expect(registrationSummary({})).toBeNull()
+  })
+})
+
+describe('isLastSpots', () => {
+  it('is true only in the narrow band where it is honest', () => {
+    expect(isLastSpots(1)).toBe(true)
+    expect(isLastSpots(2)).toBe(true)
+  })
+
+  it('is false at three seats and above', () => {
+    expect(isLastSpots(3)).toBe(false)
+    expect(isLastSpots(16)).toBe(false)
+  })
+
+  it('is false at zero — that is full, not nearly full', () => {
+    expect(isLastSpots(0)).toBe(false)
+  })
+
+  it('is false when the seat count is missing rather than guessing', () => {
+    expect(isLastSpots(undefined)).toBe(false)
+    expect(isLastSpots(null)).toBe(false)
+  })
+})
+

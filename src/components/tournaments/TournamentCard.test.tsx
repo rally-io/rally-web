@@ -12,7 +12,9 @@ const base: Tournament = {
   skill_level_min: 2.5, skill_level_max: 3.8, skill_level: '2.5 - 3.8 (C2)',
   entry_fee: 150, image_url: null, thumb_url: null, structure: 'single_elimination',
   club_name: 'Padel TLV', registration_id: null, registration_status: null,
-  available_seats: 4,
+  // Inside the last-spots band on purpose: the past/live tests below assert
+  // the badge is *suppressed*, which proves nothing if it would never show.
+  available_seats: 2,
 }
 
 function renderCard(t: Partial<Tournament>, tab: 'upcoming' | 'my' = 'upcoming') {
@@ -138,5 +140,110 @@ describe('TournamentCard live badge', () => {
   it('stays off in the past variant even inside the date window', () => {
     renderPast(running)
     expect(screen.queryByText(i18n.t('tournament.liveBadge'))).not.toBeInTheDocument()
+  })
+})
+
+describe('TournamentCard last-spots badge', () => {
+  const label = () => i18n.t('tournament.tournamentsLastSpots')
+
+  it('shows inside the honest band', () => {
+    renderCard({ available_seats: 2 })
+    expect(screen.getByText(label())).toBeInTheDocument()
+  })
+
+  it('stays hidden with room left — it used to badge every open tournament', () => {
+    renderCard({ available_seats: 4 })
+    expect(screen.queryByText(label())).not.toBeInTheDocument()
+  })
+
+  it('stays hidden when the tournament is full: that is full, not nearly full', () => {
+    renderCard({ available_seats: 0 })
+    expect(screen.queryByText(label())).not.toBeInTheDocument()
+  })
+})
+
+describe('TournamentCard registration count', () => {
+  it('shows how full and how big, so the card conveys the size of the draw', () => {
+    renderCard({ confirmed_registrations: 12, max_participants: 16 })
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText('16')).toBeInTheDocument()
+  })
+
+  it('isolates the number pair against RTL, which would mirror 12/16 into 16/12', () => {
+    // The site runs dir="rtl" in Hebrew, where two digit runs around a neutral
+    // "/" reorder — silently turning a half-full draw into an over-full one.
+    // The cure is the ltr wrapper with the numbers as separate children; this
+    // asserts the wrapper exists rather than the (bidi-free) jsdom output.
+    // See wiki/gotchas/web-rtl-score-string-mirroring.
+    const { container } = renderCard({ confirmed_registrations: 12, max_participants: 16 })
+    const isolated = container.querySelector('[dir="ltr"].tabular-nums')
+    expect(isolated).not.toBeNull()
+    expect(isolated!.textContent).toBe('12/16')
+    expect(isolated!.querySelectorAll('span')).toHaveLength(2)
+  })
+
+  it('counts players, not pairs, for a singles draw', () => {
+    renderCard({ format: 'singles', confirmed_registrations: 12, max_participants: 16 })
+    expect(screen.getByText('players registered')).toBeInTheDocument()
+  })
+
+  it('shows an empty draw as 0 of its size rather than hiding it', () => {
+    // The earlier design stayed silent below half full; a player then had no
+    // way to tell a 16-pair evening from a 32-pair weekend.
+    renderCard({ confirmed_registrations: 0, max_participants: 32 })
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText('32')).toBeInTheDocument()
+  })
+
+  it('shows a full draw', () => {
+    renderCard({ confirmed_registrations: 16, max_participants: 16 })
+    const isolated = document.querySelector('[dir="ltr"].tabular-nums')
+    expect(isolated!.textContent).toBe('16/16')
+  })
+
+  it('says nothing on an API build that omits the count', () => {
+    renderCard({})
+    expect(screen.queryByText(/registered/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing without a cap to size the draw against', () => {
+    renderCard({ confirmed_registrations: 9, max_participants: 0 })
+    expect(screen.queryByText(/registered/)).not.toBeInTheDocument()
+  })
+
+  it('never shows the seat count itself — the no-scarcity rule', () => {
+    renderCard({ confirmed_registrations: 15, max_participants: 16, available_seats: 1 })
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    // The badge may shout "last spots", but how many seats remain stays private.
+    expect(screen.queryByText(/1 (spot|seat)/i)).not.toBeInTheDocument()
+  })
+
+  it('is shown on a finished tournament too — the size is still informative', () => {
+    render(
+      <MemoryRouter>
+        <TournamentCard
+          tournament={{ ...base, confirmed_registrations: 15, max_participants: 16 }}
+          variant="past"
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    expect(document.querySelector('[dir="ltr"].tabular-nums')!.textContent).toBe('15/16')
+  })
+
+  it('mutes it on a finished tournament instead of using the live accent', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <TournamentCard
+          tournament={{ ...base, confirmed_registrations: 15, max_participants: 16 }}
+          variant="past"
+        />
+      </MemoryRouter>,
+    )
+    const row = container.querySelector('[dir="ltr"].tabular-nums')!.parentElement!
+    expect(row.className).toContain('text-rally-text-2')
+    expect(row.className).not.toContain('text-rally-accent')
   })
 })

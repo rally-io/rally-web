@@ -355,6 +355,8 @@
     "tournamentsCountdownOneDay": "יום אחד נותר לרישום",
     "tournamentsCountdownDays": "{{count}} ימים נותרו לרישום",
     "tournamentsLastSpots": "מקומות אחרונים!",
+    "tournamentsRegisteredUnitPairs": "זוגות רשומים",
+    "tournamentsRegisteredUnitPlayers": "שחקנים רשומים",
     "tournamentsSearchPlaceholder": "חיפוש טורנירים ע״פ עיר או מועדון",
     "tournamentsUpcomingTab": "טורנירים פתוחים",
     "tournamentsMyTab": "הטורנירים שלי",
