@@ -13,8 +13,7 @@ import { FactCard } from '@/components/tournaments/FactCard'
 import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
 import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
 import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
-// Temporarily hidden — see the commented-out render below.
-// import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
+import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { registerTournament } from '@/services/api/tournaments'
@@ -479,7 +478,7 @@ export default function TournamentDetailPage() {
           </section>
         )}
 
-        {/* Temporarily hidden — <ParticipantsSection tournamentId={tr.id} /> */}
+        <ParticipantsSection tournamentId={tr.id} />
 
         {tr.prizes.length > 0 && (
           <section>
