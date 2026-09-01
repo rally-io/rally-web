@@ -51,6 +51,20 @@ export function isTournamentLive(tr: {
 }
 
 /**
+ * Is this tournament over?
+ *
+ * The past listing (`scope=past`) still returns tournaments that are being
+ * played, because rally-web asks for `include_live: true` — so every "history"
+ * surface has to draw the line itself, on the end date, the same way the live
+ * badge does.
+ */
+export function isPastTournament(tr: { end_date: string }): boolean {
+  const end = new Date(tr.end_date).getTime()
+  if (!Number.isFinite(end)) return false
+  return end < Date.now()
+}
+
+/**
  * Path to the public live-results screen. Mirrors the CRM's
  * `buildLiveResultsUrl()`, which shares `<site>/live/<token>` links with
  * players — keep the two in step.

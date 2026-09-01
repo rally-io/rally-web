@@ -14,6 +14,7 @@ export interface TournamentListParams {
   show_cancelled?: boolean
   club_id?: string
   manager_slug?: string
+  manager_slugs?: string[]
   manager_id?: string
   /** See the default below — only pass this to opt *out*. */
   include_live?: boolean
@@ -25,6 +26,23 @@ export interface TournamentFilterClub {
   id: string
   name: string
   count: number
+}
+
+export interface TournamentFilterOrganizer {
+  id: string
+  slug: string
+  name: string
+  avatar_url: string | null
+  count: number
+}
+
+/**
+ * `organizers` is optional on purpose: API builds predating the organizer
+ * filter omit the key entirely, so every reader must default it.
+ */
+export interface TournamentFilterOptions {
+  clubs: TournamentFilterClub[]
+  organizers?: TournamentFilterOrganizer[]
 }
 
 export async function getTournaments(
@@ -57,7 +75,7 @@ export async function getTournamentParticipants(
 
 export async function getTournamentFilterOptions(
   search?: string,
-): Promise<ApiResponse<{ clubs: TournamentFilterClub[] }>> {
+): Promise<ApiResponse<TournamentFilterOptions>> {
   // include_live mirrors the list call above so counts match what the list shows
   return client.get('/rally/v1/tournaments/filter-options', {
     // search has min_length=1 on the API — omit entirely rather than send ''

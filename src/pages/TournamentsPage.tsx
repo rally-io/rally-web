@@ -3,30 +3,58 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { Search, Lock, Calendar, MapPin } from 'lucide-react'
 import { useTournaments } from '@/hooks/useTournaments'
+import { usePastTournaments } from '@/hooks/usePastTournaments'
+import { useAutoDrainPages } from '@/hooks/useAutoDrainPages'
 import { useAppSession } from '@/hooks/useAppSession'
-import { ClubFilterDropdown } from '@/components/tournaments/ClubFilterDropdown'
-import { SortToggle } from '@/components/tournaments/SortToggle'
+import { useRtl } from '@/hooks/useRtl'
+import { TournamentFilterBar } from '@/components/tournaments/TournamentFilterBar'
 import { TournamentCard } from '@/components/tournaments/TournamentCard'
+import { MonthArchive } from '@/components/archive/MonthArchive'
 import {
   TournamentUpdatesModal,
   TournamentUpdatesTrigger,
 } from '@/components/tournaments/TournamentUpdatesModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isTournamentLive } from '@/lib/tournamentHelpers'
+import { isPastTournament, isTournamentLive } from '@/lib/tournamentHelpers'
+import {
+  EMPTY_FILTERS,
+  activeFilterCount,
+  hasClientFilters,
+  matchesFilters,
+  monthOptionsFrom,
+  parseTournamentFilters,
+  toServerParams,
+  writeTournamentFilters,
+} from '@/lib/tournamentFilters'
 import type { Tournament } from '@/types/api'
 
-type TournamentsTab = 'upcoming' | 'my'
+type TournamentsTab = 'upcoming' | 'history' | 'my'
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/**
+ * How far we will page through the API to satisfy a filter it cannot apply
+ * itself (skill, month). Enough to make the filter feel complete on the feeds
+ * this site has, small enough that it can never turn into an endless crawl.
+ */
+const CLIENT_FILTER_ITEM_CAP = 200
+
+const getStartDate = (tr: Tournament) => tr.start_date
 
 export default function TournamentsPage() {
   const { t } = useTranslation()
+  const { locale } = useRtl()
   const { status } = useAppSession()
   const signedOut = status === 'signed_out'
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const tabParam = searchParams.get('tab')
   const tab: TournamentsTab =
-    !signedOut && searchParams.get('tab') === 'my' ? 'my' : 'upcoming'
+    tabParam === 'history' ? 'history' : !signedOut && tabParam === 'my' ? 'my' : 'upcoming'
+  // "My tournaments" needs an account; history and upcoming are public.
+  const tabs: TournamentsTab[] = signedOut
+    ? ['upcoming', 'history']
+    : ['upcoming', 'history', 'my']
+
   const setTab = (key: TournamentsTab) => {
     const next = new URLSearchParams(searchParams)
     if (key === 'upcoming') next.delete('tab')
@@ -35,16 +63,8 @@ export default function TournamentsPage() {
   }
   const sort: 'soonest' | 'latest' =
     searchParams.get('sort') === 'latest' ? 'latest' : 'soonest' // unknown → default
-  const clubIds = useMemo(() => {
-    // Only pass UUID-shaped ids to the API — a stale/mistyped `?clubs=` value
-    // (hand-edited, or a club whose last tournament ended) must degrade to
-    // "no filter" rather than 422 the whole page (spec §6). Dedupe + sort so
-    // `?clubs=A,B` and `?clubs=B,A` are one canonical filter, not two.
-    const ids = (searchParams.get('clubs') ?? '')
-      .split(',')
-      .filter((id) => UUID_RE.test(id))
-    return Array.from(new Set(ids)).sort()
-  }, [searchParams])
+
+  const filters = useMemo(() => parseTournamentFilters(searchParams), [searchParams])
 
   const setSort = (next: 'soonest' | 'latest') => {
     const params = new URLSearchParams(searchParams)
@@ -52,21 +72,11 @@ export default function TournamentsPage() {
     else params.set('sort', next)
     setSearchParams(params, { replace: true })
   }
-  const setClubIds = (ids: string[]) => {
-    const params = new URLSearchParams(searchParams)
-    // Canonicalize on write too: applying the same selection in a different
-    // toggle order must produce the same URL, not fork the query key.
-    const canonical = Array.from(new Set(ids)).sort()
-    if (canonical.length === 0) params.delete('clubs')
-    else params.set('clubs', canonical.join(','))
-    setSearchParams(params, { replace: true })
+  const setFilters = (next: typeof filters) => {
+    setSearchParams(writeTournamentFilters(searchParams, next), { replace: true })
   }
   const clearFilters = () => {
-    // One params object, not sequential setClubIds()+setSort() calls — both
-    // would build off the same (stale, pre-update) `searchParams` closure in
-    // this handler and the second call would clobber the first.
-    const params = new URLSearchParams(searchParams)
-    params.delete('clubs')
+    const params = writeTournamentFilters(searchParams, EMPTY_FILTERS)
     params.delete('sort')
     setSearchParams(params, { replace: true })
   }
@@ -77,40 +87,115 @@ export default function TournamentsPage() {
     const h = setTimeout(() => setDebounced(search.trim()), 300)
     return () => clearTimeout(h)
   }, [search])
-  // Single source of truth for the search term sent to the API: both the
-  // list call (filters.search below) and ClubFilterDropdown's filter-options
-  // call must send the exact same string, truncation included, or a club's
-  // advertised count can drift from what selecting it actually yields.
   const searchTerm = debounced.slice(0, 100)
-  const filters = useMemo(
-    () => ({
-      type: tab,
-      ...(searchTerm ? { search: searchTerm } : {}),
-      ...(tab === 'upcoming' && clubIds.length ? { club_ids: clubIds } : {}),
-      ...(tab === 'upcoming' && sort === 'latest' ? { sort } : {}),
-    }),
-    [tab, searchTerm, clubIds, sort],
+
+  // "My tournaments" is a personal list — the filter bar is hidden there, so
+  // its params must not leak into the query either.
+  const filtersApply = tab !== 'my'
+  const serverParams = useMemo(
+    () => (filtersApply ? toServerParams(filters) : {}),
+    [filtersApply, filters],
   )
 
-  const enabled = !(tab === 'my' && signedOut)
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
-    useTournaments(enabled ? filters : { type: 'upcoming' })
+  const listFilters = useMemo(
+    () => ({
+      type: tab === 'my' ? ('my' as const) : ('upcoming' as const),
+      ...(searchTerm ? { search: searchTerm } : {}),
+      ...(tab === 'upcoming' ? serverParams : {}),
+      ...(tab === 'upcoming' && sort === 'latest' ? { sort } : {}),
+    }),
+    [tab, searchTerm, serverParams, sort],
+  )
 
-  const loaded: Tournament[] =
-    enabled ? data?.pages.flatMap((p) => p?.items ?? []) ?? [] : []
-  // Anything being played right now goes first: a player checking the site
-  // mid-tournament is looking for the scoreboard, not next month's draw.
-  // Under sort=soonest (the default) this is nearly a no-op — in-progress
-  // tournaments already sort first server-side. Under sort=latest they sort
-  // LAST server-side, so this bubbling is load-bearing: a live tournament
-  // that "load more" pulls in on page 3 still jumps straight to position 0
-  // here — "load more" can reorder the visible list, not just append to it.
+  const list = useTournaments(listFilters, tab !== 'history')
+  const history = usePastTournaments(
+    useMemo(
+      () => ({ ...(searchTerm ? { search: searchTerm } : {}), ...serverParams }),
+      [searchTerm, serverParams],
+    ),
+    tab === 'history',
+  )
+
+  const loadedList: Tournament[] = useMemo(
+    () => list.data?.pages.flatMap((p) => p?.items ?? []) ?? [],
+    [list.data],
+  )
+  // `scope=past` still returns tournaments being played right now, because the
+  // client asks for `include_live` — history means finished.
+  const loadedHistory: Tournament[] = useMemo(
+    () =>
+      (history.data?.pages.flatMap((p) => (p && 'items' in p ? p.items : [])) ?? []).filter(
+        isPastTournament,
+      ),
+    [history.data],
+  )
+
+  // Skill and month are narrowed here because the API takes no such params;
+  // clubs and organizers were already applied server-side.
+  const clientFiltering = filtersApply && hasClientFilters(filters)
+  useAutoDrainPages(list, {
+    enabled: tab === 'upcoming' && clientFiltering,
+    loadedCount: loadedList.length,
+    maxItems: CLIENT_FILTER_ITEM_CAP,
+  })
+  useAutoDrainPages(history, {
+    enabled: tab === 'history' && clientFiltering,
+    loadedCount: loadedHistory.length,
+    maxItems: CLIENT_FILTER_ITEM_CAP,
+  })
+
+  const visibleList = useMemo(
+    () => (clientFiltering ? loadedList.filter((tr) => matchesFilters(tr, filters)) : loadedList),
+    [clientFiltering, loadedList, filters],
+  )
+  const visibleHistory = useMemo(
+    () =>
+      clientFiltering ? loadedHistory.filter((tr) => matchesFilters(tr, filters)) : loadedHistory,
+    [clientFiltering, loadedHistory, filters],
+  )
+
   const tournaments: Tournament[] = [
-    ...loaded.filter(isTournamentLive),
-    ...loaded.filter((tr) => !isTournamentLive(tr)),
+    ...visibleList.filter(isTournamentLive),
+    ...visibleList.filter((tr) => !isTournamentLive(tr)),
   ]
 
+  // Months come from the loaded data, so the dropdown never offers a month
+  // with nothing behind it — and reads in list order on each tab.
+  const monthOptions = useMemo(
+    () =>
+      tab === 'history'
+        ? monthOptionsFrom(loadedHistory, 'desc', locale)
+        : monthOptionsFrom(loadedList, 'asc', locale),
+    [tab, loadedHistory, loadedList, locale],
+  )
+
+  const filtersActive = activeFilterCount(filters) > 0
+  const isLoading = tab === 'history' ? history.isLoading : list.isLoading
+  const isError = tab === 'history' ? history.isError : list.isError
+
   const [updatesOpen, setUpdatesOpen] = useState(false)
+
+  const historyEmptyState = (
+    <div className="py-16 text-center">
+      {filtersActive ? (
+        <>
+          <p className="text-rally-text font-semibold">
+            {t('tournament.tournamentsFilterNoResults')}
+          </p>
+          <Button variant="outline" onClick={clearFilters} className="mt-5">
+            {t('tournament.tournamentsFilterEmptyCta')}
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className="font-display text-2xl font-bold text-rally-text mb-2">
+            {t('tournament.tournamentsHistoryEmptyTitle')}
+          </p>
+          <p className="text-rally-text-2">{t('tournament.tournamentsHistoryEmptyMessage')}</p>
+        </>
+      )}
+    </div>
+  )
 
   return (
     <main className="relative pt-32 pb-24 min-h-screen overflow-hidden">
@@ -130,28 +215,30 @@ export default function TournamentsPage() {
           {t('tournament.tabTournaments')}
         </h1>
         <p className="text-lg md:text-xl text-rally-text-2 max-w-2xl mb-10 leading-relaxed">
-          {t('tournament.tournamentsHeroSubtitle')}
+          {tab === 'history'
+            ? t('tournament.tournamentsHistoryHint')
+            : t('tournament.tournamentsHeroSubtitle')}
         </p>
 
-        {!signedOut && (
-          <div className="flex gap-3 mb-8">
-            {(['upcoming', 'my'] as const).map((key) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                  tab === key
-                    ? 'bg-rally-accent text-rally-accent-text shadow-glow-electric'
-                    : 'bg-transparent border border-rally-border text-rally-text-2 hover:border-rally-border-strong hover:text-rally-text'
-                }`}
-              >
-                {key === 'upcoming'
-                  ? t('tournament.tournamentsUpcomingTab')
-                  : t('tournament.tournamentsMyTab')}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-3 mb-8">
+          {tabs.map((key) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                tab === key
+                  ? 'bg-rally-accent text-rally-accent-text shadow-glow-electric'
+                  : 'bg-transparent border border-rally-border text-rally-text-2 hover:border-rally-border-strong hover:text-rally-text'
+              }`}
+            >
+              {key === 'upcoming'
+                ? t('tournament.tournamentsUpcomingTab')
+                : key === 'history'
+                ? t('tournament.tournamentsHistoryTab')
+                : t('tournament.tournamentsMyTab')}
+            </button>
+          ))}
+        </div>
 
         <div className="relative mb-10">
           <Search className="absolute end-5 top-1/2 -translate-y-1/2 w-5 h-5 text-rally-text-muted pointer-events-none" />
@@ -165,14 +252,63 @@ export default function TournamentsPage() {
           />
         </div>
 
-        {tab === 'upcoming' && (
-          <div className="mb-8 flex flex-wrap items-center gap-3">
-            <ClubFilterDropdown selected={clubIds} onApply={setClubIds} search={searchTerm} />
-            <SortToggle value={sort} onChange={setSort} />
-          </div>
+        {filtersApply && (
+          <TournamentFilterBar
+            filters={filters}
+            onChange={setFilters}
+            monthOptions={monthOptions}
+            search={searchTerm}
+            // The API ignores `sort` outside the open scope, so history is
+            // always newest-first and offering the toggle would lie.
+            sort={tab === 'upcoming' ? sort : undefined}
+            onSortChange={tab === 'upcoming' ? setSort : undefined}
+            onClearAll={clearFilters}
+          />
         )}
 
-        {isError ? (
+        {tab === 'history' ? (
+          isError ? (
+            <div className="text-center py-16">
+              <p className="font-display text-xl font-bold text-rally-text mb-4">
+                {t('tournament.tournamentsLoadErrorTitle')}
+              </p>
+              <Button variant="outline" onClick={() => history.refetch()}>
+                {t('tournament.tournamentsRetry')}
+              </Button>
+            </div>
+          ) : isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-80 rounded-[20px] bg-rally-surface" />
+              ))}
+            </div>
+          ) : (
+            <MonthArchive
+              sections={[
+                { key: 'past', items: visibleHistory, direction: 'desc', isPast: true },
+              ]}
+              getDate={getStartDate}
+              renderItem={(tr) => <TournamentCard key={tr.id} tournament={tr} variant="past" />}
+              countLabel={(count) => t('clubs.monthTournaments', { count })}
+              empty={historyEmptyState}
+              footer={
+                history.hasNextPage ? (
+                  <div className="mt-6 text-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => history.fetchNextPage()}
+                      disabled={history.isFetchingNextPage}
+                    >
+                      {history.isFetchingNextPage
+                        ? t('common.loading')
+                        : t('clubs.loadMoreMonths')}
+                    </Button>
+                  </div>
+                ) : null
+              }
+            />
+          )
+        ) : isError ? (
           <>
             <div className="text-center py-8">
               <p className="font-display text-xl sm:text-2xl font-bold text-rally-text mb-2">
@@ -215,14 +351,16 @@ export default function TournamentsPage() {
             <>
               <div className="text-center py-8">
                 <p className="text-rally-text font-semibold">
-                  {t('tournament.tournamentsEmptyTitle')}
+                  {filtersActive
+                    ? t('tournament.tournamentsFilterNoResults')
+                    : t('tournament.tournamentsEmptyTitle')}
                 </p>
                 <p className="text-rally-text-2 mt-1 mb-5">
                   {t('tournament.tournamentsEmptyMessage')}
                 </p>
                 <TournamentUpdatesTrigger onClick={() => setUpdatesOpen(true)} />
               </div>
-              {clubIds.length > 0 && (
+              {filtersActive && (
                 <Button variant="outline" onClick={clearFilters} className="mb-6">
                   {t('tournament.tournamentsFilterEmptyCta')}
                 </Button>
@@ -238,21 +376,21 @@ export default function TournamentsPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {tournaments.map((tr) => (
-                <TournamentCard key={tr.id} tournament={tr} tab={tab} />
+                <TournamentCard key={tr.id} tournament={tr} tab={tab === 'my' ? 'my' : 'upcoming'} />
               ))}
               {tab === 'upcoming' &&
                 TEASER_CONFIGS.map((cfg, i) => (
                   <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
                 ))}
             </div>
-            {hasNextPage && (
+            {list.hasNextPage && (
               <div className="text-center">
                 <Button
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
+                  onClick={() => list.fetchNextPage()}
+                  disabled={list.isFetchingNextPage}
                   variant="outline"
                 >
-                  {isFetchingNextPage
+                  {list.isFetchingNextPage
                     ? t('common.loading')
                     : t('common.load_more')}
                 </Button>

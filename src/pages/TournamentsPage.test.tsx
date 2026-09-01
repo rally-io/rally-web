@@ -55,6 +55,10 @@ describe('TournamentsPage filters', () => {
           { id: CLUB_A, name: 'Padel Time', count: 4 },
           { id: CLUB_B, name: 'Smash Club', count: 3 },
         ],
+        organizers: [
+          { id: 'u1', slug: 'dana-cohen', name: 'Dana Cohen', avatar_url: null, count: 5 },
+          { id: 'u2', slug: 'yossi-levi', name: 'Yossi Levi', avatar_url: null, count: 2 },
+        ],
       },
     } as never)
     vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
@@ -214,5 +218,206 @@ describe('TournamentsPage filters', () => {
     // And confirm truncation actually happened (proves this isn't a vacuous
     // pass from a short, untruncated string being trivially equal to itself).
     expect(listSearch!.length).toBeLessThan(longTerm.length)
+  })
+})
+
+const MY_TAB = /My Tournaments|הטורנירים שלי/i
+
+describe('TournamentsPage history tab', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getTournaments).mockResolvedValue(emptyPage as never)
+    vi.mocked(getTournamentFilterOptions).mockResolvedValue({
+      success: true,
+      data: { clubs: [], organizers: [] },
+    } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+  })
+
+  it('is offered to signed-out visitors, unlike the "my tournaments" tab', async () => {
+    // The `my` matcher is deliberately checked positively first: an
+    // absence assertion on a label that never matches anything passes for
+    // the wrong reason, and the tab copy has already changed once.
+    vi.mocked(useAppSession).mockReturnValue({ status: 'ready' } as never)
+    const { unmount } = renderPage()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: MY_TAB })).toBeInTheDocument()
+    unmount()
+
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+    renderPage()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    expect(
+      screen.getByRole('button', { name: /Past Tournaments|טורנירים שהסתיימו/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: MY_TAB })).not.toBeInTheDocument()
+  })
+
+  it('queries the past scope', async () => {
+    renderPage('/tournaments?tab=history')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    const params = vi.mocked(getTournaments).mock.calls[0][0]!
+    expect(params.scope).toBe('past')
+    expect(params.type).toBe('upcoming')
+  })
+
+  it('does not query the past scope from the upcoming tab', async () => {
+    renderPage()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    for (const call of vi.mocked(getTournaments).mock.calls) {
+      expect(call[0]!.scope).toBeUndefined()
+    }
+  })
+
+  it('hides the sort toggle on history — the API ignores sort for the past scope', async () => {
+    renderPage('/tournaments?tab=history')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    expect(
+      screen.queryByRole('button', { name: /Soonest first|Latest first|הקרוב קודם|הרחוק קודם/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('switching to history rewrites the URL and re-queries', async () => {
+    const router = renderPageWithRouter()
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    await userEvent.click(screen.getByRole('button', { name: /Past Tournaments|טורנירים שהסתיימו/ }))
+    await waitFor(() => expect(router.state.location.search).toContain('tab=history'))
+    await waitFor(() => {
+      const calls = vi.mocked(getTournaments).mock.calls
+      expect(calls[calls.length - 1][0]!.scope).toBe('past')
+    })
+  })
+
+  it('renders finished tournaments under a month heading', async () => {
+    vi.mocked(getTournaments).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            id: 'past-1',
+            name: 'Winter Slam',
+            format: 'doubles',
+            start_date: '2026-07-04T09:00:00',
+            end_date: '2026-07-04T18:00:00',
+            registration_deadline: '2026-07-01T00:00:00',
+            skill_level_min: 3,
+            skill_level_max: 3.5,
+            skill_level: '3.0 - 3.5 (C1)',
+            entry_fee: 400,
+            image_url: null,
+            thumb_url: null,
+            structure: 'groups',
+            club_name: 'Padel Time',
+            registration_id: null,
+            registration_status: null,
+            available_seats: 0,
+          },
+        ],
+        next_cursor: null,
+      },
+    } as never)
+    renderPage('/tournaments?tab=history')
+    expect(await screen.findByText('Winter Slam')).toBeInTheDocument()
+    expect(screen.getByText(/July 2026/)).toBeInTheDocument()
+  })
+})
+
+describe('TournamentsPage organizer, skill and month filters', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getTournaments).mockResolvedValue(emptyPage as never)
+    vi.mocked(getTournamentFilterOptions).mockResolvedValue({
+      success: true,
+      data: {
+        clubs: [{ id: CLUB_A, name: 'Padel Time', count: 4 }],
+        organizers: [
+          { id: 'u1', slug: 'dana-cohen', name: 'Dana Cohen', avatar_url: null, count: 5 },
+        ],
+      },
+    } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+  })
+
+  it('sends organizer slugs to the API as manager_slugs', async () => {
+    renderPage('/tournaments?organizers=dana-cohen,yossi-levi')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    const params = vi.mocked(getTournaments).mock.calls[0][0]!
+    expect(params.manager_slugs).toEqual(['dana-cohen', 'yossi-levi'])
+  })
+
+  it('carries organizer filters into the history tab too', async () => {
+    renderPage('/tournaments?tab=history&organizers=dana-cohen')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    const params = vi.mocked(getTournaments).mock.calls[0][0]!
+    expect(params.scope).toBe('past')
+    expect(params.manager_slugs).toEqual(['dana-cohen'])
+  })
+
+  it('drops a malformed organizer slug instead of forwarding it', async () => {
+    renderPage('/tournaments?organizers=has%20space')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    expect(vi.mocked(getTournaments).mock.calls[0][0]!.manager_slugs).toBeUndefined()
+  })
+
+  it('never sends skill or month to the API — they have no server params yet', async () => {
+    renderPage('/tournaments?skill=advanced&month=2026-07')
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    const params = vi.mocked(getTournaments).mock.calls[0][0]! as Record<string, unknown>
+    expect(params.skill).toBeUndefined()
+    expect(params.month).toBeUndefined()
+    expect(params.skill_level).toBeUndefined()
+  })
+
+  it('hides a loaded tournament that falls outside the selected skill bucket', async () => {
+    vi.mocked(getTournaments).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            id: 'up-1',
+            name: 'Beginners Cup',
+            format: 'doubles',
+            start_date: '2099-07-04T09:00:00',
+            end_date: '2099-07-04T18:00:00',
+            registration_deadline: '2099-07-01T00:00:00',
+            skill_level_min: 1,
+            skill_level_max: 2,
+            skill_level: '1.0 - 2.0 (D2)',
+            entry_fee: 400,
+            image_url: null,
+            thumb_url: null,
+            structure: 'groups',
+            club_name: 'Padel Time',
+            registration_id: null,
+            registration_status: null,
+            available_seats: 4,
+          },
+        ],
+        next_cursor: null,
+      },
+    } as never)
+
+    const { unmount } = renderPage('/tournaments?skill=beginner')
+    expect(await screen.findByText('Beginners Cup')).toBeInTheDocument()
+    unmount()
+
+    renderPage('/tournaments?skill=pro')
+    // Wait for the *filtered* empty state before asserting absence — asserting
+    // straight away would pass while the query was still in flight.
+    expect(
+      await screen.findByText(/No tournaments match these filters|אין טורנירים שמתאימים/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Beginners Cup')).not.toBeInTheDocument()
+  })
+
+  it('the clear-all control wipes every filter param and the sort', async () => {
+    const router = renderPageWithRouter(
+      `/tournaments?clubs=${CLUB_A}&organizers=dana-cohen&skill=pro&month=2026-07&sort=latest`,
+    )
+    await waitFor(() => expect(getTournaments).toHaveBeenCalled())
+    await userEvent.click(
+      screen.getByRole('button', { name: /Clear all filters|ניקוי כל הסינונים/ }),
+    )
+    await waitFor(() => expect(router.state.location.search).toBe(''))
   })
 })

@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { getTournaments, type TournamentListParams } from '@/services/api/tournaments'
 
-export function useTournaments(filters: TournamentListParams = {}) {
+export function useTournaments(filters: TournamentListParams = {}, enabled = true) {
   return useInfiniteQuery({
     queryKey: ['tournaments', filters],
     queryFn: async ({ pageParam }) => {
@@ -16,5 +16,6 @@ export function useTournaments(filters: TournamentListParams = {}) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
       lastPage && 'next_cursor' in lastPage ? lastPage.next_cursor ?? undefined : undefined,
+    enabled,
   })
 }
