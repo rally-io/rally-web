@@ -4,7 +4,7 @@ import {
   formatTournamentSkillRange,
   getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
-  socialProofCount,
+  registrationSummary,
   isLastSpots,
 } from './tournamentHelpers'
 
@@ -156,33 +156,36 @@ describe('registrationSummaryKey', () => {
   })
 })
 
-describe('socialProofCount', () => {
-  const t = (confirmed?: number, cap?: number) => ({
+describe('registrationSummary', () => {
+  const t = (confirmed?: number | null, cap?: number | null) => ({
     confirmed_registrations: confirmed,
     max_participants: cap,
   })
 
-  it('advertises the count once the draw is at least half full', () => {
-    expect(socialProofCount(t(8, 16))).toBe(8) // exactly half counts
-    expect(socialProofCount(t(20, 24))).toBe(20)
+  it('reports how full and how big, so a card can show the size of the draw', () => {
+    expect(registrationSummary(t(12, 16))).toEqual({ registered: 12, capacity: 16 })
   })
 
-  it('stays quiet below half, where a count discourages instead of persuading', () => {
-    expect(socialProofCount(t(7, 16))).toBeNull()
-    expect(socialProofCount(t(1, 16))).toBeNull()
+  it('reports zero registrations rather than hiding them', () => {
+    // A player still learns the size from "0/32", which is the point.
+    expect(registrationSummary(t(0, 32))).toEqual({ registered: 0, capacity: 32 })
   })
 
-  it('stays quiet at zero registrations — the case the rule exists for', () => {
-    expect(socialProofCount(t(0, 12))).toBeNull()
+  it('reports a full draw', () => {
+    expect(registrationSummary(t(16, 16))).toEqual({ registered: 16, capacity: 16 })
   })
 
-  it('stays quiet without a cap: a count with nothing to divide by means nothing', () => {
-    expect(socialProofCount(t(9, 0))).toBeNull()
-    expect(socialProofCount(t(9, undefined))).toBeNull()
+  it('stays quiet without a cap: a count with nothing to divide by has no size', () => {
+    expect(registrationSummary(t(9, 0))).toBeNull()
+    expect(registrationSummary(t(9, null))).toBeNull()
   })
 
-  it('stays quiet on an API build that sends neither field', () => {
-    expect(socialProofCount({})).toBeNull()
+  it('stays quiet on an API build that omits the count — not "0 of 16"', () => {
+    // The null check has to be explicit: zero is now a real value to show, so
+    // a falsy check would turn "field absent" into "nobody registered".
+    expect(registrationSummary(t(null, 16))).toBeNull()
+    expect(registrationSummary({ max_participants: 16 })).toBeNull()
+    expect(registrationSummary({})).toBeNull()
   })
 })
 

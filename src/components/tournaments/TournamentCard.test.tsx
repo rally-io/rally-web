@@ -163,37 +163,61 @@ describe('TournamentCard last-spots badge', () => {
 })
 
 describe('TournamentCard registration count', () => {
-  it('advertises pairs once the draw is at least half full', () => {
+  it('shows how full and how big, so the card conveys the size of the draw', () => {
     renderCard({ confirmed_registrations: 12, max_participants: 16 })
-    expect(screen.getByText('12 pairs already in')).toBeInTheDocument()
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    expect(screen.getByText('12')).toBeInTheDocument()
+    expect(screen.getByText('16')).toBeInTheDocument()
+  })
+
+  it('isolates the number pair against RTL, which would mirror 12/16 into 16/12', () => {
+    // The site runs dir="rtl" in Hebrew, where two digit runs around a neutral
+    // "/" reorder — silently turning a half-full draw into an over-full one.
+    // The cure is the ltr wrapper with the numbers as separate children; this
+    // asserts the wrapper exists rather than the (bidi-free) jsdom output.
+    // See wiki/gotchas/web-rtl-score-string-mirroring.
+    const { container } = renderCard({ confirmed_registrations: 12, max_participants: 16 })
+    const isolated = container.querySelector('[dir="ltr"].tabular-nums')
+    expect(isolated).not.toBeNull()
+    expect(isolated!.textContent).toBe('12/16')
+    expect(isolated!.querySelectorAll('span')).toHaveLength(2)
   })
 
   it('counts players, not pairs, for a singles draw', () => {
     renderCard({ format: 'singles', confirmed_registrations: 12, max_participants: 16 })
-    expect(screen.getByText('12 players already in')).toBeInTheDocument()
+    expect(screen.getByText('players registered')).toBeInTheDocument()
   })
 
-  it('says nothing below half full', () => {
-    renderCard({ confirmed_registrations: 4, max_participants: 16 })
-    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+  it('shows an empty draw as 0 of its size rather than hiding it', () => {
+    // The earlier design stayed silent below half full; a player then had no
+    // way to tell a 16-pair evening from a 32-pair weekend.
+    renderCard({ confirmed_registrations: 0, max_participants: 32 })
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText('32')).toBeInTheDocument()
   })
 
-  it('says nothing at zero registrations', () => {
-    renderCard({ confirmed_registrations: 0, max_participants: 16 })
-    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+  it('shows a full draw', () => {
+    renderCard({ confirmed_registrations: 16, max_participants: 16 })
+    const isolated = document.querySelector('[dir="ltr"].tabular-nums')
+    expect(isolated!.textContent).toBe('16/16')
   })
 
-  it('says nothing on an API build that omits the fields', () => {
+  it('says nothing on an API build that omits the count', () => {
     renderCard({})
-    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/registered/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing without a cap to size the draw against', () => {
+    renderCard({ confirmed_registrations: 9, max_participants: 0 })
+    expect(screen.queryByText(/registered/)).not.toBeInTheDocument()
   })
 
   it('never shows the seat count itself — the no-scarcity rule', () => {
     renderCard({ confirmed_registrations: 15, max_participants: 16, available_seats: 1 })
-    expect(screen.getByText('15 pairs already in')).toBeInTheDocument()
-    // The badge may shout "last spots", but the number of seats stays private.
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    // The badge may shout "last spots", but how many seats remain stays private.
     expect(screen.queryByText(/1 (spot|seat)/i)).not.toBeInTheDocument()
-    expect(screen.queryByText('15 / 16')).not.toBeInTheDocument()
   })
 
   it('is suppressed on a finished tournament', () => {
@@ -205,7 +229,6 @@ describe('TournamentCard registration count', () => {
         />
       </MemoryRouter>,
     )
-    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/registered/)).not.toBeInTheDocument()
   })
 })
-

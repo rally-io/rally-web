@@ -65,34 +65,33 @@ export function isPastTournament(tr: { end_date: string }): boolean {
 }
 
 /**
- * Fill ratio at which a tournament's registration count becomes social proof
- * rather than a discouragement.
+ * How full a tournament is, for the card: confirmed registrations and the cap
+ * they count against.
  *
- * The house rule is "no scarcity signals" — no seats-left numbers, no
- * fillness bars — because the goal is maximum registrations. A raw count
- * cuts both ways: "20 of 24 pairs are in" pulls people in, "0 pairs are in"
- * pushes them away, and three of the seven live tournaments were at zero the
- * day this was written. So the count is shown only once it flatters.
- */
-export const SOCIAL_PROOF_FILL_RATIO = 0.5
-
-/**
- * The confirmed count to advertise on a card, or null to stay quiet.
+ * Both numbers, always — a player judging a card needs the *size* of the draw
+ * ("is this a 16-pair evening or a 32-pair weekend?"), and a count with
+ * nothing to divide by does not tell them that. This is a deliberate
+ * amendment to the old "no fillness signals" rule; see CLAUDE.md.
  *
  * Counts *pairs/teams* for a doubles draw, not individuals — `max_participants`
- * is a cap on registrations, and the API rejects lowering it below "N pairs
- * are already confirmed". Copy must match that unit.
+ * caps registrations, and the API rejects lowering it below "N pairs are
+ * already confirmed". Copy must match that unit.
  */
-export function socialProofCount(tr: {
+export interface RegistrationSummary {
+  registered: number
+  capacity: number
+}
+
+export function registrationSummary(tr: {
   confirmed_registrations?: number | null
   max_participants?: number | null
-}): number | null {
-  const confirmed = tr.confirmed_registrations ?? 0
-  const cap = tr.max_participants ?? 0
-  // A count without its cap is not interpretable, so an API build that sends
-  // neither (or a tournament with no cap) shows nothing at all.
-  if (cap <= 0 || confirmed <= 0) return null
-  return confirmed / cap >= SOCIAL_PROOF_FILL_RATIO ? confirmed : null
+}): RegistrationSummary | null {
+  const capacity = tr.max_participants ?? 0
+  // Feature detection, and it must be a null check rather than a falsy one:
+  // zero registrations is a real, displayable value now, while an API build
+  // predating the field must show nothing at all.
+  if (capacity <= 0 || tr.confirmed_registrations == null) return null
+  return { registered: tr.confirmed_registrations, capacity }
 }
 
 /** Under this many free seats, "last spots" is true rather than decorative. */

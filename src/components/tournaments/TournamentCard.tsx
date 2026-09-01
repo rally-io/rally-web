@@ -7,7 +7,7 @@ import {
   isRegistrationOpen,
   isTournamentLive,
   isLastSpots,
-  socialProofCount,
+  registrationSummary,
   formatCurrency,
   formatTournamentCardDate,
 } from '@/lib/tournamentHelpers'
@@ -57,19 +57,15 @@ export function TournamentCard({
   // already have a registration in hand, so the card is just informational.
   const needsPayment = tr.registration_status === 'payment_pending'
 
-  // Social proof, and only when it is proof: see `socialProofCount`. Counted
-  // in pairs for a doubles draw, so the copy switches unit on the format
-  // rather than calling everything "players".
-  const registered = isPast ? null : socialProofCount(tr)
-  const registeredLabel =
-    registered === null
-      ? null
-      : t(
-          tr.format === 'singles'
-            ? 'tournament.tournamentsRegisteredPlayers'
-            : 'tournament.tournamentsRegisteredPairs',
-          { count: registered },
-        )
+  // How full, and how big — a player sizing up a card needs the cap as much as
+  // the count. Counted in pairs for a doubles draw, so the unit switches on
+  // the format rather than calling everything "players".
+  const fill = isPast ? null : registrationSummary(tr)
+  const fillUnit = t(
+    tr.format === 'singles'
+      ? 'tournament.tournamentsRegisteredUnitPlayers'
+      : 'tournament.tournamentsRegisteredUnitPairs',
+  )
 
   const ctaLabel = needsPayment
     ? t('tournament.tournamentsCompleteRegistration')
@@ -167,10 +163,17 @@ export function TournamentCard({
             )}
           </p>
         )}
-        {registeredLabel && (
+        {fill && (
           <p className="mt-1 text-sm text-rally-accent flex items-center gap-1.5 font-semibold">
             <Users className="w-4 h-4 shrink-0" />
-            <span>{registeredLabel}</span>
+            {/* dir="ltr" with the two numbers as separate children: joined as
+                one "12/16" string under the site's RTL this mirrors to
+                "16/12", which would read as over capacity. See
+                wiki/gotchas/web-rtl-score-string-mirroring. */}
+            <span dir="ltr" className="tabular-nums">
+              <span>{fill.registered}</span>/<span>{fill.capacity}</span>
+            </span>
+            <span>{fillUnit}</span>
           </p>
         )}
         {countdownText && !isPast && !live && (

@@ -141,7 +141,7 @@ The user explicitly required: leads must be saved **AND** forwarded by email.
 
 ## 4. Product decisions baked into the UI (do not undo)
 
-1. **No scarcity numbers** — never show `available_seats`, "X מקומות נותרו", or fillness bars. Goal is **max registrations for data collection**. *Amended 2026-09-01:* the card may show the confirmed count as social proof once the draw is ≥ half full, and the "מקומות אחרונים!" badge now requires < 3 free seats instead of firing on every open tournament. The seat number itself is still never shown. See the same rule in `CLAUDE.md` for the full wording.
+1. **No scarcity numbers** — never show `available_seats`, "X מקומות נותרו", or fillness bars. Goal is **max registrations for data collection**. *Amended 2026-09-01:* the card shows **registered / capacity** ("12/16 זוגות רשומים") always, so a player can see the size of the draw; the "מקומות אחרונים!" badge now requires < 3 free seats instead of firing on every open tournament. The number of seats *remaining* is still never shown. See the same rule in `CLAUDE.md` for the full wording.
 2. **No feature reveals on `/crm`** — competitors will visit the day after launch. Screens are blurred + small enough to convey "mood not info". The teaser cards talk in vague value language ("technology that works", "less admin", "more profit") — never specifics.
 3. **Phone numbers** display in international format (country code on left, then digits). RTL-aware placeholder.
 4. **Hebrew terminology** — use "מחבט" (not "רקטה") for racket; "נוקאאוט" (not "הדחה") for knockout-style structures.
