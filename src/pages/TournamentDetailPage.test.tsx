@@ -8,7 +8,7 @@ vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
 // QueryClientProvider this test doesn't set up — null keeps it hidden and
 // out of scope (it has its own test file).
 vi.mock('@/hooks/useTournamentParticipants', () => ({
-  useTournamentParticipants: () => ({ data: null }),
+  useTournamentParticipants: vi.fn(() => ({ data: null })),
 }))
 // ParticipantsSection and the partner-selection gate both call useAppSession
 // directly (no providers mounted here). Default to a fully-onboarded session
@@ -57,6 +57,7 @@ import { registerTournament } from '@/services/api/tournaments'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
 import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
 import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
+import { useTournamentParticipants } from '@/hooks/useTournamentParticipants'
 
 const mockUseTournament = vi.mocked(useTournament)
 const mockUseAuthGate = vi.mocked(useAuthGate)
@@ -66,6 +67,7 @@ const mockRegisterTournament = vi.mocked(registerTournament)
 const mockConfirmZeroPayment = vi.mocked(confirmTournamentZeroPayment)
 const mockUseScreenMessages = vi.mocked(useScreenMessages)
 const mockUseRegistrationGate = vi.mocked(useRegistrationGate)
+const mockUseParticipants = vi.mocked(useTournamentParticipants)
 const mockRequireSignIn = vi.fn()
 
 // Default: nothing gates registration — every pre-existing test in this file
@@ -847,3 +849,57 @@ describe('TournamentDetailPage registration gate', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
   })
 })
+
+// The roster was commented out of this page on 2026-08-22 (`8b1f5d7`, a
+// commit about payments) and shipped hidden for ten days without a single
+// test noticing — every suite here mocks the participants hook to `null`,
+// which is also what a hidden section looks like. These assert the page
+// actually mounts the component, so removing it again fails loudly.
+describe('TournamentDetailPage participants roster', () => {
+  const roster = {
+    data: {
+      tournament_id: 't-1',
+      format: 'doubles',
+      confirmed_count: 1,
+      items: [
+        {
+          registration_id: 'r-1',
+          team_name: null,
+          player_1: {
+            id: 'p-1', first_name: 'Dana', last_name: 'Cohen',
+            avatar_url: null, skill_level: 3.5, is_guest: false,
+          },
+          player_2: {
+            id: 'p-2', first_name: 'Yossi', last_name: 'Levi',
+            avatar_url: null, skill_level: 3.0, is_guest: false,
+          },
+        },
+      ],
+    },
+  } as any
+
+  it('renders the roster on the page, not just in its own test file', () => {
+    mockUseTournament.mockReturnValue(tr())
+    mockUseParticipants.mockReturnValue(roster)
+    renderPage()
+    expect(
+      screen.getByRole('heading', { name: i18n.t('tournament.participantsTitle') }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Dana Cohen')).toBeInTheDocument()
+    expect(screen.getByText('Yossi Levi')).toBeInTheDocument()
+  })
+
+  it('prompts a signed-out visitor to sign in instead of showing names', () => {
+    mockUseTournament.mockReturnValue(tr())
+    mockUseParticipants.mockReturnValue(roster)
+    mockUseAppSession.mockReturnValue(session('signed_out'))
+    renderPage()
+    // The heading still stands, so the section is demonstrably mounted — it is
+    // the names that are withheld, which is the endpoint's own auth rule.
+    expect(
+      screen.getByRole('heading', { name: i18n.t('tournament.participantsTitle') }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Dana Cohen')).not.toBeInTheDocument()
+  })
+})
+
