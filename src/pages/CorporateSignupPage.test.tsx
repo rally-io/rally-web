@@ -59,6 +59,24 @@ describe('CorporateSignupPage', () => {
     expect(screen.getByText('1 Padel St, Tel Aviv')).toBeInTheDocument()
   })
 
+  // Regression: the page is RTL, so a bare time range gets bidi-reordered and
+  // "19:30-03:00" paints as "03:00-19:30". Within one day that misreads as an
+  // obvious mistake, but a range crossing midnight reverses into a plausible
+  // one and a guest arrives sixteen hours early. jsdom does no layout, so this
+  // asserts the isolation element rather than the painted order.
+  it('isolates the time range from RTL bidi reordering, but not the date', () => {
+    vi.mocked(getCorporateEvent).mockReturnValue({ ...EVENT, timeLabel: '19:30–03:00' })
+    const { container } = renderPage()
+
+    const isolated = container.querySelectorAll('bdi[dir="ltr"]')
+    expect(isolated).toHaveLength(1)
+    expect(isolated[0]).toHaveTextContent('19:30–03:00')
+
+    // The date and address are Hebrew prose and must stay in the page direction.
+    expect(screen.getByText('Thursday, 20 August 2026').closest('bdi')).toBeNull()
+    expect(screen.getByText('1 Padel St, Tel Aviv').closest('bdi')).toBeNull()
+  })
+
   it('shows a not-found message for an unknown slug', () => {
     renderPage('/join/nope')
     expect(screen.getByText('Link not found')).toBeInTheDocument()

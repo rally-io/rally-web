@@ -104,6 +104,7 @@ export default function CorporateSignupPage() {
         <p className="text-sm sm:text-base text-rally-text-2 mt-2">
           {t('corporate.hostedAt')} {event.clubName}
         </p>
+
       </>
     )
 
@@ -118,6 +119,7 @@ export default function CorporateSignupPage() {
           icon={<Clock className="w-4 h-4" />}
           label={t('corporate.detailsTime')}
           value={event.timeLabel}
+          isolateLtr
         />
         <DetailChip
           icon={<MapPin className="w-4 h-4" />}
@@ -539,10 +541,24 @@ function DetailChip({
   icon,
   label,
   value,
+  isolateLtr,
 }: {
   icon: React.ReactNode
   label: string
   value: string
+  /**
+   * Render the value as an LTR island. Needed for a time range: the page is
+   * RTL, so bidi reorders the two clock runs in "19:30–03:00" and paints it
+   * as "03:00–19:30". For a range inside one day that reads as an obvious
+   * mistake and the eye corrects it, but a range crossing midnight reverses
+   * into a perfectly plausible one — a guest reads 03:00–19:30 and turns up
+   * sixteen hours early.
+   *
+   * <bdi> rather than dir on the <dd>: it isolates the run without changing
+   * the block's alignment, so the chip still reads right-aligned like its
+   * neighbours.
+   */
+  isolateLtr?: boolean
 }) {
   return (
     <div className="rounded-xl bg-rally-surface border border-rally-border px-4 py-3">
@@ -550,7 +566,9 @@ function DetailChip({
         {icon}
         {label}
       </dt>
-      <dd className="text-sm font-display font-bold text-rally-text leading-snug">{value}</dd>
+      <dd className="text-sm font-display font-bold text-rally-text leading-snug">
+        {isolateLtr ? <bdi dir="ltr">{value}</bdi> : value}
+      </dd>
     </div>
   )
 }

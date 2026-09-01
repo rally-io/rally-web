@@ -69,6 +69,29 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     dateLabel: 'יום רביעי, 5 באוגוסט 2026',
     timeLabel: '18:00–22:00',
   },
+  // A private tournament thrown for a couple getting married — same shape as a
+  // corporate event, so `company` carries the couple rather than a client.
+  'dani-shoval': {
+    slug: 'dani-shoval',
+    sheetSource: 'corporate_dani_shoval',
+    company: 'Dani & Shoval',
+    tournamentName: 'טורניר פאדל\nלכבוד החתונה',
+    // No street address for this one — the venue name is what guests are given,
+    // so it stands in for the address too. The location chip renders it as
+    // plain text, so a name works there as well as an address would.
+    clubName: 'בורג׳',
+    clubAddress: 'בורג׳',
+    // Generated padel-court-with-wedding-arch photo with the couple's names
+    // composited in. The names are baked because api/join-og.ts serves this
+    // file raw to link crawlers, with none of the page chrome that supplies
+    // the title. The Rally mark is deliberately NOT baked in — the page pins
+    // its own wordmark over the hero, and two of them read as duplicated.
+    heroImage: '/dani-shoval-hero.jpeg',
+    heroFit: 'contain',
+    dateLabel: 'יום רביעי, 14 באוקטובר 2026',
+    // Runs past midnight — the label is copy, so the range prints verbatim.
+    timeLabel: '19:30–03:00',
+  },
 }
 
 export function getCorporateEvent(slug: string | undefined): CorporateEvent | null {
