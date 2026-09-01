@@ -65,6 +65,55 @@ export function isPastTournament(tr: { end_date: string }): boolean {
 }
 
 /**
+ * Fill ratio at which a tournament's registration count becomes social proof
+ * rather than a discouragement.
+ *
+ * The house rule is "no scarcity signals" — no seats-left numbers, no
+ * fillness bars — because the goal is maximum registrations. A raw count
+ * cuts both ways: "20 of 24 pairs are in" pulls people in, "0 pairs are in"
+ * pushes them away, and three of the seven live tournaments were at zero the
+ * day this was written. So the count is shown only once it flatters.
+ */
+export const SOCIAL_PROOF_FILL_RATIO = 0.5
+
+/**
+ * The confirmed count to advertise on a card, or null to stay quiet.
+ *
+ * Counts *pairs/teams* for a doubles draw, not individuals — `max_participants`
+ * is a cap on registrations, and the API rejects lowering it below "N pairs
+ * are already confirmed". Copy must match that unit.
+ */
+export function socialProofCount(tr: {
+  confirmed_registrations?: number | null
+  max_participants?: number | null
+}): number | null {
+  const confirmed = tr.confirmed_registrations ?? 0
+  const cap = tr.max_participants ?? 0
+  // A count without its cap is not interpretable, so an API build that sends
+  // neither (or a tournament with no cap) shows nothing at all.
+  if (cap <= 0 || confirmed <= 0) return null
+  return confirmed / cap >= SOCIAL_PROOF_FILL_RATIO ? confirmed : null
+}
+
+/** Under this many free seats, "last spots" is true rather than decorative. */
+export const LAST_SPOTS_THRESHOLD = 3
+
+/**
+ * Is the "last spots" badge honest right now?
+ *
+ * Deliberately *not* "registration is open", which is what the card used to
+ * ask: that badged every open tournament as nearly full regardless of seats.
+ * Zero seats means full, not nearly full, so it fails too.
+ */
+export function isLastSpots(availableSeats: number | null | undefined): boolean {
+  return (
+    typeof availableSeats === 'number' &&
+    availableSeats > 0 &&
+    availableSeats < LAST_SPOTS_THRESHOLD
+  )
+}
+
+/**
  * Path to the public live-results screen. Mirrors the CRM's
  * `buildLiveResultsUrl()`, which shares `<site>/live/<token>` links with
  * players — keep the two in step.

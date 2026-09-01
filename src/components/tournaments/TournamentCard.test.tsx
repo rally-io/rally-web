@@ -12,7 +12,9 @@ const base: Tournament = {
   skill_level_min: 2.5, skill_level_max: 3.8, skill_level: '2.5 - 3.8 (C2)',
   entry_fee: 150, image_url: null, thumb_url: null, structure: 'single_elimination',
   club_name: 'Padel TLV', registration_id: null, registration_status: null,
-  available_seats: 4,
+  // Inside the last-spots band on purpose: the past/live tests below assert
+  // the badge is *suppressed*, which proves nothing if it would never show.
+  available_seats: 2,
 }
 
 function renderCard(t: Partial<Tournament>, tab: 'upcoming' | 'my' = 'upcoming') {
@@ -140,3 +142,70 @@ describe('TournamentCard live badge', () => {
     expect(screen.queryByText(i18n.t('tournament.liveBadge'))).not.toBeInTheDocument()
   })
 })
+
+describe('TournamentCard last-spots badge', () => {
+  const label = () => i18n.t('tournament.tournamentsLastSpots')
+
+  it('shows inside the honest band', () => {
+    renderCard({ available_seats: 2 })
+    expect(screen.getByText(label())).toBeInTheDocument()
+  })
+
+  it('stays hidden with room left — it used to badge every open tournament', () => {
+    renderCard({ available_seats: 4 })
+    expect(screen.queryByText(label())).not.toBeInTheDocument()
+  })
+
+  it('stays hidden when the tournament is full: that is full, not nearly full', () => {
+    renderCard({ available_seats: 0 })
+    expect(screen.queryByText(label())).not.toBeInTheDocument()
+  })
+})
+
+describe('TournamentCard registration count', () => {
+  it('advertises pairs once the draw is at least half full', () => {
+    renderCard({ confirmed_registrations: 12, max_participants: 16 })
+    expect(screen.getByText('12 pairs already in')).toBeInTheDocument()
+  })
+
+  it('counts players, not pairs, for a singles draw', () => {
+    renderCard({ format: 'singles', confirmed_registrations: 12, max_participants: 16 })
+    expect(screen.getByText('12 players already in')).toBeInTheDocument()
+  })
+
+  it('says nothing below half full', () => {
+    renderCard({ confirmed_registrations: 4, max_participants: 16 })
+    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing at zero registrations', () => {
+    renderCard({ confirmed_registrations: 0, max_participants: 16 })
+    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+  })
+
+  it('says nothing on an API build that omits the fields', () => {
+    renderCard({})
+    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+  })
+
+  it('never shows the seat count itself — the no-scarcity rule', () => {
+    renderCard({ confirmed_registrations: 15, max_participants: 16, available_seats: 1 })
+    expect(screen.getByText('15 pairs already in')).toBeInTheDocument()
+    // The badge may shout "last spots", but the number of seats stays private.
+    expect(screen.queryByText(/1 (spot|seat)/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('15 / 16')).not.toBeInTheDocument()
+  })
+
+  it('is suppressed on a finished tournament', () => {
+    render(
+      <MemoryRouter>
+        <TournamentCard
+          tournament={{ ...base, confirmed_registrations: 15, max_participants: 16 }}
+          variant="past"
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.queryByText(/already in/)).not.toBeInTheDocument()
+  })
+})
+

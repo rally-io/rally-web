@@ -1,11 +1,13 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Calendar, MapPin, Clock, Flame, User } from 'lucide-react'
+import { Calendar, MapPin, Clock, Flame, User, Users } from 'lucide-react'
 import type { Tournament } from '@/types/api'
 import { useRtl } from '@/hooks/useRtl'
 import {
   isRegistrationOpen,
   isTournamentLive,
+  isLastSpots,
+  socialProofCount,
   formatCurrency,
   formatTournamentCardDate,
 } from '@/lib/tournamentHelpers'
@@ -54,6 +56,20 @@ export function TournamentCard({
   // Only payment_pending still needs a card added — registered/approved/etc.
   // already have a registration in hand, so the card is just informational.
   const needsPayment = tr.registration_status === 'payment_pending'
+
+  // Social proof, and only when it is proof: see `socialProofCount`. Counted
+  // in pairs for a doubles draw, so the copy switches unit on the format
+  // rather than calling everything "players".
+  const registered = isPast ? null : socialProofCount(tr)
+  const registeredLabel =
+    registered === null
+      ? null
+      : t(
+          tr.format === 'singles'
+            ? 'tournament.tournamentsRegisteredPlayers'
+            : 'tournament.tournamentsRegisteredPairs',
+          { count: registered },
+        )
 
   const ctaLabel = needsPayment
     ? t('tournament.tournamentsCompleteRegistration')
@@ -104,7 +120,7 @@ export function TournamentCard({
             <LiveBadge />
           </div>
         ) : (
-          open && !isPast && (
+          open && !isPast && isLastSpots(tr.available_seats) && (
             <div className="absolute top-3 end-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rally-warning text-rally-text-on-light text-[11px] font-black uppercase tracking-wider shadow-md animate-pulse">
               <Flame className="w-3.5 h-3.5" />
               <span>{t('tournament.tournamentsLastSpots')}</span>
@@ -149,6 +165,12 @@ export function TournamentCard({
             ) : (
               <span className="line-clamp-1">{tr.organizer_name}</span>
             )}
+          </p>
+        )}
+        {registeredLabel && (
+          <p className="mt-1 text-sm text-rally-accent flex items-center gap-1.5 font-semibold">
+            <Users className="w-4 h-4 shrink-0" />
+            <span>{registeredLabel}</span>
           </p>
         )}
         {countdownText && !isPast && !live && (

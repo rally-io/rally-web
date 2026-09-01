@@ -4,6 +4,8 @@ import {
   formatTournamentSkillRange,
   getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
+  socialProofCount,
+  isLastSpots,
 } from './tournamentHelpers'
 
 /** ISO-ish local timestamp `offsetHours` from now, in the API's format. */
@@ -153,3 +155,55 @@ describe('registrationSummaryKey', () => {
     expect(r.params).toEqual({ count: 5 })
   })
 })
+
+describe('socialProofCount', () => {
+  const t = (confirmed?: number, cap?: number) => ({
+    confirmed_registrations: confirmed,
+    max_participants: cap,
+  })
+
+  it('advertises the count once the draw is at least half full', () => {
+    expect(socialProofCount(t(8, 16))).toBe(8) // exactly half counts
+    expect(socialProofCount(t(20, 24))).toBe(20)
+  })
+
+  it('stays quiet below half, where a count discourages instead of persuading', () => {
+    expect(socialProofCount(t(7, 16))).toBeNull()
+    expect(socialProofCount(t(1, 16))).toBeNull()
+  })
+
+  it('stays quiet at zero registrations — the case the rule exists for', () => {
+    expect(socialProofCount(t(0, 12))).toBeNull()
+  })
+
+  it('stays quiet without a cap: a count with nothing to divide by means nothing', () => {
+    expect(socialProofCount(t(9, 0))).toBeNull()
+    expect(socialProofCount(t(9, undefined))).toBeNull()
+  })
+
+  it('stays quiet on an API build that sends neither field', () => {
+    expect(socialProofCount({})).toBeNull()
+  })
+})
+
+describe('isLastSpots', () => {
+  it('is true only in the narrow band where it is honest', () => {
+    expect(isLastSpots(1)).toBe(true)
+    expect(isLastSpots(2)).toBe(true)
+  })
+
+  it('is false at three seats and above', () => {
+    expect(isLastSpots(3)).toBe(false)
+    expect(isLastSpots(16)).toBe(false)
+  })
+
+  it('is false at zero — that is full, not nearly full', () => {
+    expect(isLastSpots(0)).toBe(false)
+  })
+
+  it('is false when the seat count is missing rather than guessing', () => {
+    expect(isLastSpots(undefined)).toBe(false)
+    expect(isLastSpots(null)).toBe(false)
+  })
+})
+
