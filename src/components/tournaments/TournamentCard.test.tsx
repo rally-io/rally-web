@@ -220,7 +220,7 @@ describe('TournamentCard registration count', () => {
     expect(screen.queryByText(/1 (spot|seat)/i)).not.toBeInTheDocument()
   })
 
-  it('is suppressed on a finished tournament', () => {
+  it('is shown on a finished tournament too — the size is still informative', () => {
     render(
       <MemoryRouter>
         <TournamentCard
@@ -229,6 +229,21 @@ describe('TournamentCard registration count', () => {
         />
       </MemoryRouter>,
     )
-    expect(screen.queryByText(/registered/)).not.toBeInTheDocument()
+    expect(screen.getByText('pairs registered')).toBeInTheDocument()
+    expect(document.querySelector('[dir="ltr"].tabular-nums')!.textContent).toBe('15/16')
+  })
+
+  it('mutes it on a finished tournament instead of using the live accent', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <TournamentCard
+          tournament={{ ...base, confirmed_registrations: 15, max_participants: 16 }}
+          variant="past"
+        />
+      </MemoryRouter>,
+    )
+    const row = container.querySelector('[dir="ltr"].tabular-nums')!.parentElement!
+    expect(row.className).toContain('text-rally-text-2')
+    expect(row.className).not.toContain('text-rally-accent')
   })
 })
