@@ -88,10 +88,12 @@ interface ClientDimension extends BaseDimension {
 type FilterDimension = ServerDimension | ClientDimension
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-// Organizer slugs fall back to the manager's uuid server-side, so both shapes
-// have to pass. Length-capped: the API rejects nothing, but an unbounded URL
-// value has no business reaching it.
-const SLUG_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/i
+// Organizer slugs are stored as String(255) with no charset restriction —
+// they can be Hebrew, Arabic, or any other unicode. We only rule out values
+// that are empty, longer than 255 chars, or contain characters that would
+// break our comma-split parsing (commas, whitespace). UUID-shaped slugs also
+// pass so the server-side fallback (manager_slug == user.id) keeps working.
+const SLUG_RE = /^[^\s,]{1,255}$/
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 
 export const FILTER_DIMENSIONS: Record<keyof TournamentFilters, FilterDimension> = {
