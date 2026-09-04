@@ -34,3 +34,28 @@ export function translateRegistrationError(message: string, t: TFunction): strin
   }
   return message
 }
+
+// rally-api's WaitlistService raises its own plain-English RallyException text
+// (app/services/waitlist_service.py), distinct from register_tournament's —
+// same "match on exact text" approach as translateRegistrationError above.
+export function translateWaitlistError(message: string, t: TFunction): string {
+  if (message === 'The waiting list is currently unavailable') {
+    return t('tournament.registrationErrors.waitlistDisabled')
+  }
+  if (message === 'Registration is not open') {
+    return t('tournament.registrationErrors.waitlistNotOpen')
+  }
+  if (message === 'There are still places available — register instead') {
+    return t('tournament.registrationErrors.tournamentNotFull')
+  }
+  if (message === 'You are already registered') {
+    return t('tournament.registrationErrors.alreadyRegistered')
+  }
+  if (message === 'You are already on the waiting list') {
+    return t('tournament.registrationErrors.alreadyWaiting')
+  }
+  if (message === 'You are not on the waiting list') {
+    return t('tournament.registrationErrors.notOnWaitlist')
+  }
+  return message
+}

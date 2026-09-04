@@ -15,12 +15,16 @@ import { ScreenMessageModalHost } from '@/features/screenMessages/components/Scr
 import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
 import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
-import { registerTournament } from '@/services/api/tournaments'
+import {
+  registerTournament, joinTournamentWaitlist, leaveTournamentWaitlist,
+} from '@/services/api/tournaments'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
-import { translateRegistrationError } from '@/lib/registrationErrors'
+import { translateRegistrationError, translateWaitlistError } from '@/lib/registrationErrors'
+import { ctaFor } from '@/lib/tournamentCta'
 import type { PartnerSelectionState } from '@/types/partner'
-import type { AcknowledgedMessageRef, RegisterPayload } from '@/types/api'
+import type { AcknowledgedMessageRef, RegisterPayload, TournamentWaitlistEntry } from '@/types/api'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
@@ -87,6 +91,16 @@ export default function TournamentDetailPage() {
   // red "you must accept the terms" sentence from the 409 that led to the
   // tick in the first place.
   const [gateError, setGateError] = useState<string | null>(null)
+
+  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false)
+  const [waitlistError, setWaitlistError] = useState<string | null>(null)
+  const [isLeavingWaitlist, setIsLeavingWaitlist] = useState(false)
+  // undefined = defer to `tr.my_waitlist_entry`; null = explicitly left;
+  // an entry = just joined. Lets join/leave update the UI immediately for a
+  // free tournament, without waiting on a refetch.
+  const [waitlistOverride, setWaitlistOverride] = useState<TournamentWaitlistEntry | null | undefined>(
+    undefined,
+  )
 
   const isPartneredFormat = tr?.format === 'doubles' || tr?.format === 'mixed'
   const partnerRequired = isPartneredFormat && partnerState.phase === 'idle'
@@ -220,6 +234,88 @@ export default function TournamentDetailPage() {
       })
   }
 
+  // Same gates as handleRegisterNow (sign-in, partner choice, screen-message
+  // acknowledgment) — join_waitlist replays the exact same payload shape
+  // through the registration pipeline at promotion time.
+  const handleJoinWaitlist = () => {
+    void requireSignIn()
+      .then(async () => {
+        if (!tr) return
+        if (partnerRequired) {
+          document
+            .getElementById('partner-section')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+        if (!gate.isSatisfied) {
+          const first = gate.blocking[0]
+          if (first) {
+            document
+              .getElementById(`screen-message-${first.id}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          return
+        }
+        setIsJoiningWaitlist(true)
+        setWaitlistError(null)
+        setGateError(null)
+        try {
+          const payload = buildRegisterPayload(tr.format, partnerState, gate.payload)
+          const result = await joinTournamentWaitlist(tr.id, payload)
+          if (!result.success) {
+            setWaitlistError(translateWaitlistError(result.error.message, t))
+            return
+          }
+          const entry = result.data
+          setWaitlistOverride(entry)
+          const amount = (entry.entry_fee ?? 0) + (entry.service_fee ?? 0)
+          // A paid tournament places a pre-auth hold via the same payment-method
+          // flow as registration; a free one is done the moment the entry lands
+          // — the WaitlistCard below now renders from `waitlistOverride`.
+          if (amount >= 0.01) {
+            const sp = new URLSearchParams({
+              type: 'tournament_waitlist_hold',
+              waitlist_entry_id: entry.id,
+              tournament_id: tr.id,
+              amount: String(amount),
+            })
+            navigate(`/payment-method?${sp.toString()}`)
+          }
+        } catch (e) {
+          const err = e as { code?: string; message?: string; details?: unknown } | null
+          if (gate.handleGateError(err)) {
+            setGateError(
+              t('screenMessages.registrationGateRequired', {
+                defaultValue: 'You must accept the tournament terms to continue',
+              }),
+            )
+            return
+          }
+          setWaitlistError(
+            err?.message
+              ? translateWaitlistError(err.message, t)
+              : t('tournament.registrationFailedTitle'),
+          )
+        } finally {
+          setIsJoiningWaitlist(false)
+        }
+      })
+      .catch(() => {
+        // USER_CANCELLED or SUPERSEDED — stay on the page as-is.
+      })
+  }
+
+  const handleLeaveWaitlist = async () => {
+    if (!tr) return
+    setIsLeavingWaitlist(true)
+    try {
+      const result = await leaveTournamentWaitlist(tr.id)
+      if (result.success) setWaitlistOverride(null)
+    } finally {
+      setIsLeavingWaitlist(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="pt-28 pb-24 container mx-auto px-4 bg-rally-bg min-h-screen">
@@ -241,6 +337,17 @@ export default function TournamentDetailPage() {
   const liveHref = tr.share_token ? liveResultsPath(tr.share_token) : null
   const skill = parseSkillLevel(tr.skill_level)
   const myReg = tr.my_registration
+  const isFull = tr.is_full === true
+  const waitlistEnabled = tr.waitlist_enabled ?? true
+  const waitlistCount = tr.waitlist_count ?? 0
+  const myWaitlistEntry = waitlistOverride !== undefined ? waitlistOverride : tr.my_waitlist_entry
+  const cta = ctaFor({
+    isOpen: open,
+    isFull,
+    waitlistEnabled,
+    myWaitlistEntry,
+    myRegistration: myReg,
+  })
   const payState =
     myReg?.status === 'payment_pending' ||
     myReg?.status === 'approved' ||
@@ -440,7 +547,18 @@ export default function TournamentDetailPage() {
           />
         )}
 
-        {!myReg && isPartneredFormat && open && sessionStatus !== 'loading' && (
+        {cta === 'waiting' && myWaitlistEntry && (
+          <WaitlistCard
+            position={myWaitlistEntry.position}
+            onLeave={handleLeaveWaitlist}
+            isLeaving={isLeavingWaitlist}
+          />
+        )}
+
+        {!myReg &&
+          isPartneredFormat &&
+          (cta === 'register' || cta === 'join_waitlist') &&
+          sessionStatus !== 'loading' && (
           <section id="partner-section">
             <h2 className="font-display text-xl md:text-2xl font-bold text-rally-text mb-2">
               {t('tournament.tournamentPartner')}
@@ -533,11 +651,18 @@ export default function TournamentDetailPage() {
         <div className="container mx-auto max-w-3xl px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
+              <p
+                className="text-[11px] uppercase tracking-wider text-rally-text-muted"
+                data-testid={cta === 'join_waitlist' ? 'tournament-full-line' : undefined}
+              >
                 {payState
                   ? t('tournament.registrationStatus_payment_pending', {
                       defaultValue: 'Payment pending',
                     })
+                  : cta === 'join_waitlist'
+                  ? t('tournament.tournamentFullWaitlistLine', { count: waitlistCount })
+                  : cta === 'none' && isFull
+                  ? t('tournament.tournamentFullLine')
                   : t('tournament.tournamentsEntryFee')}
               </p>
               <p className="text-2xl md:text-3xl font-black text-rally-accent">
@@ -579,7 +704,29 @@ export default function TournamentDetailPage() {
               >
                 {t('tournament.tournamentDetailAlreadyRegistered')}
               </button>
-            ) : !open ? (
+            ) : cta === 'waiting' ? (
+              // Non-interactive — the real action (Leave) lives on the
+              // WaitlistCard above, not the sticky footer.
+              <button
+                disabled
+                className="min-w-[160px] h-12 rounded-full bg-rally-info/20 text-rally-info font-bold cursor-default"
+              >
+                {t('tournament.registrationStatus_waitlisted')}
+              </button>
+            ) : cta === 'join_waitlist' ? (
+              <button
+                data-testid="tournament-join-waitlist-button"
+                onClick={handleJoinWaitlist}
+                disabled={isJoiningWaitlist}
+                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full border-2 border-rally-accent text-rally-accent font-bold enabled:hover:bg-rally-accent/10 transition-all disabled:opacity-60"
+              >
+                {isJoiningWaitlist
+                  ? t('tournament.tournamentDetailRegistering')
+                  : partnerRequired
+                  ? t('tournament.ctaMissingPartner')
+                  : t('tournament.tournamentJoinWaitlist')}
+              </button>
+            ) : cta === 'none' ? (
               <button
                 disabled
                 className="min-w-[160px] h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold opacity-40"
@@ -617,6 +764,9 @@ export default function TournamentDetailPage() {
           )}
           {registerError && (
             <p className="mt-2 text-sm text-rally-error text-center">{registerError}</p>
+          )}
+          {waitlistError && (
+            <p className="mt-2 text-sm text-rally-error text-center">{waitlistError}</p>
           )}
         </div>
       </div>

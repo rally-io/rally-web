@@ -3,7 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { pendingPayment } from '@/hooks/usePendingPayment'
 
-const ALLOWED_ENTITY_TYPES = new Set(['booking', 'tournament_registration', 'event_participation'])
+const ALLOWED_ENTITY_TYPES = new Set([
+  'booking',
+  'tournament_registration',
+  'event_participation',
+  'tournament_waitlist_hold',
+])
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 function isUuid(v: string | null | undefined): v is string {

@@ -69,6 +69,42 @@ describe('TournamentCard CTA', () => {
   })
 })
 
+describe('TournamentCard waiting list', () => {
+  it('a queued viewer sees View, not Register, even in the upcoming tab', () => {
+    renderCard({ is_full: true, waitlist_enabled: true, waitlist_position: 2 })
+    expect(screen.getByText(i18n.t('tournament.tournamentsViewDetails'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentsRegister'))).not.toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentCardJoinWaitlist'))).not.toBeInTheDocument()
+  })
+
+  it('a queued viewer sees their waiting-list position badge instead of a status pill', () => {
+    renderCard({ is_full: true, waitlist_enabled: true, waitlist_position: 2 })
+    expect(screen.getByTestId('tournament-card-waitlist-badge')).toHaveTextContent(
+      i18n.t('tournament.tournamentCardWaitlistBadge', { position: 2 }),
+    )
+  })
+
+  it('a full tournament with waiting list enabled offers "Waiting List" instead of Register, to a non-queued viewer', () => {
+    renderCard({ is_full: true, waitlist_enabled: true, waitlist_position: null })
+    expect(screen.getByText(i18n.t('tournament.tournamentCardJoinWaitlist'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentsRegister'))).not.toBeInTheDocument()
+  })
+
+  it('shows the Full chip for a full, non-queued viewer', () => {
+    renderCard({ is_full: true, waitlist_enabled: true, waitlist_position: null })
+    expect(screen.getByTestId('tournament-full-chip')).toBeInTheDocument()
+  })
+
+  it('a full tournament with an existing registration_status still shows View Details, not the waitlist CTA', () => {
+    renderCard({
+      is_full: true, waitlist_enabled: true, waitlist_position: null,
+      registration_status: 'registered', registration_id: 'r-1',
+    })
+    expect(screen.getByText(i18n.t('tournament.tournamentsViewDetails'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentCardJoinWaitlist'))).not.toBeInTheDocument()
+  })
+})
+
 function renderPast(t: Partial<Tournament> = {}) {
   return render(
     <MemoryRouter>

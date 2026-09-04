@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getBooking } from '@/services/api/bookings'
 import { getRegistration } from '@/services/api/tournaments'
 import { getEvent } from '@/services/api/events'
+import { getWaitlistHoldStatus } from '@/services/api/payments'
 import type { PaymentEntityType } from '@/types/api'
 
 const INTERVAL_MS = 3000
@@ -58,6 +59,15 @@ async function fetchOnce(args: UseEntityPollingArgs): Promise<FetchOutcome> {
       d.payment_status === 'completed' ||
       d.status === 'confirmed'
     return { ok: true, confirmed: done, entity: d }
+  }
+  if (args.type === 'tournament_waitlist_hold') {
+    // No registration exists yet — promotion is manager-triggered and may
+    // happen days later. The only thing to confirm here is that Grow's
+    // webhook landed and the hold is actually in place.
+    const r = await getWaitlistHoldStatus(args.entityId)
+    if (!r.success) return { ok: false, confirmed: false }
+    const d = r.data
+    return { ok: true, confirmed: d.hold_confirmed === true, entity: d }
   }
   if (!args.eventId) return { ok: false, confirmed: false }
   const r = await getEvent(args.eventId)

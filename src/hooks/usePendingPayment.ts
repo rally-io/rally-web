@@ -21,7 +21,8 @@ function isValidShape(v: unknown): v is PendingPayment {
     typeof o.type === 'string' &&
     (o.type === 'booking' ||
       o.type === 'tournament_registration' ||
-      o.type === 'event_participation') &&
+      o.type === 'event_participation' ||
+      o.type === 'tournament_waitlist_hold') &&
     typeof o.entityId === 'string' &&
     typeof o.amount === 'number'
   )

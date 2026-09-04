@@ -9,7 +9,10 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/tournamentHelpers'
 import { pendingPayment } from '@/hooks/usePendingPayment'
 import { useRegistration } from '@/hooks/useRegistration'
-import { initiateTournamentRegistrationPayment } from '@/services/api/payments'
+import {
+  initiateTournamentRegistrationPayment, initiateTournamentWaitlistHoldPayment,
+} from '@/services/api/payments'
+import type { PaymentEntityType } from '@/types/api'
 
 export default function PaymentMethodPage() {
   const { t } = useTranslation()
@@ -18,33 +21,44 @@ export default function PaymentMethodPage() {
   const [isInitiating, setIsInitiating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Defaults to 'tournament_registration' — every pre-waitlist link that
+  // reaches this page omits `type` entirely.
+  const paymentType = (params.get('type') as PaymentEntityType | null) ?? 'tournament_registration'
+  const isWaitlistHold = paymentType === 'tournament_waitlist_hold'
+
   const registrationId = params.get('registration_id') ?? ''
+  const waitlistEntryId = params.get('waitlist_entry_id') ?? ''
+  const entityId = isWaitlistHold ? waitlistEntryId : registrationId
   const tournamentId = params.get('tournament_id') ?? ''
   // The fresh-registration flow already passes `amount`; the "resume payment"
   // entry point (from an existing pending registration) only carries the two
   // ids, so fall back to fetching the registration detail for its amount.
+  // The waitlist-hold flow always passes `amount` (there is no registration
+  // row yet to fetch it from), so it never takes this fallback path.
   const hasAmountParam = params.has('amount')
   const { data: registration } = useRegistration(
-    hasAmountParam ? '' : tournamentId,
-    hasAmountParam ? '' : registrationId,
+    hasAmountParam || isWaitlistHold ? '' : tournamentId,
+    hasAmountParam || isWaitlistHold ? '' : registrationId,
   )
   const amount = hasAmountParam
     ? Number(params.get('amount'))
     : registration?.amount_to_pay ?? 0
 
   const handleAddCard = async () => {
-    if (!registrationId) return
+    if (!entityId) return
     setIsInitiating(true)
     setError(null)
     try {
-      const result = await initiateTournamentRegistrationPayment(registrationId)
+      const result = isWaitlistHold
+        ? await initiateTournamentWaitlistHoldPayment(entityId)
+        : await initiateTournamentRegistrationPayment(entityId)
       if (!result.success || !result.data.payment_url) {
         setError(t('payment.checkoutError'))
         return
       }
       pendingPayment.set({
-        type: 'tournament_registration',
-        entityId: registrationId,
+        type: paymentType,
+        entityId,
         tournamentId,
         amount,
       })
@@ -68,7 +82,9 @@ export default function PaymentMethodPage() {
         {amount > 0 && (
           <p className="text-3xl font-black text-rally-accent">{formatCurrency(amount)}</p>
         )}
-        <p className="text-rally-text-2 text-sm">{t('payment.paymentMethodHoldNotice')}</p>
+        <p className="text-rally-text-2 text-sm">
+          {t(isWaitlistHold ? 'payment.paymentMethodWaitlistHoldNotice' : 'payment.paymentMethodHoldNotice')}
+        </p>
 
         {error && <p className="text-sm text-rally-error">{error}</p>}
 
@@ -76,7 +92,7 @@ export default function PaymentMethodPage() {
           <Button
             variant="accent"
             className="w-full h-12 rounded-full font-bold"
-            disabled={isInitiating || !registrationId}
+            disabled={isInitiating || !entityId}
             onClick={() => void handleAddCard()}
           >
             {isInitiating ? '…' : t('payment.paymentMethodAddCardCta')}

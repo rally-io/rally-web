@@ -2,7 +2,7 @@
 import client from './client'
 import type {
   ApiResponse, Tournament, TournamentDetail, RegistrationDetail, TournamentParticipants,
-  RegisterPayload, TournamentRegistrationResult,
+  RegisterPayload, TournamentRegistrationResult, TournamentWaitlistEntry,
 } from '@/types/api'
 
 export interface TournamentListParams {
@@ -97,6 +97,21 @@ export async function registerTournament(
   payload: RegisterPayload,
 ): Promise<ApiResponse<TournamentRegistrationResult>> {
   return client.post(`/rally/v1/tournaments/${tournamentId}/register`, payload)
+}
+
+/** Queue for a full tournament. Body is the same shape as `register` — it is
+ * replayed verbatim through the registration pipeline at promotion. */
+export async function joinTournamentWaitlist(
+  tournamentId: string,
+  payload: RegisterPayload,
+): Promise<ApiResponse<TournamentWaitlistEntry>> {
+  return client.post(`/rally/v1/tournaments/${tournamentId}/waitlist`, payload)
+}
+
+export async function leaveTournamentWaitlist(
+  tournamentId: string,
+): Promise<ApiResponse<{ left: boolean }>> {
+  return client.delete(`/rally/v1/tournaments/${tournamentId}/waitlist/me`)
 }
 
 export async function getOrganizer(
