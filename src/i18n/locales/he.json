@@ -492,7 +492,12 @@
       "tournamentNotFound": "הטורניר לא נמצא",
       "registrationNotStarted": "ההרשמה לטורניר עדיין לא נפתחה",
       "registrationClosed": "ההרשמה לטורניר נסגרה",
-      "registrationNotOpen": "ההרשמה לטורניר אינה פתוחה כרגע"
+      "registrationNotOpen": "ההרשמה לטורניר אינה פתוחה כרגע",
+      "waitlistDisabled": "רשימת ההמתנה אינה זמינה כרגע",
+      "waitlistNotOpen": "ההרשמה לטורניר אינה פתוחה כרגע",
+      "tournamentNotFull": "יש עדיין מקומות פנויים — נסה/י להירשם במקום זאת",
+      "alreadyWaiting": "את/ה כבר ברשימת ההמתנה של הטורניר הזה",
+      "notOnWaitlist": "את/ה לא ברשימת ההמתנה של הטורניר הזה"
     },
     "errorTitle": "שגיאה",
     "paymentDeferredNotice": "התשלום יפתח בקרוב — אנא המשיכו באפליקציית Rally לתשלום.",
@@ -536,7 +541,21 @@
     "tournamentsFilterApplyMonths_many": "הצגת {{count}} חודשים",
     "tournamentsFilterApplyMonths_other": "הצגת {{count}} חודשים",
     "tournamentsFilterClearAll": "ניקוי כל הסינונים",
-    "tournamentsFilterNoResults": "אין טורנירים שמתאימים לסינון הזה."
+    "tournamentsFilterNoResults": "אין טורנירים שמתאימים לסינון הזה.",
+    "registrationStatus_waitlisted": "ברשימת המתנה",
+    "tournamentFullWaitlistChip": "מלא · רשימת המתנה",
+    "tournamentFullLine": "הטורניר מלא",
+    "tournamentFullWaitlistLine": "הטורניר מלא · {{count}} ברשימת המתנה",
+    "tournamentCardWaitlistBadge": "ממתין/ה · #{{position}}",
+    "tournamentCardJoinWaitlist": "רשימת המתנה",
+    "tournamentJoinWaitlist": "הצטרפות לרשימת המתנה",
+    "tournamentWaitlistCardEyebrow": "רשימת המתנה",
+    "tournamentWaitlistPosition": "את/ה במקום #{{position}} ברשימת ההמתנה",
+    "tournamentWaitlistOrderNote": "זהו מקומך בתור בלבד ולא הבטחה — מנהל הטורניר עשוי לקדם הרשמות שלא לפי הסדר אם מתפנה מקום.",
+    "tournamentLeaveWaitlist": "עזיבת רשימת ההמתנה",
+    "tournamentLeaveWaitlistConfirmTitle": "לעזוב את רשימת ההמתנה?",
+    "tournamentLeaveWaitlistConfirmBody": "תאבד/י את מקומך במקום #{{position}}.",
+    "tournamentLeaveWaitlistCancelCta": "ביטול"
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
@@ -971,7 +990,10 @@
     "stillProcessingSubtitle": "ההזמנה שלך בתהליך אישור. בדקו את \"הפעילות שלי\" לסטטוס העדכני ביותר.",
     "registrationSubmittedTitle": "נרשמת בהצלחה",
     "registrationSubmittedSubtitle": "מזל טוב! נרשמת בהצלחה. מנהל הטורניר יבדוק את ההרשמה ותקבל עדכון בקרוב.",
-    "registrationConfirmedTitle": "ההרשמה אושרה"
+    "registrationConfirmedTitle": "ההרשמה אושרה",
+    "paymentMethodWaitlistHoldNotice": "נבצע החזקה זמנית בכרטיס שלך ונחייב אותך רק אם יתפנה מקום ותועבר/י מרשימת ההמתנה.",
+    "waitlistHoldConfirmedTitle": "נרשמת לרשימת ההמתנה",
+    "waitlistHoldConfirmedSubtitle": "התשלום שלך בהחזקה זמנית — תחויב/י אוטומטית ותאושר/י אם יתפנה מקום."
   },
   "credits": {
     "available": "קרדיטים זמינים",

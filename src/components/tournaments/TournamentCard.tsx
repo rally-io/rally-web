@@ -57,6 +57,15 @@ export function TournamentCard({
   // already have a registration in hand, so the card is just informational.
   const needsPayment = tr.registration_status === 'payment_pending'
 
+  // Waiting list (mobile parity). `is_full`/`waitlist_position` are
+  // feature-detected — absent on API builds predating the field — so both
+  // default to their "nothing queued, not full" reading.
+  const isQueued = tr.waitlist_position != null
+  const isFull = tr.is_full === true
+  const waitlistEnabled = tr.waitlist_enabled ?? true
+  const offersWaitlist =
+    open && isFull && waitlistEnabled && !isQueued && !tr.registration_status
+
   // How full, and how big — a player sizing up a card needs the cap as much as
   // the count. Shown on finished tournaments too: "that was a 24-pair event"
   // is exactly as informative after the fact, just muted like the rest of the
@@ -71,8 +80,12 @@ export function TournamentCard({
 
   const ctaLabel = needsPayment
     ? t('tournament.tournamentsCompleteRegistration')
-    : tr.registration_status || tab === 'my'
+    // Already queued ⇒ nothing left to register for — send them to the
+    // detail page (WaitlistCard/leave option), not another Join prompt.
+    : tr.registration_status || isQueued || tab === 'my'
     ? t('tournament.tournamentsViewDetails')
+    : offersWaitlist
+    ? t('tournament.tournamentCardJoinWaitlist')
     : open
     ? t('tournament.tournamentsRegister')
     : t('tournament.tournamentsViewDetails')
@@ -104,6 +117,17 @@ export function TournamentCard({
               {t('clubs.endedBadge')}
             </span>
           </div>
+        ) : isQueued ? (
+          // The viewer's own queue position replaces the normal status pill —
+          // they have no registration, so registration_status is unset here.
+          <div className="absolute bottom-3 start-3">
+            <span
+              data-testid="tournament-card-waitlist-badge"
+              className="inline-flex items-center rounded-full bg-rally-info text-white px-3 py-1 text-[11px] font-bold uppercase tracking-wide"
+            >
+              {t('tournament.tournamentCardWaitlistBadge', { position: tr.waitlist_position })}
+            </span>
+          </div>
         ) : (
           tr.registration_status && (
             <div className="absolute bottom-3 start-3">
@@ -116,6 +140,13 @@ export function TournamentCard({
         {live ? (
           <div className="absolute top-3 end-3">
             <LiveBadge />
+          </div>
+        ) : isFull && !isQueued && open ? (
+          <div
+            data-testid="tournament-full-chip"
+            className="absolute top-3 end-3 inline-flex items-center rounded-full bg-black/70 backdrop-blur px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-rally-text-2 border border-rally-border"
+          >
+            {t('tournament.tournamentFullWaitlistChip')}
           </div>
         ) : (
           open && !isPast && isLastSpots(tr.available_seats) && (
@@ -211,6 +242,13 @@ export function TournamentCard({
           {isPast ? (
             <span className="inline-flex items-center justify-center min-w-[120px] h-10 px-4 rounded-full border border-rally-border text-rally-text-2 font-bold">
               {t('clubs.viewDetails')}
+            </span>
+          ) : offersWaitlist ? (
+            // Ghost styling on purpose — joining a queue is a lighter
+            // commitment than registering, so it must not look identical to
+            // the solid Register button (mobile parity).
+            <span className="inline-flex items-center justify-center min-w-[120px] h-10 px-4 rounded-full border border-rally-accent/60 text-rally-accent font-bold">
+              {ctaLabel}
             </span>
           ) : (
             <span

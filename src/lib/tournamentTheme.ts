@@ -13,6 +13,8 @@ export function statusColor(status: string | null | undefined): RallyStatusColor
       return 'success'
     case 'payment_pending':
       return 'accent'
+    case 'waitlisted':
+      return 'info'
     case 'withdrawn':
     case 'cancelled':
     case 'rejected':

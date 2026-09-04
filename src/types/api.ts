@@ -95,6 +95,20 @@ export interface Tournament {
   prizes?: Prize[]
   sponsors?: Sponsor[]
   my_registration?: any
+  /**
+   * Capacity, mirroring rally-mobile's `TournamentListDetail` (mobile parity).
+   * Feature-detected: absent on API builds predating the waitlist feature, so
+   * every reader must default `is_full`/`waitlist_enabled` — the latter fails
+   * OPEN to match `WaitlistService._assert_enabled` (absent means enabled).
+   */
+  is_full?: boolean
+  waitlist_enabled?: boolean
+  /**
+   * The viewer's own 1-indexed position in the waiting list, or null when
+   * they are not queued. List-level only — the aggregate `waitlist_count`
+   * below is detail-only.
+   */
+  waitlist_position?: number | null
 }
 
 export interface Organizer {
@@ -228,6 +242,23 @@ export interface TournamentDetail extends Tournament {
   prizes: Prize[]
   sponsors: Sponsor[]
   my_registration: MyRegistration | null
+  /** Null (not omitted) when the viewer is not queued — `ctaFor` branches on this. */
+  my_waitlist_entry: TournamentWaitlistEntry | null
+  waitlist_count: number
+}
+
+/**
+ * A queued entry on a tournament's waiting list. `entry_fee`/`service_fee`
+ * are populated only on the join response — there is no registration row yet
+ * to read them off, and the payment-method page needs an amount to display
+ * before initiating the hold.
+ */
+export interface TournamentWaitlistEntry {
+  id: string
+  position: number
+  joined_at: string | null
+  entry_fee: number
+  service_fee: number
 }
 
 export interface RegistrationDetail {
@@ -374,7 +405,12 @@ export type PaymentEntityType =
   | 'booking'
   | 'tournament_registration'
   | 'event_participation'
+  | 'tournament_waitlist_hold'
 
 export interface InitiatePaymentResponse {
   payment_url: string | null
+}
+
+export interface WaitlistHoldStatusResponse {
+  hold_confirmed: boolean
 }

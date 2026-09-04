@@ -486,7 +486,12 @@
       "tournamentNotFound": "This tournament could not be found",
       "registrationNotStarted": "Registration for this tournament hasn't opened yet",
       "registrationClosed": "Registration for this tournament has closed",
-      "registrationNotOpen": "Registration for this tournament isn't open right now"
+      "registrationNotOpen": "Registration for this tournament isn't open right now",
+      "waitlistDisabled": "The waiting list is currently unavailable",
+      "waitlistNotOpen": "Registration for this tournament isn't open right now",
+      "tournamentNotFull": "There are still spots available — try registering instead",
+      "alreadyWaiting": "You're already on the waiting list for this tournament",
+      "notOnWaitlist": "You're not on the waiting list for this tournament"
     },
     "errorTitle": "Error",
     "paymentDeferredNotice": "Payment will open soon — please continue in the Rally app to pay.",
@@ -523,7 +528,21 @@
     "tournamentsFilterApplyMonths_one": "Show 1 month",
     "tournamentsFilterApplyMonths_other": "Show {{count}} months",
     "tournamentsFilterClearAll": "Clear all filters",
-    "tournamentsFilterNoResults": "No tournaments match these filters."
+    "tournamentsFilterNoResults": "No tournaments match these filters.",
+    "registrationStatus_waitlisted": "On Waiting List",
+    "tournamentFullWaitlistChip": "Full · Waiting List",
+    "tournamentFullLine": "Tournament is full",
+    "tournamentFullWaitlistLine": "Tournament is full · {{count}} waiting",
+    "tournamentCardWaitlistBadge": "Waiting · #{{position}}",
+    "tournamentCardJoinWaitlist": "Waiting List",
+    "tournamentJoinWaitlist": "Join Waiting List",
+    "tournamentWaitlistCardEyebrow": "Waiting List",
+    "tournamentWaitlistPosition": "You're #{{position}} on the waiting list",
+    "tournamentWaitlistOrderNote": "This is your place in line, not a guarantee — the organizer may move entries out of order if a spot opens up.",
+    "tournamentLeaveWaitlist": "Leave Waiting List",
+    "tournamentLeaveWaitlistConfirmTitle": "Leave the waiting list?",
+    "tournamentLeaveWaitlistConfirmBody": "You'll lose your spot at position #{{position}}.",
+    "tournamentLeaveWaitlistCancelCta": "Cancel"
   },
   "profile": {
     "completeTitle": "Complete Your Profile",
@@ -958,7 +977,10 @@
     "stillProcessingSubtitle": "Your booking is being confirmed. Check \"My Activity\" for the latest status.",
     "registrationSubmittedTitle": "Registration Submitted",
     "registrationSubmittedSubtitle": "Congratulations! You have been registered. Our tournament manager will review the registration and you will receive updates soon.",
-    "registrationConfirmedTitle": "Registration Confirmed"
+    "registrationConfirmedTitle": "Registration Confirmed",
+    "paymentMethodWaitlistHoldNotice": "Your payment will be placed on hold on your card and only charged if a spot opens up and you're moved off the waiting list.",
+    "waitlistHoldConfirmedTitle": "You're on the Waiting List",
+    "waitlistHoldConfirmedSubtitle": "Your payment is on hold — you'll be charged automatically and confirmed if a spot opens up."
   },
   "credits": {
     "available": "Credits Available",

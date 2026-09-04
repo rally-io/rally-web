@@ -53,6 +53,10 @@ export default function PaymentConfirmingPage() {
 
   if (status === 'confirmed') {
     const isTournament = type === 'tournament_registration'
+    // Waiting-list hold: no registration exists yet — promotion is
+    // manager-triggered and may happen days later. The only thing confirmed
+    // here is that the payment hold itself landed (mobile parity).
+    const isWaitlistHold = type === 'tournament_waitlist_hold'
     // Pre-auth hold ⇒ money held, TM approval pending. When the error-fallback
     // path fires (2 consecutive fetch errors) `entity` is null — default a
     // tournament to the pending copy, matching mobile (gap spec §5).
@@ -63,7 +67,9 @@ export default function PaymentConfirmingPage() {
         entity.payment_status === 'payment_held' ||
         entity.status === 'registered')
 
-    const title = isTournamentPending
+    const title = isWaitlistHold
+      ? t('payment.waitlistHoldConfirmedTitle')
+      : isTournamentPending
       ? t('payment.registrationSubmittedTitle')
       : isTournament
       ? t('payment.registrationConfirmedTitle')
@@ -78,12 +84,17 @@ export default function PaymentConfirmingPage() {
           <h1 className="font-display text-3xl font-black text-rally-text">
             {title}
           </h1>
-          {isTournamentPending && (
+          {isWaitlistHold && (
+            <p className="text-rally-text-2 text-sm">
+              {t('payment.waitlistHoldConfirmedSubtitle')}
+            </p>
+          )}
+          {isTournamentPending && !isWaitlistHold && (
             <p className="text-rally-text-2 text-sm">
               {t('payment.registrationSubmittedSubtitle')}
             </p>
           )}
-          {asmachta && !isTournamentPending && (
+          {asmachta && !isTournamentPending && !isWaitlistHold && (
             <p className="text-rally-text-2 text-sm mt-2">
               {`#${asmachta}`}
             </p>
