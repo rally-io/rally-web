@@ -381,13 +381,15 @@ export interface PlayerCreatePayload {
   // appsflyer_id / device_id are mobile-only — omitted on web (AUTH_SPEC §10).
 }
 
-// Minimal subset of the MeResponse we use for the profile gate.
+// Minimal subset of the MeResponse we use for the profile gate. Keys are those rally-api's
+// PlayerService.get_mobile_me actually returns — the id key is `player_id`, NOT `id`, and the
+// payload carries no email at all (EditProfilePage falls back to the auth user's email).
 export interface PlayerMe {
-  id: string
+  player_id: string
   first_name: string | null
   last_name: string | null
   contact_number: string | null
-  email: string | null
+  email?: string | null
   skill_level: number | null
   skill_tier?: 'bronze' | 'silver' | 'gold' | null
   avatar_url?: string | null
