@@ -79,6 +79,7 @@ export function Navbar() {
     { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
     { to: '/contact', label: t('nav.contact'), icon: Mail },
     { to: '/coaches', label: t('nav.coaches'), icon: Dumbbell },
+    { to: '/ranking', label: t('nav.ranking'), icon: Medal },
   ]
 
   // Mirrors the mobile drawer (AppDrawerItems). Items without a web route are
@@ -141,7 +142,13 @@ export function Navbar() {
   }, [location.pathname, location.search])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-rally-bg/80 backdrop-blur-xl shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
+    // `will-change-[opacity]` pins the glass header to its own compositor
+    // layer so animated page content can't flicker above it mid-scroll
+    // (Chromium backdrop-filter re-sorting). Opacity specifically: a
+    // transform/filter promotion would become the containing block for the
+    // `fixed inset-0` click-away overlays below and shrink them to the
+    // header strip.
+    <header className="sticky top-0 z-50 will-change-[opacity] border-b border-white/10 bg-rally-bg/80 backdrop-blur-xl shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
       <div className="container mx-auto flex items-center justify-between px-4 py-4 md:py-5 rtl:max-md:flex-row-reverse">
         <Link to="/" className="flex-shrink-0">
           <Logo size="md" showText={true} />

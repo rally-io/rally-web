@@ -1,9 +1,28 @@
 {
   "rewrites": [
-    { "source": "/clubs/:id", "destination": "/api/club-og?id=:id" },
-    { "source": "/tournaments/:id", "destination": "/api/tournament-og?id=:id" },
-    { "source": "/join/:slug", "destination": "/api/join-og?slug=:slug" },
-    { "source": "/live/:token", "destination": "/api/live-og?token=:token" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/clubs/:id",
+      "destination": "/api/club-og?id=:id"
+    },
+    {
+      "source": "/tournaments/:id",
+      "destination": "/api/tournament-og?id=:id"
+    },
+    {
+      "source": "/join/:slug",
+      "destination": "/api/join-og?slug=:slug"
+    },
+    {
+      "source": "/live/:token",
+      "destination": "/api/live-og?token=:token"
+    },
+    {
+      "source": "/ranking/player/:id",
+      "destination": "/api/player-season-og?id=:id"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

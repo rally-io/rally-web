@@ -15,6 +15,9 @@ import CrmPage from './pages/CrmPage'
 import AppDownloadPage from './pages/AppDownloadPage'
 import CoachesPage from './pages/CoachesPage'
 import LevelPage from './pages/LevelPage'
+import RankingPage from './features/leagueRanking/pages/RankingPage'
+import PlayerSeasonPage from './features/leagueRanking/pages/PlayerSeasonPage'
+import HowScoringPage from './features/leagueRanking/pages/HowScoringPage'
 import PricingPage from './pages/PricingPage'
 import ContactPage from './pages/ContactPage'
 import PrivacyPage from './pages/PrivacyPage'
@@ -82,6 +85,11 @@ export default function App() {
           <Route path="/download" element={<AppDownloadPage />} />
           <Route path="/crm" element={<CrmPage />} />
           <Route path="/level" element={<LevelPage />} />
+          {/* Public league ranking. Inside Layout on purpose: unlike /live/:token this
+              is a marketing surface — it should carry the nav and be linkable. */}
+          <Route path="/ranking" element={<RankingPage />} />
+          <Route path="/ranking/player/:id" element={<PlayerSeasonPage />} />
+          <Route path="/ranking/how" element={<HowScoringPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/coaches" element={<CoachesPage />} />
