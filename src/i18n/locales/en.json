@@ -10,6 +10,7 @@
     "myActivity": "My Activity",
     "signin": "Sign in",
     "coaches": "Join as a Coach",
+    "network": "Player network",
     "ranking": "Ranking"
   },
   "common": {
@@ -1132,6 +1133,56 @@
       "court_booking": "I accept the booking terms",
       "event_join": "I accept the class terms",
       "generic": "I accept the terms"
+    }
+  },
+  "network": {
+    "pageTitle": "Player network · Rally",
+    "eyebrow": "Player network",
+    "panelTitle": "Who plays with whom?",
+    "searchPlaceholder": "Search a player by name…",
+    "searchNoResults": "No players match that name",
+    "findMe": "Find me",
+    "findMeNotOnBall": "You're not on the ball yet — you'll appear here after your first match.",
+    "loading": "Loading the player network…",
+    "error": "The player network could not load.",
+    "retry": "Try again",
+    "empty": "Nobody on the ball yet — the first matches will put players here.",
+    "partnersCount_one": "{{count}} partner",
+    "partnersCount_other": "{{count}} partners",
+    "playerCard": "Selected player",
+    "close": "Close",
+    "levelChip": "Level {{level}}",
+    "tier": { "bronze": "Bronze", "silver": "Silver", "gold": "Gold" },
+    "partners": "Partners",
+    "rivals": "Rivals",
+    "noPeers": "None yet",
+    "games_one": "{{count}} match",
+    "games_other": "{{count}} matches",
+    "tooltipMeta": "{{partners}} partners · {{rivals}} rivals · {{city}}",
+    "tooltipMetaNoCity": "{{partners}} partners · {{rivals}} rivals",
+    "chart": {
+      "title": "Level over time",
+      "range": "Time range",
+      "1M": "1M",
+      "3M": "3M",
+      "1Y": "1Y",
+      "ALL": "All",
+      "empty": "No rated matches in this period"
+    },
+    "follow": {
+      "follow": "Follow",
+      "following": "Following",
+      "error": "Could not update. Try again."
+    },
+    "tabs": {
+      "stats": "Stats",
+      "connections": "Connections"
+    },
+    "stats": {
+      "error": "Could not load the stats.",
+      "topPartners": "Top partners",
+      "topClubs": "Top clubs",
+      "openFullProfile": "Open full profile"
     }
   },
   "league": {

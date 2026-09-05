@@ -10,6 +10,7 @@
     "myActivity": "הפעילות שלי",
     "signin": "התחברות",
     "coaches": "הצטרפו כמאמנים",
+    "network": "רשת השחקנים",
     "ranking": "דירוג"
   },
   "common": {
@@ -1145,6 +1146,60 @@
       "court_booking": "אני מאשר/ת את תנאי ההזמנה",
       "event_join": "אני מאשר/ת את תנאי החוג",
       "generic": "אני מאשר/ת את התנאים"
+    }
+  },
+  "network": {
+    "pageTitle": "רשת השחקנים · Rally",
+    "eyebrow": "רשת השחקנים",
+    "panelTitle": "מי משחק עם מי?",
+    "searchPlaceholder": "חיפוש שחקן לפי שם…",
+    "searchNoResults": "לא נמצאו שחקנים בשם הזה",
+    "findMe": "מצאו אותי",
+    "findMeNotOnBall": "עדיין לא על הכדור — אחרי המשחק הראשון שלכם תופיעו כאן.",
+    "loading": "טוען את רשת השחקנים…",
+    "error": "לא הצלחנו לטעון את רשת השחקנים.",
+    "retry": "נסו שוב",
+    "empty": "עדיין אין שחקנים על הכדור — המשחקים הראשונים יביאו אותם לכאן.",
+    "partnersCount_one": "שותף אחד",
+    "partnersCount_two": "{{count}} שותפים",
+    "partnersCount_many": "{{count}} שותפים",
+    "partnersCount_other": "{{count}} שותפים",
+    "playerCard": "השחקן שנבחר",
+    "close": "סגירה",
+    "levelChip": "רמה {{level}}",
+    "tier": { "bronze": "ברונזה", "silver": "כסף", "gold": "זהב" },
+    "partners": "שותפים",
+    "rivals": "יריבים",
+    "noPeers": "עדיין אין",
+    "games_one": "משחק אחד",
+    "games_two": "{{count}} משחקים",
+    "games_many": "{{count}} משחקים",
+    "games_other": "{{count}} משחקים",
+    "tooltipMeta": "{{partners}} שותפים · {{rivals}} יריבים · {{city}}",
+    "tooltipMetaNoCity": "{{partners}} שותפים · {{rivals}} יריבים",
+    "chart": {
+      "title": "רמה לאורך זמן",
+      "range": "טווח זמן",
+      "1M": "חודש",
+      "3M": "3 חודשים",
+      "1Y": "שנה",
+      "ALL": "הכול",
+      "empty": "אין משחקים מדורגים בתקופה הזו"
+    },
+    "follow": {
+      "follow": "עקוב",
+      "following": "עוקב",
+      "error": "לא הצלחנו לעדכן. נסו שוב."
+    },
+    "tabs": {
+      "stats": "סטטיסטיקה",
+      "connections": "חיבורים"
+    },
+    "stats": {
+      "error": "לא הצלחנו לטעון את הסטטיסטיקה.",
+      "topPartners": "שותפים מובילים",
+      "topClubs": "מועדונים מובילים",
+      "openFullProfile": "לעמוד המלא"
     }
   },
   "league": {

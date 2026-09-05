@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PlayerCareerStats } from '@/components/players/PlayerCareerStats';
 import { playerFullName } from './playerName';
 import { PlayerShield } from './PlayerShield';
 import { RankCell } from './RankCell';
@@ -9,7 +10,7 @@ import { ResultMatchList } from './ResultMatchList';
 import { Reveal } from './Reveal';
 import { usePlayerSeason } from '../hooks/usePlayerSeason';
 import { dropDayLabel, lastCountingDayLabel, quarterParts } from '../utils/quarterDates';
-import type { LeagueQuarterBlock, LeagueResult, PublicPlayerSeason, PublicPlayerStats } from '../types';
+import type { LeagueQuarterBlock, LeagueResult, PublicPlayerSeason } from '../types';
 
 type PlayerSeasonContentProps = {
   playerId: string | undefined;
@@ -136,7 +137,9 @@ export function PlayerSeasonContent({
           and stacking a second entrance on top of it reads as jank. */}
       {variant === 'page' && player.stats ? (
         <Reveal>
-          <StatsSection stats={player.stats} />
+          <div className="mb-6">
+            <PlayerCareerStats stats={player.stats} />
+          </div>
         </Reveal>
       ) : null}
 
@@ -226,85 +229,6 @@ function StateCard({ testId, message }: { testId: string; message: string }): Re
     >
       {message}
     </p>
-  );
-}
-
-/**
- * Career aggregates, page variant only — the web read of the mobile Player
- * Statistics screen: KPI tiles over a win/loss bar. Only ever rendered when
- * the API sent the block; an older API simply has no stats section.
- */
-function StatsSection({ stats }: { stats: PublicPlayerStats }): ReactElement {
-  const { t } = useTranslation();
-  const winShare = stats.matches_played > 0 ? (stats.matches_won / stats.matches_played) * 100 : 0;
-
-  return (
-    <section data-testid="player-season-stats" className="mb-6">
-      <h2 className="font-display text-lg font-bold">{t('league.stats.title')}</h2>
-      <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <StatTile label={t('league.stats.matches')} value={String(stats.matches_played)} />
-        <StatTile
-          label={t('league.stats.winRate')}
-          value={`${stats.win_rate}%`}
-          accent
-        />
-        <StatTile
-          label={t('league.stats.streak')}
-          value={String(stats.current_streak)}
-          sub={t('league.stats.bestStreak', { best: stats.best_streak })}
-        />
-        <StatTile
-          label={t('league.stats.tournamentsWon')}
-          value={String(stats.tournaments_won)}
-          sub={t('league.stats.ofPlayed', { played: stats.tournaments_played })}
-        />
-      </dl>
-
-      {stats.matches_played > 0 ? (
-        <div className="mt-3 rounded-xl border border-rally-border bg-rally-surface p-3">
-          <div className="flex h-2 overflow-hidden rounded-full bg-rally-surface-2">
-            {/* Genuinely dynamic width — the one inline style this design allows. */}
-            <span className="bg-rally-accent" style={{ width: `${winShare}%` }} />
-            <span className="flex-1 bg-rally-error/50" />
-          </div>
-          <div className="mt-2 flex justify-between text-xs font-bold text-rally-text-2">
-            <span>{t('league.stats.wins', { wins: stats.matches_won })}</span>
-            <span>{t('league.stats.losses', { losses: stats.matches_lost })}</span>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  accent?: boolean;
-}): ReactElement {
-  return (
-    <div className="rounded-xl border border-rally-border bg-rally-surface p-3">
-      <dt className="text-[11px] font-bold uppercase tracking-widest text-rally-text-muted">
-        {label}
-      </dt>
-      <dd className="mt-1 flex items-baseline gap-1.5">
-        <span
-          className={cn(
-            'font-display text-2xl font-black leading-none tracking-tight tabular-nums',
-            accent && 'text-rally-accent',
-          )}
-        >
-          {value}
-        </span>
-        {sub ? <span className="text-[11px] text-rally-text-muted">{sub}</span> : null}
-      </dd>
-    </div>
   );
 }
 

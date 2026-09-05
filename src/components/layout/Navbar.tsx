@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   Mail,
   Dumbbell,
+  Network,
   type LucideIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -77,6 +78,7 @@ export function Navbar() {
     { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
     // { to: '/clubs', label: t('nav.clubs'), icon: MapPin },
     { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
+    { to: '/network', label: t('nav.network'), icon: Network },
     { to: '/contact', label: t('nav.contact'), icon: Mail },
     { to: '/coaches', label: t('nav.coaches'), icon: Dumbbell },
     { to: '/ranking', label: t('nav.ranking'), icon: Medal },
