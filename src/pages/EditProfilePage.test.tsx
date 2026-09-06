@@ -138,12 +138,13 @@ describe('EditProfilePage — profile_incomplete branch', () => {
   })
 })
 
+// The real GET /rally/v1/players/me payload: `player_id`, and no email — the address on
+// screen comes from the auth user (mocked above), which is what production does.
 const READY_PROFILE: PlayerMe = {
-  id: 'p1',
+  player_id: 'p1',
   first_name: 'Dana',
   last_name: 'Levi',
   contact_number: '501234567',
-  email: 'dana@example.com',
   skill_level: 4.2,
   skill_tier: 'silver',
   avatar_url: null,

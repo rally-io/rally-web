@@ -129,13 +129,151 @@ h6 {
   to { transform: translateX(50%); }
 }
 
+/* ---- league surfaces: watermark drift + scroll reveals ---- */
+@keyframes league-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+  50% { transform: translate3d(-28px, 18px, 0) rotate(-1deg); }
+}
+
+.league-watermark {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  /* A whisper of fill under the stroke: on pure #18181b a stroke alone
+     drops below visibility, and these words ARE the depth cue. */
+  color: rgba(204, 255, 0, 0.05);
+  -webkit-text-stroke: 2px rgba(204, 255, 0, 0.24);
+  user-select: none;
+  animation: league-float 18s ease-in-out infinite;
+}
+
+/* The scroll-rolling padel ball. Travel and spin both derive from the same
+   --py scroll variable the parallax layers ride, with the spin factor chosen
+   so the ball rolls without slipping (deg = px * 360 / circumference, times
+   the 0.45 travel factor). RTL flips the travel direction, so the spin sign
+   flips with it. */
+.league-ball {
+  transform: translate3d(calc(var(--py) * 0.45), calc(var(--py) * -0.05), 0);
+}
+[dir='rtl'] .league-ball {
+  transform: translate3d(calc(var(--py) * -0.45), calc(var(--py) * -0.05), 0);
+}
+.league-ball-spin {
+  transform: rotate(calc(var(--py) * 0.35deg));
+}
+[dir='rtl'] .league-ball-spin {
+  transform: rotate(calc(var(--py) * -0.35deg));
+}
+
+/* ---- circle empty state: the product's bouncing ball, ported from
+   rally-mobile src/components/home/BouncingBall.tsx (keep in step).
+   1240ms loop; frame times mirror the mobile segment durations
+   (110/510/510/110ms) and each keyframe carries ITS segment's easing —
+   the ball must be fastest just before impact, so only the apex is slow.
+   translateY values bake in the centre-scaling correction that pins the
+   ball's bottom to the floor through the squash. */
+@keyframes league-ball-bounce {
+  0% {
+    transform: translateY(23.74px) scale(1.2, 0.78);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+  8.9% {
+    transform: translateY(11.62px) scale(0.88, 1.14);
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  50% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+  }
+  91.1% {
+    transform: translateY(11.62px) scale(0.88, 1.14);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 1);
+  }
+  100% {
+    transform: translateY(23.74px) scale(1.2, 0.78);
+  }
+}
+@keyframes league-ball-shadow {
+  0% {
+    opacity: 0.55;
+    transform: scale(1.15);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+  8.9% {
+    opacity: 0.5;
+    transform: scale(1.05);
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  50% {
+    opacity: 0.14;
+    transform: scale(0.5);
+    animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+  }
+  91.1% {
+    opacity: 0.5;
+    transform: scale(1.05);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.8, 1);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1.15);
+  }
+}
+.league-bounce-ball {
+  animation: league-ball-bounce 1240ms infinite;
+}
+.league-bounce-shadow {
+  animation: league-ball-shadow 1240ms infinite;
+}
+
+.reveal-up {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .league-watermark {
+    animation: none;
+  }
+  .reveal-up {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
   .hero-rise {
     animation: none;
     opacity: 1;
   }
   .ticker-track {
     animation: none;
+  }
+  /* The drifting glow blobs are applied as inline styles across pages
+     (coaches, CRM, contact, league) — the attribute selector catches them
+     all without each page opting in. */
+  [style*="blob-drift"] {
+    animation: none !important;
+  }
+  .league-ball,
+  .league-ball-spin {
+    transform: none;
+  }
+  /* Rest at the UNDEFORMED pose: frame 0 is the contact squash, and freezing
+     there would leave a permanently flattened ball (the mobile port carries
+     the same warning). */
+  .league-bounce-ball {
+    animation: none;
+    transform: translateY(20px);
+  }
+  .league-bounce-shadow {
+    animation: none;
+    opacity: 0.45;
+    transform: none;
   }
 }
 

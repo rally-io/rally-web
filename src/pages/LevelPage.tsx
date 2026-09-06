@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 export default function LevelPage() {
   const { t } = useTranslation()
@@ -144,6 +145,18 @@ export default function LevelPage() {
           <p>{t('level_page.accuracy_p2')}</p>
           <p className="text-rally-accent font-medium">{t('level_page.accuracy_p3')}</p>
         </div>
+      </section>
+
+      {/* These tiers are the same bands the league ranking is scaled by, so the two
+          pages belong together. Cross-linked rather than duplicated: the tier content
+          is maintained here and here only. */}
+      <section className="container mx-auto px-4 max-w-4xl mt-12">
+        <Link
+          to="/ranking"
+          className="inline-flex items-center gap-2 text-rally-accent font-medium hover:underline"
+        >
+          {t('level_page.see_ranking')}
+        </Link>
       </section>
     </main>
   )
