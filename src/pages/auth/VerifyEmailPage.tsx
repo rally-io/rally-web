@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/hooks/useAuth'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { Button } from '@/components/ui/button'
+import { authPath, clearAuthReturnTo, getAuthReturnTo, safeReturnTo } from '@/lib/authReturn'
+import { authErrorKey } from '@/components/auth/authError'
 
 const COOLDOWN_SECONDS = 30
 
@@ -14,14 +16,16 @@ export default function VerifyEmailPage() {
   const { session, resendVerificationEmail } = useAuth()
 
   const email = params.get('email') || ''
+  const next = params.has('next') ? safeReturnTo(params.get('next')) : getAuthReturnTo()
+  const [pending, setPending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [info, setInfo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // If session arrives (user clicked the link in the same browser), auto-redirect.
   useEffect(() => {
-    if (session) navigate('/', { replace: true })
-  }, [session, navigate])
+    if (session) { clearAuthReturnTo(); navigate(next, { replace: true }) }
+  }, [session, navigate, next])
 
   useEffect(() => {
     if (cooldown <= 0) return
@@ -30,15 +34,16 @@ export default function VerifyEmailPage() {
   }, [cooldown])
 
   const handleResend = async () => {
+    if (pending || cooldown || !email) return
+    setPending(true)
     setInfo(null)
     setError(null)
     try {
-      await resendVerificationEmail(email)
+      await resendVerificationEmail(email, next)
       setInfo(t('auth.verify.resent') || 'Email resent. Check your inbox.')
       setCooldown(COOLDOWN_SECONDS)
-    } catch (e: any) {
-      setError(e?.message ?? 'Could not resend')
-    }
+    } catch (e: unknown) { setError(t(authErrorKey(e))) }
+    finally { setPending(false) }
   }
 
   return (
@@ -55,7 +60,7 @@ export default function VerifyEmailPage() {
 
         <Button
           onClick={handleResend}
-          disabled={cooldown > 0 || !email}
+          disabled={pending || cooldown > 0 || !email}
           variant="outline"
           className="w-full"
         >
@@ -65,10 +70,10 @@ export default function VerifyEmailPage() {
         </Button>
 
         {info && <p className="text-sm text-electric-green">{info}</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
 
         <button
-          onClick={() => navigate('/login')}
+          onClick={() => navigate(authPath('/login', next))}
           className="block text-center w-full text-sm text-slate-400 hover:text-electric-green"
         >
           {t('auth.verify.use_different_email') || 'Use a different email'}

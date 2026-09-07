@@ -19,6 +19,7 @@ vi.mock('@/hooks/usePlayerSearch', () => ({
   usePlayerSearch: vi.fn(() => ({ results: [], isLoading: false, isActive: false })),
 }))
 vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
+vi.mock('@/services/api/profile', () => ({ getOnboardingStatus: vi.fn(async () => ({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } })) }))
 vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ session: { id: 'user-1' } }) }))
 vi.mock('@/features/screenMessages/api/messages', () => ({
@@ -32,6 +33,7 @@ import { useTournament } from '@/hooks/useTournament'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAppSession } from '@/hooks/useAppSession'
 import { registerTournament } from '@/services/api/tournaments'
+import { getOnboardingStatus } from '@/services/api/profile'
 import { getScreenMessages } from '@/features/screenMessages/api/messages'
 
 const mockUseTournament = vi.mocked(useTournament)
@@ -100,6 +102,21 @@ beforeEach(() => {
 })
 
 describe('TournamentDetailPage registration gate — real ScreenMessageCard + real useRegistrationGate', () => {
+  it('honors consent withdrawn while the profile check is pending', async () => {
+    mockGetScreenMessages.mockResolvedValue({ success: true, data: [gatingMessage()], meta: null, error: null } as any)
+    let resolve!: (value: any) => void
+    vi.mocked(getOnboardingStatus).mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    renderPage()
+    const checkbox = await screen.findByRole('checkbox')
+    const button = screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') })
+    fireEvent.click(checkbox)
+    fireEvent.click(button)
+    await waitFor(() => expect(button).toBeDisabled())
+    fireEvent.click(checkbox)
+    resolve({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } })
+    await waitFor(() => expect(button).toBeEnabled())
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
   it('ticking the real checkbox flows through the real hook and lands in the real register payload', async () => {
     mockGetScreenMessages.mockResolvedValue({
       success: true,

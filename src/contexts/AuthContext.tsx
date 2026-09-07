@@ -1,11 +1,12 @@
 import { createContext, useEffect, useState, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
-import type { Session, User, AuthError } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { isAuthError } from '@/lib/auth'
-import { checkEmailExists as apiCheckEmailExists, resendVerificationEmail } from '@/services/api/auth'
+import { checkEmailExists as apiCheckEmailExists, resendVerificationEmail, updateAccountPassword } from '@/services/api/auth'
+import { authPath, getAuthReturnTo } from '@/lib/authReturn'
 
-export type OAuthProvider = 'google'
+export type OAuthProvider = 'google' | 'apple' | 'facebook'
 
 export interface AuthContextValue {
   session: Session | null
@@ -14,19 +15,15 @@ export interface AuthContextValue {
 
   checkEmailExists: (email: string) => Promise<boolean>
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string) => Promise<{ hasSession: boolean }>
-  signInWithOAuth: (provider: OAuthProvider) => Promise<void>
+  signUpWithEmail: (email: string, password: string, next?: string) => Promise<{ hasSession: boolean }>
+  signInWithOAuth: (provider: OAuthProvider, next?: string) => Promise<void>
   signOut: () => Promise<void>
-  requestPasswordReset: (email: string) => Promise<void>
-  updatePassword: (newPassword: string) => Promise<void>
-  resendVerificationEmail: (email: string) => Promise<void>
+  requestPasswordReset: (email: string, next?: string) => Promise<void>
+  updatePassword: (newPassword: string, expectedUserId?: string) => Promise<void>
+  resendVerificationEmail: (email: string, next?: string) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
-
-function isSupabaseAuthError(e: unknown): e is AuthError {
-  return !!e && typeof e === 'object' && 'name' in e && (e as AuthError).name === 'AuthApiError'
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -78,14 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error
     },
 
-    async signUpWithEmail(email, password) {
+    async signUpWithEmail(email, password, next = getAuthReturnTo()) {
       // Mobile-parity: empty name fields at signup. Name is collected on the
       // /profile/edit page after the user lands in the app.
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: window.location.origin + authPath('/auth/callback', next),
           data: { full_name: '', first_name: '', last_name: '', name: '' },
         },
       })
@@ -93,20 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { hasSession: !!data.session }
     },
 
-    async signInWithOAuth(provider) {
-      // Stash the page the user came from so AuthCallbackPage can restore it
-      // after the OAuth full-page redirect. Don't stash auth pages themselves.
-      try {
-        const here = window.location.pathname + window.location.search
-        if (!here.startsWith('/login') && !here.startsWith('/auth/')) {
-          sessionStorage.setItem('rally:auth-return', here)
-        }
-      } catch {
-        // sessionStorage may be unavailable (private mode) — non-fatal.
-      }
+    async signInWithOAuth(provider, next = getAuthReturnTo()) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: { redirectTo: window.location.origin + authPath('/auth/callback', next, { method: provider }) },
       })
       if (error) throw error
       // Browser will navigate away to the provider; control returns at /auth/callback.
@@ -121,18 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       flushSync(() => setSession(null))
     },
 
-    async requestPasswordReset(email) {
+    async requestPasswordReset(email, next = getAuthReturnTo()) {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/set-password?type=recovery`,
+        redirectTo: window.location.origin + authPath('/auth/callback', next, { type: 'recovery' }),
       })
       // Anti-enumeration: do not surface "user not found" — UI always shows generic success.
-      if (error && !isSupabaseAuthError(error)) throw error
+      if (error && error.code !== 'user_not_found') throw error
     },
 
-    async updatePassword(newPassword) {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
-    },
+    updatePassword: updateAccountPassword,
 
     resendVerificationEmail,
   }

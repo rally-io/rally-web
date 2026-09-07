@@ -12,18 +12,18 @@ interface AuthCardProps {
 }
 
 export function AuthCard({ title, subtitle, children, footer, onBack }: AuthCardProps) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const toggleLocale = () => i18n.changeLanguage(i18n.language === 'he' ? 'en' : 'he')
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 py-12">
+    <div dir={i18n.dir()} className="min-h-screen flex items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             {onBack && (
               <button
                 onClick={onBack}
-                aria-label="Back"
+                aria-label={t('common.back')}
                 className="inline-flex items-center justify-center w-11 h-11 rounded-full hover:bg-white/5 text-slate-300 hover:text-rally-accent transition-colors"
               >
                 <ArrowLeft className="w-5 h-5 rtl:rotate-180" />

@@ -78,6 +78,8 @@ function renderPage(initialPath = '/profile/edit') {
 }
 
 beforeEach(() => {
+  vi.spyOn(profileApi, 'getOnboardingStatus').mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } } as any)
+  vi.spyOn(profileApi, 'getMyPlayerProfile').mockResolvedValue({ success: true, data: { id: 'p1', contact_number: '501234567', skill_level: 3 } } as any)
   requireSignIn.mockReset()
   requireSignIn.mockResolvedValue(undefined)
   sessionState.status = 'signed_out'
@@ -358,7 +360,7 @@ describe('EditProfilePage — partial edits on ready profile with gaps', () => {
 })
 
 describe('EditProfilePage — profile_incomplete partial save', () => {
-  it('creates a profile from skill_level alone, defaulting to Player for names', async () => {
+  it('requires real names before creating a player profile', async () => {
     const user = userEvent.setup()
     sessionState.status = 'profile_incomplete'
     sessionState.playerProfile = null
@@ -372,19 +374,78 @@ describe('EditProfilePage — profile_incomplete partial save', () => {
     const slider = screen.getByLabelText(/skill level slider/i) as HTMLInputElement
     fireEvent.change(slider, { target: { value: '4.5' } })
     const save = screen.getByRole('button', { name: /save changes/i })
+    expect(save).toBeDisabled()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)
     await waitFor(() => {
       expect(createSpy).toHaveBeenCalledTimes(1)
     })
-    // Names default to 'Player' (not email prefix) so social-signup users
-    // don't get leaderboard entries like "12345 12345".
+    // A new public player profile uses the name the player actually supplied.
     expect(createSpy.mock.calls[0][0]).toMatchObject({
       email: 'dana@example.com',
       skill_level: 4.5,
-      first_name: 'Player',
-      last_name: 'Player',
+      first_name: 'Dana',
+      last_name: 'Levi',
     })
     createSpy.mockRestore()
+  })
+})
+
+describe('tournament profile completion', () => {
+  it('retries refresh without creating the account twice after a successful save', async () => {
+    sessionState.status = 'profile_incomplete'
+    const create = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({ success: true, data: { id: 'p1' } } as any)
+    vi.mocked(profileApi.getMyPlayerProfile).mockRejectedValueOnce(new Error('offline'))
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    await user.click(screen.getByRole('checkbox', { name: /current playing level/i }))
+    await user.click(screen.getByRole('button', { name: /continue to tournament/i }))
+    expect(await screen.findByText(/details are saved/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/first name/i)).toBeDisabled()
+    expect(screen.queryByTestId('tournament-probe')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /try again/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    expect(create).toHaveBeenCalledTimes(1)
+    create.mockRestore()
+  })
+  it('cannot return with only a name and missing registration details', async () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    expect(screen.getByRole('button', { name: /continue to tournament/i })).toBeDisabled()
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    expect(screen.getByRole('button', { name: /continue to tournament/i })).toBeDisabled()
+    await user.click(screen.getByRole('checkbox', { name: /current playing level/i }))
+    expect(screen.getByRole('button', { name: /continue to tournament/i })).toBeEnabled()
+  })
+
+  it('saves a confirmed default level for an existing player missing their level', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, skill_level: null }
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('checkbox', { name: /current playing level/i }))
+    await user.click(screen.getByRole('button', { name: /continue to tournament/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    expect(update).toHaveBeenCalledWith({ skill_level: 3 })
+    update.mockRestore()
+  })
+
+  it('lets a complete player continue without making a meaningless edit', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    await userEvent.click(screen.getByRole('button', { name: /continue to tournament/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
   })
 })
