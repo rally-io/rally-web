@@ -26,7 +26,7 @@ interface Props {
 function errorMessage(e: unknown, t: (key: string) => string): string {
   const err = e as { code?: string; message?: string } | null
   if (err?.code === 'MOBILE_ALREADY_EXISTS') {
-    return t('edit_profile.validation.mobileAlreadyExists')
+    return t('edit_profile.phoneAccountHelp')
   }
   return err?.message || t('edit_profile.saveError')
 }
@@ -43,6 +43,9 @@ export function PhoneOtpVerification({
   const [otp, setOtp] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [banner, setBanner] = useState<string | null>(null)
+  const numberKey = `${countryCode}:${phone.trim()}`
+  const currentNumber = useRef(numberKey)
+  currentNumber.current = numberKey
   const verifiedNumberRef = useRef<{ countryCode: string; phone: string } | null>(
     initiallyVerified ? { countryCode, phone } : null,
   )
@@ -54,7 +57,7 @@ export function PhoneOtpVerification({
       last && last.countryCode === countryCode && last.phone === phone,
     )
     if (verified && !matchesVerified) onVerifiedChange(false)
-    if (!matchesVerified && status === 'code-entry') {
+    if (!matchesVerified) {
       setStatus('idle')
       setOtp('')
       setBanner(null)
@@ -72,13 +75,20 @@ export function PhoneOtpVerification({
     setBanner(null)
     if (!phone.trim()) return
     setStatus('checking')
+    const requestedNumber = numberKey
     try {
-      await checkPhoneAvailable(countryCode, phone.trim())
+      const availability = await checkPhoneAvailable(countryCode, phone.trim())
+      if (currentNumber.current !== requestedNumber) return
+      if (!availability.success) throw availability.error
+      if (!availability.data.available) throw { code: 'MOBILE_ALREADY_EXISTS' }
       setStatus('sending')
-      await requestPhoneVerificationOtp(countryCode, phone.trim())
+      const sent = await requestPhoneVerificationOtp(countryCode, phone.trim())
+      if (currentNumber.current !== requestedNumber) return
+      if (!sent.success) throw sent.error
       setStatus('code-entry')
       setCooldown(RESEND_COOLDOWN_SECONDS)
     } catch (e) {
+      if (currentNumber.current !== requestedNumber) return
       setBanner(errorMessage(e, t))
       setStatus('idle')
     }
@@ -88,11 +98,15 @@ export function PhoneOtpVerification({
     setOtp('')
     setBanner(null)
     setStatus('sending')
+    const requestedNumber = numberKey
     try {
-      await requestPhoneVerificationOtp(countryCode, phone.trim())
+      const sent = await requestPhoneVerificationOtp(countryCode, phone.trim())
+      if (currentNumber.current !== requestedNumber) return
+      if (!sent.success) throw sent.error
       setCooldown(RESEND_COOLDOWN_SECONDS)
       setStatus('code-entry')
     } catch (e) {
+      if (currentNumber.current !== requestedNumber) return
       setBanner(errorMessage(e, t))
       setStatus('code-entry')
     }
@@ -105,13 +119,17 @@ export function PhoneOtpVerification({
       return
     }
     setStatus('verifying')
+    const requestedNumber = numberKey
     try {
-      await verifyPhoneVerificationOtp(countryCode, phone.trim(), otp)
+      const result = await verifyPhoneVerificationOtp(countryCode, phone.trim(), otp)
+      if (currentNumber.current !== requestedNumber) return
+      if (!result.success || !result.data.verified) throw new Error(t('edit_profile.validation.otpInvalid'))
       verifiedNumberRef.current = { countryCode, phone: phone.trim() }
       onVerifiedChange(true)
       setStatus('idle')
       setOtp('')
     } catch (e) {
+      if (currentNumber.current !== requestedNumber) return
       setBanner(errorMessage(e, t))
       setStatus('code-entry')
     }
@@ -132,6 +150,8 @@ export function PhoneOtpVerification({
     return (
       <div className="space-y-2">
         <Input
+          aria-label={t('edit_profile.otpPlaceholder')}
+          autoComplete="one-time-code"
           value={otp}
           onChange={(e) => {
             setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
@@ -156,7 +176,7 @@ export function PhoneOtpVerification({
           <button
             type="button"
             onClick={() => void handleResend()}
-            disabled={cooldown > 0}
+            disabled={cooldown > 0 || status !== 'code-entry'}
             className="text-sm font-semibold text-rally-accent disabled:text-rally-text-muted"
           >
             {cooldown > 0
@@ -174,7 +194,7 @@ export function PhoneOtpVerification({
       <button
         type="button"
         onClick={() => void handleSendCode()}
-        disabled={isBusy || !phone.trim()}
+        disabled={isBusy || !/^\d{6,15}$/.test(phone.trim()) || cooldown > 0}
         className="text-sm font-semibold text-rally-accent disabled:opacity-60"
       >
         {isBusy ? t('edit_profile.sending') : t('edit_profile.verifyPhoneNumber')}

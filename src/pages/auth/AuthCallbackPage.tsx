@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { AuthCard } from '@/components/auth/AuthCard'
 import { Button } from '@/components/ui/button'
+import { authPath, clearAuthReturnTo, getAuthCallbackParams, getAuthReturnTo, safeReturnTo } from '@/lib/authReturn'
+import { authErrorKey } from '@/components/auth/authError'
+import { trackFunnel } from '@/lib/analytics'
 
 export default function AuthCallbackPage() {
   const { t } = useTranslation()
@@ -11,25 +14,20 @@ export default function AuthCallbackPage() {
   const [params] = useSearchParams()
   const [error, setError] = useState<string | null>(null)
 
-  const urlError = params.get('error_description') ?? params.get('error')
+  const [callbackParams] = useState(getAuthCallbackParams)
+  const urlError = params.get('error_description') ?? params.get('error') ?? callbackParams.get('error_description') ?? callbackParams.get('error')
+  const next = params.has('next') ? safeReturnTo(params.get('next')) : getAuthReturnTo()
+  const recovery = (params.get('type') ?? callbackParams.get('type')) === 'recovery'
 
   useEffect(() => {
     if (urlError) {
-      setError(decodeURIComponent(urlError))
+      const key = authErrorKey({ message: urlError })
+      setError(t(key === 'auth.errors.generic' ? 'auth.callback.link_failed' : key))
       return
     }
-
-    // Capture the return path synchronously at effect setup. In dev StrictMode
-    // the effect runs twice; without caching, the first run consumes the stash
-    // and the second run defaults to '/' and clobbers the first navigate.
-    let returnTo = '/'
-    try {
-      const stashed = sessionStorage.getItem('rally:auth-return')
-      if (stashed && stashed.startsWith('/') && !stashed.startsWith('//')) {
-        returnTo = stashed
-      }
-    } catch {
-      // sessionStorage may be unavailable — fall back to home.
+    if (!callbackParams.has('access_token')) {
+      setError(t('auth.callback.no_session'))
+      return
     }
 
     let attempts = 0
@@ -37,19 +35,26 @@ export default function AuthCallbackPage() {
 
     async function pollForSession() {
       while (!cancelled && attempts < 10) {
-        const { data, error: getErr } = await supabase.auth.getSession()
+        let result
+        try { result = await supabase.auth.getSession() }
+        catch (error) { if (!cancelled) setError(t(authErrorKey(error))); return }
+        const { data, error: getErr } = result
         if (cancelled) return
         if (getErr) {
-          setError(getErr.message)
+          setError(t(authErrorKey(getErr)))
           return
         }
         if (data.session) {
-          try {
-            sessionStorage.removeItem('rally:auth-return')
-          } catch {
-            // non-fatal
+          if (callbackParams.has('access_token') && data.session.access_token !== callbackParams.get('access_token')) {
+            setError(t('auth.callback.link_failed'))
+            return
           }
-          navigate(returnTo, { replace: true })
+          if (!recovery) {
+            clearAuthReturnTo()
+            const method = params.get('method')
+            trackFunnel('auth_completed', { method: method === 'google' || method === 'apple' || method === 'facebook' ? method : 'email' })
+          }
+          navigate(recovery ? authPath('/set-password', next, { type: 'recovery' }) : next, { replace: true, state: recovery ? { recoveryUserId: data.session.user.id } : undefined })
           return
         }
         attempts += 1
@@ -62,14 +67,14 @@ export default function AuthCallbackPage() {
 
     pollForSession()
     return () => { cancelled = true }
-  }, [urlError, navigate, t])
+  }, [urlError, callbackParams, recovery, next, navigate, t, params])
 
   return (
     <AuthCard title={error ? (t('auth.callback.error_title') || 'Sign-in failed') : (t('auth.callback.title') || 'Finishing sign-in…')}>
       {error ? (
         <div className="space-y-4">
-          <p className="text-sm text-red-400">{error}</p>
-          <Button onClick={() => navigate('/login')} className="w-full">
+          <p role="alert" className="text-sm text-red-400">{error}</p>
+          <Button onClick={() => navigate(authPath('/login', next))} className="w-full">
             {t('auth.back_to_login') || 'Back to login'}
           </Button>
         </div>

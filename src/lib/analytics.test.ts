@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { normalizeEmail, normalizePhone, trackLead, trackDownload, META_PIXEL_ID } from './analytics'
+import { normalizeEmail, normalizePhone, trackLead, trackDownload, trackFunnel, META_PIXEL_ID } from './analytics'
 
 describe('normalisation for Meta advanced matching', () => {
   it('lower-cases and trims emails, drops non-addresses', () => {
@@ -80,4 +80,21 @@ describe('trackLead', () => {
     expect(() => trackDownload('app_store')).not.toThrow()
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
+})
+
+
+
+it('only forwards the allowed funnel properties', () => {
+  const gtag = vi.fn()
+  window.gtag = gtag
+  const fields = { method: 'email' as const, step: 'signin', email: 'private@example.com', password: 'secret' }
+  trackFunnel('auth_step', fields)
+  expect(gtag).toHaveBeenCalledWith('event', 'auth_step', { method: 'email', step: 'signin', tournament_id: undefined })
+  delete window.gtag
+})
+
+it('never blocks a player when analytics fails', () => {
+  window.gtag = () => { throw new Error('blocked') }
+  expect(() => trackFunnel('registration_created')).not.toThrow()
+  delete window.gtag
 })

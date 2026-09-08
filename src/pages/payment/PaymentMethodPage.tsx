@@ -13,6 +13,7 @@ import {
   initiateTournamentRegistrationPayment, initiateTournamentWaitlistHoldPayment,
 } from '@/services/api/payments'
 import type { PaymentEntityType } from '@/types/api'
+import { trackFunnel } from '@/lib/analytics'
 
 export default function PaymentMethodPage() {
   const { t } = useTranslation()
@@ -62,6 +63,7 @@ export default function PaymentMethodPage() {
         tournamentId,
         amount,
       })
+      trackFunnel('checkout_started', { tournament_id: tournamentId })
       window.location.href = result.data.payment_url
     } catch {
       setError(t('payment.checkoutError'))

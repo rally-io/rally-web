@@ -6,12 +6,16 @@ import { isValidNewPassword } from '@/lib/auth'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { authErrorKey } from './authError'
+import { trackFunnel } from '@/lib/analytics'
 
 interface AuthPasswordStepProps {
   mode: 'signin' | 'signup'
   email: string
   /** Informational only — used to surface the "wrong door" hint and switch link. */
-  userExists: boolean
+  userExists: boolean | null
+  next?: string
+  onVerifyEmail?: () => void
   onBack: () => void
   onSwitchMode: () => void
   onForgotPassword: () => void
@@ -24,7 +28,7 @@ interface AuthPasswordStepProps {
 }
 
 export function AuthPasswordStep({
-  mode, email, userExists,
+  mode, email, userExists, next, onVerifyEmail,
   onBack, onSwitchMode, onForgotPassword,
   onSignUpSucceededWithSession, onSignUpNeedsVerification,
   onSignInSucceeded,
@@ -39,7 +43,7 @@ export function AuthPasswordStep({
   const isSignUp = mode === 'signup'
   const wrongDoor =
     (mode === 'signup' && userExists) ||
-    (mode === 'signin' && !userExists)
+    (mode === 'signin' && userExists === false)
   const rules = passwordRules(password)
 
   const canSubmit = isSignUp
@@ -49,11 +53,11 @@ export function AuthPasswordStep({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!canSubmit) return
+    if (!canSubmit || pending) return
     setPending(true)
     try {
       if (isSignUp) {
-        const { hasSession } = await signUpWithEmail(email, password)
+        const { hasSession } = await signUpWithEmail(email, password, next)
         if (hasSession) {
           onSignUpSucceededWithSession()
         } else {
@@ -63,13 +67,9 @@ export function AuthPasswordStep({
       }
       await signInWithEmail(email, password)
       onSignInSucceeded()
-    } catch (e: any) {
-      const msg = String(e?.message ?? '').toLowerCase()
-      if (!isSignUp && /invalid.*login|invalid.*credentials/.test(msg)) {
-        setError(t('auth.errors.invalid_credentials') || 'Incorrect email or password')
-      } else {
-        setError(e?.message ?? 'Something went wrong. Please try again.')
-      }
+    } catch (e: unknown) {
+      setError(authErrorKey(e))
+      trackFunnel('auth_error', { method: 'email', step: mode })
     } finally {
       setPending(false)
     }
@@ -77,7 +77,8 @@ export function AuthPasswordStep({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <button type="button" onClick={onBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-electric-green">
+      <input type="text" name="username" autoComplete="username" value={email} readOnly tabIndex={-1} aria-hidden="true" className="sr-only" />
+      <button type="button" disabled={pending} onClick={onBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-electric-green">
         <ArrowLeft size={16} /> {t('common.back') || 'Back'}
       </button>
 
@@ -88,21 +89,12 @@ export function AuthPasswordStep({
               ? (t('auth.wrong_door_signup_to_signin', { email }) || `${email} already has a Rally account.`)
               : (t('auth.wrong_door_signin_to_signup', { email }) || `We couldn't find a Rally account for ${email}.`)}
           </p>
-          <button
-            type="button"
-            onClick={onSwitchMode}
-            className="font-semibold underline hover:text-amber-100"
-          >
-            {mode === 'signup'
-              ? (t('auth.switch_to_signin') || 'Sign in instead')
-              : (t('auth.switch_to_signup') || 'Create one instead')}
-          </button>
         </div>
       )}
 
       <div>
         <Label className="mb-1 block">{t('auth.email_label') || 'Email'}</Label>
-        <div className="text-sm text-slate-300">{email}</div>
+        <div dir="ltr" className="text-sm text-slate-300 break-all">{email}</div>
       </div>
 
       <div>
@@ -115,6 +107,8 @@ export function AuthPasswordStep({
             type={show ? 'text' : 'password'}
             autoComplete={isSignUp ? 'new-password' : 'current-password'}
             autoFocus
+            disabled={pending}
+            dir="ltr"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -122,7 +116,7 @@ export function AuthPasswordStep({
             type="button"
             onClick={() => setShow((s) => !s)}
             className="absolute end-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-electric-green"
-            aria-label={show ? 'Hide password' : 'Show password'}
+            aria-label={t(show ? 'auth.hide_password' : 'auth.show_password')}
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
@@ -137,7 +131,8 @@ export function AuthPasswordStep({
         </ul>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-400">{t(error)}</p>}
+      {error === 'auth.errors.unconfirmed' && onVerifyEmail && <button type="button" onClick={onVerifyEmail} className="text-sm underline">{t('auth.verify.resend')}</button>}
 
       <Button
         type="submit"
@@ -155,11 +150,15 @@ export function AuthPasswordStep({
         <button
           type="button"
           onClick={onForgotPassword}
+          disabled={pending}
           className="block text-center w-full text-sm text-slate-400 hover:text-electric-green"
         >
           {t('auth.forgot_password') || 'Forgot password?'}
         </button>
       )}
+      <button type="button" disabled={pending} onClick={() => { setPassword(''); setError(null); setShow(false); onSwitchMode() }} className="block w-full text-center text-sm text-slate-300 underline underline-offset-4">
+        {t(isSignUp ? 'auth.switch_to_signin' : 'auth.switch_to_signup')}
+      </button>
     </form>
   )
 }

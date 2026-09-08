@@ -1,89 +1,24 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useAuthGateInternals } from '@/contexts/AuthGateContext'
-import { AuthOptionsStep } from './AuthOptionsStep'
-import { AuthEmailStep } from './AuthEmailStep'
-import { AuthPasswordStep } from './AuthPasswordStep'
-
-type Step =
-  | { kind: 'options' }
-  | { kind: 'email' }
-  | { kind: 'password'; email: string; userExists: boolean; mode: 'signin' | 'signup' }
+import { AuthFlow } from './AuthFlow'
+import { LegalDisclaimer } from './LegalDisclaimer'
+import { safeReturnTo } from '@/lib/authReturn'
 
 export function AuthGateModal() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
+  const location = useLocation()
   const { open, cancel, confirmSignIn } = useAuthGateInternals()
-  const [step, setStep] = useState<Step>({ kind: 'options' })
-
-  useEffect(() => {
-    if (open) setStep({ kind: 'options' })
-  }, [open])
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) cancel()
-      }}
-    >
-      <DialogContent className="bg-slate-900 border-white/10 max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-slate-50">
-            {t('auth.gate.modal_title')}
-          </DialogTitle>
-          <DialogDescription className="text-sm text-slate-400">
-            {t('auth.gate.modal_subtitle')}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="mt-2">
-          {step.kind === 'options' && (
-            <AuthOptionsStep onContinueWithEmail={() => setStep({ kind: 'email' })} />
-          )}
-          {step.kind === 'email' && (
-            <AuthEmailStep
-              mode="signin"
-              onBack={() => setStep({ kind: 'options' })}
-              onContinue={(email, userExists) =>
-                setStep({ kind: 'password', email, userExists, mode: userExists ? 'signin' : 'signup' })
-              }
-              onForgotPassword={(email) => {
-                cancel()
-                navigate(`/auth/forgot-password?email=${encodeURIComponent(email)}`)
-              }}
-            />
-          )}
-          {step.kind === 'password' && (
-            <AuthPasswordStep
-              mode={step.mode}
-              email={step.email}
-              userExists={step.userExists}
-              onBack={() => setStep({ kind: 'email' })}
-              onSwitchMode={() =>
-                setStep({
-                  kind: 'password',
-                  email: step.email,
-                  userExists: step.userExists,
-                  mode: step.mode === 'signin' ? 'signup' : 'signin',
-                })
-              }
-              onForgotPassword={() => {
-                cancel()
-                navigate(`/auth/forgot-password?email=${encodeURIComponent(step.email)}`)
-              }}
-              onSignUpSucceededWithSession={() => confirmSignIn()}
-              onSignUpNeedsVerification={(email) => {
-                cancel()
-                navigate(`/auth/verify-email?email=${encodeURIComponent(email)}`)
-              }}
-              onSignInSucceeded={() => confirmSignIn()}
-            />
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
+  const tournament = /^\/tournaments\/[^/]+/.test(location.pathname)
+  return <Dialog open={open} onOpenChange={(next) => { if (!next) cancel() }}>
+    <DialogContent dir={i18n.dir()} className="bg-slate-900 border-white/10 w-[calc(100%_-_2rem)] max-w-md rounded-2xl max-h-[90dvh] overflow-y-auto [&_button]:min-h-11">
+      <DialogHeader>
+        <DialogTitle className="text-xl font-bold text-slate-50">{t(tournament ? 'auth.gate.tournament_title' : 'auth.gate.modal_title')}</DialogTitle>
+        <DialogDescription className="text-sm text-slate-400">{t(tournament ? 'auth.gate.tournament_subtitle' : 'auth.gate.modal_subtitle')}</DialogDescription>
+      </DialogHeader>
+      {open && <AuthFlow next={safeReturnTo(location.pathname + location.search + location.hash)} onSuccess={confirmSignIn} onLeave={cancel} />}
+      <LegalDisclaimer />
+    </DialogContent>
+  </Dialog>
 }

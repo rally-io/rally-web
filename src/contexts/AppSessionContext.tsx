@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, type ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
@@ -31,6 +31,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const location = useLocation()
   const isSignedIn = !!session
+  const userId = session?.user.id
+  const previousUser = useRef(userId)
+
+  useEffect(() => {
+    if (previousUser.current !== userId) {
+      void queryClient.resetQueries({ predicate: (query) => !['onboarding-status', 'player-profile-me'].includes(String(query.queryKey[0])) })
+      if (previousUser.current) {
+        try { sessionStorage.removeItem('rally:tournament-partner') } catch { /* Optional storage. */ }
+      }
+      previousUser.current = userId
+    }
+  }, [userId, queryClient])
 
   const {
     data: onboardingData,
@@ -38,7 +50,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     isLoading: onboardingLoading,
     refetch,
   } = useQuery({
-    queryKey: ['onboarding-status'],
+    queryKey: ['onboarding-status', userId],
     enabled: isSignedIn,
     queryFn: async () => {
       const result = await getOnboardingStatus()
@@ -52,8 +64,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const onboardingStatus: OnboardingStatus | null = onboardingData ?? null
   const hasPlayerProfile = onboardingStatus?.has_player_profile ?? false
 
-  const { data: playerProfileData } = useQuery({
-    queryKey: ['player-profile-me'],
+  const { data: playerProfileData, error: playerProfileError, isLoading: playerProfileLoading, refetch: refetchProfile } = useQuery({
+    queryKey: ['player-profile-me', userId],
     enabled: isSignedIn && hasPlayerProfile,
     queryFn: async () => {
       const result = await getMyPlayerProfile()
@@ -72,12 +84,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     if (onboardingLoading && !onboardingStatus) return 'loading'
     if (onboardingError) return 'profile_error'
     if (!onboardingStatus) return 'loading'
+    if (hasPlayerProfile && playerProfileError) return 'profile_error'
+    if (hasPlayerProfile && (playerProfileLoading || !playerProfile)) return 'loading'
     return onboardingStatus.has_player_profile ? 'ready' : 'profile_incomplete'
-  }, [authLoading, isSignedIn, onboardingLoading, onboardingError, onboardingStatus])
+  }, [authLoading, isSignedIn, onboardingLoading, onboardingError, onboardingStatus, hasPlayerProfile, playerProfileError, playerProfileLoading, playerProfile])
 
   const refetchOnboarding = useCallback(async () => {
     await refetch()
-  }, [refetch])
+    if (hasPlayerProfile) await refetchProfile()
+  }, [refetch, refetchProfile, hasPlayerProfile])
 
   const clearSession = useCallback(() => {
     queryClient.removeQueries({ queryKey: ['onboarding-status'] })
@@ -93,7 +108,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         // register for) so EditProfilePage can send them straight back once
         // their profile is complete, instead of stranding them on /profile/edit.
         const returnTo = `${location.pathname}${location.search}`
-        navigate(`/profile/edit?returnTo=${encodeURIComponent(returnTo)}`)
+        if (location.pathname === '/profile/edit') return
+        const purpose = location.pathname.startsWith('/tournaments/') ? '&purpose=tournament' : ''
+        navigate(`/profile/edit?returnTo=${encodeURIComponent(returnTo)}${purpose}`)
       },
       forceSignOut: async () => {
         await signOut()

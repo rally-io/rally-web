@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -8,37 +8,62 @@ import { AuthCard } from '@/components/auth/AuthCard'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { authPath, clearAuthReturnTo, getAuthCallbackParams, getAuthReturnTo, safeReturnTo } from '@/lib/authReturn'
+import { authErrorKey } from '@/components/auth/authError'
 
 export default function SetPasswordPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const { updatePassword } = useAuth()
+  const { updatePassword, user, isLoading } = useAuth()
+  const location = useLocation()
+  const next = params.has('next') ? safeReturnTo(params.get('next')) : getAuthReturnTo()
+  const [callbackParams] = useState(getAuthCallbackParams)
 
   const type = params.get('type') || 'recovery'   // 'recovery' | 'invite'
   const [hasSession, setHasSession] = useState<boolean | null>(null)
+  const [recoveredUserId, setRecoveredUserId] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (callbackParams.has('error') || callbackParams.has('error_description') ||
+        (!location.state?.recoveryUserId && !callbackParams.has('access_token'))) {
+      setHasSession(false); return
+    }
     let cancelled = false
     ;(async () => {
       // detectSessionInUrl picks up tokens from the fragment. Allow a tick.
       for (let i = 0; i < 10; i++) {
-        const { data } = await supabase.auth.getSession()
+        let result
+        try { result = await supabase.auth.getSession() }
+        catch { if (!cancelled) setHasSession(false); return }
+        const { data, error } = result
         if (cancelled) return
-        if (data.session) { setHasSession(true); return }
+        if (error) { setHasSession(false); return }
+        if (data.session && callbackParams.has('access_token') && data.session.access_token !== callbackParams.get('access_token')) { setHasSession(false); return }
+        if (data.session) {
+          if (location.state?.recoveryUserId && data.session.user.id !== location.state.recoveryUserId) { setHasSession(false); return }
+          setRecoveredUserId(data.session.user.id); setHasSession(true); return
+        }
         await new Promise((r) => setTimeout(r, 150))
       }
       if (!cancelled) setHasSession(false)
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [callbackParams, location.state])
+
+  useEffect(() => {
+    if (recoveredUserId && !isLoading && user?.id !== recoveredUserId) {
+      setHasSession(false); setPassword(''); setConfirm('')
+    }
+  }, [recoveredUserId, user?.id, isLoading])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (pending || !hasSession || !recoveredUserId) return
     setError(null)
     if (!isValidNewPassword(password)) {
       setError(t('auth.errors.weak_password') || 'Password must be 8+ chars with an uppercase letter and a digit.')
@@ -50,10 +75,12 @@ export default function SetPasswordPage() {
     }
     setPending(true)
     try {
-      await updatePassword(password)
-      navigate('/', { replace: true })
-    } catch (e: any) {
-      setError(e?.message ?? 'Could not update password')
+      await updatePassword(password, recoveredUserId)
+      clearAuthReturnTo()
+      navigate(next, { replace: true })
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === 'Recovery session changed') setHasSession(false)
+      else setError(t(authErrorKey(e)))
     } finally {
       setPending(false)
     }
@@ -74,7 +101,7 @@ export default function SetPasswordPage() {
       <AuthCard title={t('auth.set_password.expired_title') || 'Link expired or already used'}>
         <div className="space-y-4 text-sm text-slate-300">
           <p>{t('auth.set_password.expired_body') || 'Request a new link to continue.'}</p>
-          <Button onClick={() => navigate('/auth/forgot-password')} className="w-full">
+          <Button onClick={() => navigate(authPath('/auth/forgot-password', next))} className="w-full">
             {t('auth.set_password.request_new') || 'Request new link'}
           </Button>
         </div>

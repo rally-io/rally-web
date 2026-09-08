@@ -14,6 +14,27 @@
 
 import { getAttribution } from './attribution'
 
+type FunnelEvent = 'auth_started' | 'auth_step' | 'auth_completed' | 'auth_error'
+  | 'registration_started' | 'registration_profile_required' | 'profile_completed'
+  | 'registration_created' | 'registration_error' | 'checkout_started'
+
+/** Funnel properties are deliberately restricted: never send credentials or player details. */
+export function trackFunnel(event: FunnelEvent, fields: {
+  method?: 'email' | 'google' | 'apple' | 'facebook' | 'phone'
+  step?: string
+  tournament_id?: string
+} = {}) {
+  try {
+    window.gtag?.('event', event, {
+      method: fields.method,
+      step: fields.step,
+      tournament_id: fields.tournament_id,
+    })
+  } catch {
+    // Analytics must not interrupt registration.
+  }
+}
+
 declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void

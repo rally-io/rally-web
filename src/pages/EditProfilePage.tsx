@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -7,7 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuth } from '@/hooks/useAuth'
 import { useAuthGate } from '@/hooks/useAuthGate'
-import { updateProfile } from '@/services/api/profile'
+import { updateProfile, getOnboardingStatus, getMyPlayerProfile } from '@/services/api/profile'
 import { createPlayerProfile } from '@/services/api/auth'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,19 +21,25 @@ import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import { SKILL_DEFAULT } from '@/lib/skillLevel'
 import { editProfileSchema, type EditProfileFormValues } from '@/lib/editProfileSchema'
 import type { PlayerCreatePayload, PlayerMe, ProfileUpdateRequest } from '@/types/api'
+import { safeReturnTo } from '@/lib/authReturn'
+import { trackFunnel } from '@/lib/analytics'
 
 export default function EditProfilePage() {
   const { t } = useTranslation()
-  const { status, playerProfile } = useAppSession()
+  const { status, playerProfile, refetchOnboarding } = useAppSession()
   const { requireSignIn } = useAuthGate()
+  const { user } = useAuth()
+  const [params] = useSearchParams()
+  const tournamentMode = params.get('purpose') === 'tournament'
+  useEffect(() => { window.scrollTo?.(0, 0) }, [])
 
   return (
     <main className="pt-24 pb-8 bg-rally-bg min-h-screen">
       <section className="container mx-auto px-4 max-w-3xl">
         <h1 className="text-2xl font-bold mb-1 text-rally-text">
-          {t('edit_profile.title')}
+          {t(tournamentMode ? 'edit_profile.registrationTitle' : 'edit_profile.title')}
         </h1>
-        <p className="text-rally-text-2 text-sm mb-4">{t('edit_profile.subtitle')}</p>
+        <p className="text-rally-text-2 text-sm mb-4">{t(tournamentMode ? 'edit_profile.registrationSubtitle' : 'edit_profile.subtitle')}</p>
 
         {status === 'loading' && (
           <div className="space-y-4">
@@ -53,12 +59,15 @@ export default function EditProfilePage() {
         )}
 
         {status === 'profile_error' && (
-          <p className="text-rally-text-2">{t('edit_profile.loadError')}</p>
+          <div role="alert" className="space-y-3 text-rally-text-2">
+            <p>{t('edit_profile.loadError')}</p>
+            <Button onClick={() => void refetchOnboarding()}>{t('edit_profile.retry')}</Button>
+          </div>
         )}
 
-        {status === 'profile_incomplete' && <EditProfileForm profile={null} />}
+        {status === 'profile_incomplete' && <EditProfileForm key={user?.id} profile={null} />}
         {status === 'ready' && playerProfile && (
-          <EditProfileForm profile={playerProfile} />
+          <EditProfileForm key={user?.id} profile={playerProfile} />
         )}
       </section>
     </main>
@@ -103,9 +112,18 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   // Set by AppSessionContext's redirectToProfileEdit bridge (a 403/422 profile-
   // incomplete error) or by a page that sends the user here directly (e.g. the
   // tournament partner section) — send them straight back once profile is complete.
-  const returnTo = params.get('returnTo')
+  const returnTo = params.has('returnTo') ? safeReturnTo(params.get('returnTo')) : null
+  const tournamentMode = params.get('purpose') === 'tournament'
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
+  const saved = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
   const isCreate = profile === null
+  const needsSkill = tournamentMode && !profile?.skill_level
+  const [skillConfirmed, setSkillConfirmed] = useState(!needsSkill)
 
   const defaults = defaultsFromProfile(profile, user)
   // An existing saved number is trusted already — only a freshly typed number
@@ -122,25 +140,44 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
     const subscription = form.watch((_, { name, type }) => {
       // form.reset() fires with no name/type; only clear on real user edits.
       if (!name || type !== 'change') return
+      saved.current = false
       setStatus((s) => (s.kind === 'idle' ? s : { kind: 'idle' }))
     })
     return () => subscription.unsubscribe()
   }, [form])
 
+  const finishSave = async (applied?: ProfileUpdateRequest) => {
+    if (!mounted.current) return
+    saved.current = true
+    try {
+      const [onboarding, player] = await Promise.all([getOnboardingStatus(), getMyPlayerProfile()])
+      if (!mounted.current) return
+      if (!onboarding.success || !player.success) throw new Error('Profile refresh failed')
+      if (tournamentMode && (!onboarding.data.has_player_profile || onboarding.data.missing_steps.some((field) => field === 'contact_number' || field === 'skill_level'))) {
+        throw new Error('Required details still missing')
+      }
+      queryClient.setQueryData(['onboarding-status', user?.id], onboarding.data)
+      queryClient.setQueryData(['player-profile-me', user?.id], player.data)
+      setStatus({ kind: 'success' })
+      form.reset({ ...form.getValues(), ...applied } as EditProfileFormValues)
+      trackFunnel('profile_completed', { step: tournamentMode ? 'tournament' : 'profile' })
+      if (returnTo) navigate(returnTo)
+    } catch {
+      setStatus({ kind: 'error', message: t('edit_profile.savedRefreshFailed') })
+    }
+  }
+
   const mutation = useMutation({
     mutationFn: async (values: EditProfileFormValues) => {
+      if (saved.current) return values
       const phone = (values.contact_number || '').trim()
       if (isCreate) {
-        // No players row yet — only POST can create it. Backend requires names;
-        // fall back to 'Player' (not the email local-part) so social-signup
-        // users don't get leaderboard entries like "12345 12345" without consent.
         if (!user?.email) throw new Error(t('profile.errorCannotCreate'))
-        const fallback = 'Player'
         // Backend rejects "country_code without contact_number" — only attach
         // the dial code when an actual phone number is present.
         const payload: PlayerCreatePayload = {
-          first_name: (values.first_name || '').trim() || fallback,
-          last_name: (values.last_name || '').trim() || fallback,
+          first_name: (values.first_name || '').trim(),
+          last_name: (values.last_name || '').trim(),
           email: user.email,
           contact_number: phone,
           gender: 'choose_not_to_answer',
@@ -172,7 +209,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       }
       if (dirty.first_name) patch.first_name = values.first_name
       if (dirty.last_name) patch.last_name = values.last_name
-      if (dirty.skill_level) patch.skill_level = values.skill_level
+      if (dirty.skill_level || needsSkill) patch.skill_level = values.skill_level
       if (Object.keys(patch).length === 0) return
       const result = await updateProfile(patch)
       if (!result.success) {
@@ -180,36 +217,19 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       }
       return patch
     },
-    onSuccess: (applied) => {
-      setStatus({ kind: 'success' })
-      void queryClient.invalidateQueries({ queryKey: ['onboarding-status'] })
-      void queryClient.invalidateQueries({ queryKey: ['player-profile-me'] })
-      form.reset({ ...form.getValues(), ...applied } as EditProfileFormValues)
-      if (returnTo) navigate(returnTo)
-    },
+    onSuccess: finishSave,
     onError: (err: unknown) => {
-      const message = err instanceof Error ? err.message : t('edit_profile.saveError')
+      const apiError = err as { code?: string; message?: string } | null
+      const message = apiError?.code === 'MOBILE_ALREADY_EXISTS'
+        ? t('edit_profile.phoneAccountHelp')
+        : apiError?.message || t('edit_profile.saveError')
       setStatus({ kind: 'error', message })
     },
   })
 
   const onSubmit = (values: EditProfileFormValues) => {
     setStatus({ kind: 'idle' })
-    // Build the patch first so we know whether there's anything to save before
-    // enabling the button and before firing the mutation.
-    const phone = (values.contact_number || '').trim()
-    const dirty = form.formState.dirtyFields
-    const patch: ProfileUpdateRequest = {}
-    if (dirty.first_name) patch.first_name = values.first_name
-    if (dirty.last_name) patch.last_name = values.last_name
-    if (dirty.contact_number) patch.contact_number = phone
-    if (dirty.country_code && phone) patch.country_code = values.country_code
-    if (dirty.skill_level) patch.skill_level = values.skill_level
-    if (Object.keys(patch).length === 0) {
-      setStatus({ kind: 'idle' })
-      form.setError('first_name', { type: 'nothing_to_save', message: '' })
-      return
-    }
+    if (!canSubmit) return
     mutation.mutate(values)
   }
 
@@ -234,20 +254,28 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   // A freshly-entered phone number must be OTP-verified before it can be saved —
   // mirrors mobile's EditProfileScreen.validate() checking phoneVerified.
   const phoneDirtyUnverified =
-    !!form.formState.dirtyFields.contact_number &&
+    (isCreate || !!form.formState.dirtyFields.contact_number || !!form.formState.dirtyFields.country_code) &&
     !!values.contact_number?.trim() &&
     !phoneVerified
   const canSubmit =
-    form.formState.isDirty &&
+    (isCreate || tournamentMode || form.formState.isDirty) &&
+    (!isCreate || Boolean(values.first_name?.trim() && values.last_name?.trim())) &&
+    (!tournamentMode || Boolean(values.contact_number?.trim() && phoneVerified && skillConfirmed)) &&
     !hasDirtyError &&
     !globalInvalid &&
     !phoneDirtyUnverified &&
     !mutation.isPending
-  const showSave = isCreate || form.formState.isDirty
+  const showSave = isCreate || tournamentMode || form.formState.isDirty
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <fieldset disabled={mutation.isPending} className="contents">
+      {tournamentMode && (
+        <div className="rounded-2xl border border-rally-accent/30 bg-rally-accent/5 p-4 text-sm text-rally-text-2">
+          {t('edit_profile.registrationRequirements')}
+        </div>
+      )}
+      <fieldset disabled={saved.current && status.kind === 'error'} className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card className="p-4 bg-rally-surface border-white/10">
           <h2 className="text-base font-semibold mb-3 text-rally-text">
             {t('edit_profile.section_personal')}
@@ -258,7 +286,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
               <Label htmlFor="first_name" className="mb-1 block text-sm">
                 {t('edit_profile.firstName')}
               </Label>
-              <Input id="first_name" {...form.register('first_name')} />
+              <Input id="first_name" autoComplete="given-name" required={isCreate} {...form.register('first_name')} />
               {(firstNameClearedByUser || form.formState.errors.first_name) && (
                 <p className="text-sm text-red-400 mt-1">
                   {form.formState.errors.first_name
@@ -271,7 +299,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
               <Label htmlFor="last_name" className="mb-1 block text-sm">
                 {t('edit_profile.lastName')}
               </Label>
-              <Input id="last_name" {...form.register('last_name')} />
+              <Input id="last_name" autoComplete="family-name" required={isCreate} {...form.register('last_name')} />
               {(lastNameClearedByUser || form.formState.errors.last_name) && (
                 <p className="text-sm text-red-400 mt-1">
                   {form.formState.errors.last_name
@@ -296,6 +324,8 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
                 id="contact_number"
                 type="tel"
                 inputMode="numeric"
+                autoComplete="tel-national"
+                required={tournamentMode}
                 {...form.register('contact_number')}
                 placeholder="501234567"
               />
@@ -349,12 +379,18 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
             render={({ field }) => (
               <SkillLevelSlider
                 value={field.value ?? SKILL_DEFAULT}
-                onChange={field.onChange}
+                onChange={(value) => { field.onChange(value); setSkillConfirmed(true) }}
               />
             )}
           />
+          {needsSkill && (
+            <label className="mt-4 flex items-start gap-3 text-sm text-rally-text-2">
+              <input type="checkbox" checked={skillConfirmed} onChange={(e) => setSkillConfirmed(e.target.checked)} className="mt-1 accent-rally-accent" />
+              {t('edit_profile.confirmSkill')}
+            </label>
+          )}
         </Card>
-      </div>
+      </fieldset>
 
       {showSave && (
         <div className="flex gap-3 justify-end">
@@ -363,9 +399,12 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
             disabled={!canSubmit}
             className="bg-rally-accent text-rally-accent-text hover:bg-rally-accent-hover"
           >
-            {mutation.isPending ? t('edit_profile.saving') : t('edit_profile.save')}
+            {mutation.isPending ? t('edit_profile.saving') : saved.current && status.kind === 'error' ? t('edit_profile.retry') : t(tournamentMode ? 'edit_profile.continueTournament' : 'edit_profile.save')}
           </Button>
         </div>
+      )}
+      {isCreate && (!values.first_name?.trim() || !values.last_name?.trim()) && (
+        <p className="text-sm text-rally-text-2">{t('edit_profile.namesRequired')}</p>
       )}
 
       {status.kind === 'success' && (
@@ -378,6 +417,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
           {status.message}
         </p>
       )}
+      </fieldset>
     </form>
   )
 }

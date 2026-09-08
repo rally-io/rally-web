@@ -1,29 +1,36 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mail, UserPlus } from 'lucide-react'
+import { Mail, Apple, Facebook } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { SocialButton } from './SocialButton'
 import type { OAuthProvider } from '@/contexts/AuthContext'
+import { authErrorKey } from './authError'
+import { trackFunnel } from '@/lib/analytics'
 
 export type AuthMode = 'signin' | 'signup'
 
 interface AuthOptionsStepProps {
-  onContinueWithEmail: (mode: AuthMode) => void
+  onContinueWithEmail: () => void
+  onContinueWithPhone: () => void
+  next: string
 }
 
-export function AuthOptionsStep({ onContinueWithEmail }: AuthOptionsStepProps) {
+export function AuthOptionsStep({ onContinueWithEmail, onContinueWithPhone, next }: AuthOptionsStepProps) {
   const { t } = useTranslation()
   const { signInWithOAuth } = useAuth()
   const [pending, setPending] = useState<OAuthProvider | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleOAuth = async (provider: OAuthProvider) => {
+    if (pending) return
     setError(null)
     setPending(provider)
     try {
-      await signInWithOAuth(provider)
-    } catch (e: any) {
-      setError(e?.message ?? 'Sign-in failed')
+      trackFunnel('auth_started', { method: provider })
+      await signInWithOAuth(provider, next)
+    } catch (e: unknown) {
+      setError(t(authErrorKey(e)))
+      trackFunnel('auth_error', { method: provider, step: 'oauth' })
       setPending(null)
     }
   }
@@ -37,6 +44,8 @@ export function AuthOptionsStep({ onContinueWithEmail }: AuthOptionsStepProps) {
         onClick={() => handleOAuth('google')}
         disabled={pending !== null}
       />
+      <SocialButton provider="apple" label={t('auth.continue_apple')} icon={<Apple size={18} />} onClick={() => handleOAuth('apple')} disabled={pending !== null} />
+      <SocialButton provider="facebook" label={t('auth.continue_facebook')} icon={<Facebook size={18} />} onClick={() => handleOAuth('facebook')} disabled={pending !== null} />
 
       <div className="relative my-4">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
@@ -45,25 +54,24 @@ export function AuthOptionsStep({ onContinueWithEmail }: AuthOptionsStepProps) {
 
       <button
         type="button"
-        onClick={() => onContinueWithEmail('signup')}
+        onClick={onContinueWithEmail}
         disabled={pending !== null}
         className="w-full flex items-center justify-center gap-3 rounded-md bg-rally-accent px-4 py-2.5 text-sm font-semibold text-rally-accent-text hover:bg-rally-accent-hover transition-colors disabled:opacity-50"
       >
-        <UserPlus size={18} />
-        <span>{t('auth.signup_with_email') || 'Create account with email'}</span>
+        <Mail size={18} />
+        <span>{t('auth.continue_email')}</span>
       </button>
 
       <button
         type="button"
-        onClick={() => onContinueWithEmail('signin')}
+        onClick={onContinueWithPhone}
         disabled={pending !== null}
         className="w-full flex items-center justify-center gap-3 rounded-md border border-white/10 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-50 hover:bg-slate-700 transition-colors disabled:opacity-50"
       >
-        <Mail size={18} />
-        <span>{t('auth.signin_with_email') || 'Sign in with email'}</span>
+        <span>{t('auth.phone.recover')}</span>
       </button>
 
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-red-400">{error}</p>}
     </div>
   )
 }

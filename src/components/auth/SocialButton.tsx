@@ -11,6 +11,8 @@ interface SocialButtonProps {
 
 const STYLES: Record<OAuthProvider, string> = {
   google: 'bg-white text-slate-900 hover:bg-slate-100',
+  apple: 'bg-black text-white border border-white/20 hover:bg-slate-950',
+  facebook: 'bg-[#1877F2] text-white hover:bg-[#166fe5]',
 }
 
 export function SocialButton({ provider, label, icon, onClick, disabled }: SocialButtonProps) {
