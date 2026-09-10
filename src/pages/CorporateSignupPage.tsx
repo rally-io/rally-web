@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, Clock, MapPin, CheckCircle2, Lock } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { submitLead } from '@/services/api/leads'
 import LeadSubmitError from '@/components/forms/LeadSubmitError'
 import { getCorporateEvent } from '@/constants/corporateEvents'
-import {
-  APP_STORE_URL,
-  PLAY_STORE_URL,
-  APP_STORE_BADGE,
-  PLAY_STORE_BADGE,
-} from '@/lib/appLinks'
+import { EventHero } from '@/components/corporate/EventHero'
+import { Field } from '@/components/corporate/Field'
+import { inputClass } from '@/components/corporate/inputClass'
+import { RallyWordmark } from '@/components/corporate/RallyWordmark'
+import { AppDownloadFooter } from '@/components/corporate/AppDownloadFooter'
+import { normalizeIsraeliLocal } from '@/components/corporate/phone'
 
 /**
  * Unlisted landing page for a closed corporate tournament: /join/<slug>.
@@ -27,7 +27,13 @@ import {
  */
 export default function CorporateSignupPage() {
   const { slug } = useParams<{ slug: string }>()
-  const event = useMemo(() => getCorporateEvent(slug), [slug])
+  // This page is the LEAD flow only; the /join/:slug route dispatches tournament-mode
+  // events to CorporateRegistrationPage. A tournament-mode slug landing here (only
+  // possible by rendering this component directly) renders the not-found card.
+  const event = useMemo(() => {
+    const ev = getCorporateEvent(slug)
+    return ev?.mode === 'lead' ? ev : null
+  }, [slug])
   const { t } = useTranslation()
 
   // These links get forwarded around by employees; keep them out of search
@@ -71,7 +77,7 @@ export default function CorporateSignupPage() {
 
   return (
     <main className="min-h-screen bg-rally-bg">
-      <EventHero />
+      <EventHero event={event} />
       <section className="relative px-4 pt-6 pb-10">
         <div className="mx-auto w-full max-w-xl">
           <SignupForm />
@@ -80,159 +86,6 @@ export default function CorporateSignupPage() {
       <AppDownloadFooter />
     </main>
   )
-
-  function EventHero() {
-    if (!event) return null
-    const isContain = event.heroFit === 'contain'
-
-    /* Badge, company, title and host club. Identical in both hero shapes below,
-       so it is written once here rather than twice. */
-    const titleBlock = (
-      <>
-        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-rally-accent/40 bg-rally-accent/10 text-rally-accent text-xs font-bold backdrop-blur mb-4">
-          <Lock className="w-3.5 h-3.5" />
-          <span className="tracking-wide">{t('corporate.eyebrow')}</span>
-        </span>
-
-        <p className="font-display text-sm sm:text-base font-bold text-rally-accent mb-1">
-          {event.company}
-        </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-black tracking-tight leading-[1.1] text-rally-text whitespace-pre-line">
-          {event.tournamentName}
-        </h1>
-
-        <p className="text-sm sm:text-base text-rally-text-2 mt-2">
-          {t('corporate.hostedAt')} {event.clubName}
-        </p>
-
-      </>
-    )
-
-    const detailChips = (
-      <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <DetailChip
-          icon={<CalendarDays className="w-4 h-4" />}
-          label={t('corporate.detailsDate')}
-          value={event.dateLabel}
-        />
-        <DetailChip
-          icon={<Clock className="w-4 h-4" />}
-          label={t('corporate.detailsTime')}
-          value={event.timeLabel}
-          isolateLtr
-        />
-        <DetailChip
-          icon={<MapPin className="w-4 h-4" />}
-          label={t('corporate.detailsLocation')}
-          value={event.clubAddress}
-        />
-      </dl>
-    )
-
-    /* 'contain' means the asset's own edges matter — a client campaign banner
-       or a logo card, with type and logos running edge to edge. Laying the
-       title over that collides with real artwork (the Samsung banner put the
-       closed-event badge straight on top of the club's logo), so this mode
-       gets a clean strip with everything stacked underneath it instead.
-       'cover' keeps the overlay below: a photo of the courts wants the crop
-       and reads better with the title sitting on it. */
-    if (isContain) {
-      return (
-        <header className="relative">
-          {/* Full-bleed strip, never cropped. A blurred, over-scaled copy fills
-              the sides when the asset is narrower than the viewport, so an odd
-              aspect ratio still produces a full-width band rather than bars. */}
-          <div className="relative overflow-hidden">
-            <img
-              src={event.heroImage}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full object-cover scale-125 blur-2xl"
-            />
-            <img
-              src={event.heroImage}
-              alt={event.clubName}
-              className="relative mx-auto block w-full max-h-[220px] sm:max-h-[300px] object-contain"
-            />
-            {/* Pinned to the page's own top corner. `start` is the logical edge:
-                the visual right in Hebrew, and still the reading-start corner if
-                anyone flips to EN. */}
-            <RallyWordmark className="absolute top-4 start-4 sm:top-6 sm:start-6 z-10" />
-          </div>
-
-          <div className="container mx-auto px-4 max-w-xl pt-6 sm:pt-8">
-            {titleBlock}
-          </div>
-
-          <div className="container mx-auto px-4 max-w-xl mt-6">{detailChips}</div>
-        </header>
-      )
-    }
-
-    return (
-      <header className="relative">
-        {/* Taller on mobile than on desktop: the heading wraps to three lines
-            in a narrow column, and it has to clear the artwork above it. */}
-        <div className="relative h-[430px] sm:h-[380px] overflow-hidden">
-          {/* Blurred, over-scaled copy of the same image fills the band edge
-              to edge. It means a logo card, a square asset or an odd aspect
-              ratio all still produce a full-bleed header — and it supplies the
-              surrounding colour without anyone hardcoding a brand hex. */}
-          <img
-            src={event.heroImage}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover scale-125 blur-2xl"
-          />
-          {/* In 'contain' the crisp copy is pinned to the upper band so the
-              title below lands on flat blurred colour instead of across the
-              artwork. 'cover' fills as normal — a real photo wants the crop. */}
-          <img
-            src={event.heroImage}
-            alt={event.clubName}
-            /* w-full is load-bearing: without it an absolutely-positioned
-               <img> resolves to its intrinsic width, and RTL then drops the
-               `left` edge rather than `right`, pinning it to the corner. */
-            className={cn(
-              'absolute inset-x-0 top-0 w-full',
-              isContain ? 'h-[36%] sm:h-[50%] object-contain' : 'h-full object-cover',
-            )}
-          />
-          {/* Two stacked scrims: one to sink the image so white type stays
-              legible on any photo the club sends, one to fade the bottom edge
-              into the page so the form card sits on the seam. A logo card is
-              already flat and dark, so it gets much less of the first — full
-              strength turns the brand colour to mud. */}
-          <div
-            aria-hidden
-            className={cn('absolute inset-0', isContain ? 'bg-rally-bg/20' : 'bg-rally-bg/55')}
-          />
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-gradient-to-b from-rally-bg/70 via-transparent to-rally-bg"
-          />
-
-          {/* Pinned to the hero itself rather than the max-w-xl content column,
-              so it sits in the page's own corner instead of floating mid-width
-              on a wide screen. `start` is the logical edge: the visual right in
-              Hebrew, and still the reading-start corner if anyone flips to EN. */}
-          <RallyWordmark className="absolute top-4 start-4 sm:top-6 sm:start-6 z-10" />
-
-          <div className="relative h-full container mx-auto px-4 max-w-xl flex flex-col">
-            <div className="mt-auto pb-8 sm:pb-24">{titleBlock}</div>
-          </div>
-        </div>
-
-        {/* On desktop the chips are one row, lifted to straddle the seam
-            between photo and page (the hero reserves matching bottom padding).
-            On mobile they stack into a tall column, so the same lift would
-            drive them straight through the heading — they just sit below. */}
-        <div className="container mx-auto px-4 max-w-xl mt-4 sm:-mt-12 relative">
-          {detailChips}
-        </div>
-      </header>
-    )
-  }
 
   function SignupForm() {
     const [fullName, setFullName] = useState('')
@@ -389,7 +242,7 @@ export default function CorporateSignupPage() {
                 errors.phone ? 'border-rally-error' : 'border-rally-border',
               )}
             >
-              <span className="flex items-center px-3 font-display font-bold text-rally-text-2 bg-white/[0.04] border-e border-rally-border select-none">
+              <span className="flex items-center px-3 font-display font-bold text-rally-text-2 bg-rally-surface border-e border-rally-border select-none">
                 +972
               </span>
               <input
@@ -446,139 +299,4 @@ export default function CorporateSignupPage() {
       </form>
     )
   }
-}
-
-/**
- * Store links at the foot of the page.
- *
- * Deliberately framed as "keep playing after the tournament", not "track your
- * tournament here" — signups create no Rally account, so there is nothing for
- * an employee to log into and no bracket for them to follow. Promising that
- * would be a promise the product can't keep.
- */
-function AppDownloadFooter() {
-  const { t } = useTranslation()
-  return (
-    <footer className="border-t border-rally-border px-4 py-10">
-      <div className="mx-auto w-full max-w-xl text-center">
-        <p className="inline-flex items-center gap-2 text-sm text-rally-text-2 mb-7">
-          <img src="/rally-logo.jpg" alt="" aria-hidden className="h-5 w-auto rounded" />
-          {t('corporate.managedBy')}
-        </p>
-
-        <p className="font-display font-bold text-rally-text">{t('corporate.appTitle')}</p>
-        <p className="text-sm text-rally-text-2 mt-2 leading-relaxed">
-          {t('corporate.appBody')}
-        </p>
-        <div className="flex items-center justify-center gap-3 mt-5">
-          <a
-            href={APP_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:opacity-80 transition-opacity"
-          >
-            <img src={APP_STORE_BADGE} alt="App Store" className="h-10" />
-          </a>
-          <a
-            href={PLAY_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:opacity-80 transition-opacity"
-          >
-            <img src={PLAY_STORE_BADGE} alt="Google Play" className="h-10" />
-          </a>
-        </div>
-      </div>
-    </footer>
-  )
-}
-
-/** Israeli local number: digits only, drop the trunk 0, cap at 9. */
-function normalizeIsraeliLocal(raw: string): string {
-  return raw.replace(/\D/g, '').replace(/^0+/, '').slice(0, 9)
-}
-
-function inputClass(hasError: boolean): string {
-  return cn(
-    'w-full rounded-md bg-rally-surface-2 border text-rally-text px-3 py-3',
-    'placeholder:text-rally-text-muted focus:outline-none focus:ring-4 focus:ring-rally-accent-dim transition-colors',
-    hasError ? 'border-rally-error' : 'border-rally-border focus:border-rally-accent',
-  )
-}
-
-function Field({
-  label,
-  hint,
-  error,
-  htmlFor,
-  children,
-}: {
-  label: string
-  hint?: string
-  error?: string
-  htmlFor: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label
-        htmlFor={htmlFor}
-        className="block font-display font-bold text-sm text-rally-text mb-2"
-      >
-        {label}
-      </label>
-      {children}
-      {error ? (
-        <p className="text-xs text-rally-error mt-1.5">{error}</p>
-      ) : hint ? (
-        <p className="text-xs text-rally-text-muted mt-1.5 leading-relaxed">{hint}</p>
-      ) : null}
-    </div>
-  )
-}
-
-function DetailChip({
-  icon,
-  label,
-  value,
-  isolateLtr,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  /**
-   * Render the value as an LTR island. Needed for a time range: the page is
-   * RTL, so bidi reorders the two clock runs in "19:30–03:00" and paints it
-   * as "03:00–19:30". For a range inside one day that reads as an obvious
-   * mistake and the eye corrects it, but a range crossing midnight reverses
-   * into a perfectly plausible one — a guest reads 03:00–19:30 and turns up
-   * sixteen hours early.
-   *
-   * <bdi> rather than dir on the <dd>: it isolates the run without changing
-   * the block's alignment, so the chip still reads right-aligned like its
-   * neighbours.
-   */
-  isolateLtr?: boolean
-}) {
-  return (
-    <div className="rounded-xl bg-rally-surface border border-rally-border px-4 py-3">
-      <dt className="flex items-center gap-1.5 text-xs text-rally-text-muted font-bold mb-1">
-        {icon}
-        {label}
-      </dt>
-      <dd className="text-sm font-display font-bold text-rally-text leading-snug">
-        {isolateLtr ? <bdi dir="ltr">{value}</bdi> : value}
-      </dd>
-    </div>
-  )
-}
-
-function RallyWordmark({ className }: { className?: string }) {
-  return (
-    <img
-      src="/rally-logo.jpg"
-      alt="Rally"
-      className={cn('h-12 sm:h-14 w-auto rounded-lg shadow-md', className)}
-    />
-  )
 }

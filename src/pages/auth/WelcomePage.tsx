@@ -27,14 +27,14 @@ export default function WelcomePage() {
     >
       <div className="space-y-6">
         <div className="flex justify-center">
-          <div className="rounded-full bg-electric-green/15 p-3">
-            <CheckCircle2 className="text-electric-green" size={40} />
+          <div className="rounded-full bg-rally-accent-dim p-3">
+            <CheckCircle2 className="text-rally-accent" size={40} />
           </div>
         </div>
 
         <Button
           onClick={() => navigate('/', { replace: true })}
-          className="w-full bg-electric-green text-slate-950 hover:bg-electric-green/90"
+          className="w-full bg-rally-accent text-rally-accent-text hover:bg-rally-accent-hover"
         >
           {t('auth.welcome.cta') || 'Continue to Rally'}
         </Button>

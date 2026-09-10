@@ -12,6 +12,8 @@ export interface PendingPayment {
   eventId?: string
   useCredits?: boolean
   requiresApproval?: boolean
+  /** Same-origin path the confirming page offers to return to (e.g. /join/acme). */
+  returnTo?: string
 }
 
 function isValidShape(v: unknown): v is PendingPayment {

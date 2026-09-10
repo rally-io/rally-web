@@ -24,6 +24,12 @@ export function translateRegistrationError(message: string, t: TFunction): strin
   if (message === 'Tournament registration has closed') {
     return t('tournament.registrationErrors.registrationClosed')
   }
+  if (message === 'That is your own phone number. Choose a different partner.') {
+    return t('tournament.registrationErrors.ownPhone')
+  }
+  if (message === 'Missing invite details (first name, phone, or country code)') {
+    return t('tournament.registrationErrors.missingInviteDetails')
+  }
   // e.g. "A partner is required for doubles tournaments"
   if (/^A partner is required for \w+ tournaments$/.test(message)) {
     return t('tournament.registrationErrors.partnerRequired')

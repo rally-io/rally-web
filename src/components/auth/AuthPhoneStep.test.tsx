@@ -1,0 +1,50 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import '@/i18n'
+import { AuthPhoneStep } from './AuthPhoneStep'
+const mocks = vi.hoisted(() => ({ request: vi.fn(), verify: vi.fn() }))
+vi.mock('@/services/api/auth', () => ({ requestPhoneOtp: mocks.request, verifyPhoneOtp: mocks.verify }))
+beforeEach(() => vi.resetAllMocks())
+describe('existing-player phone recovery form', () => {
+  it('allows correcting a number without bypassing the resend cooldown', async () => {
+    mocks.request.mockResolvedValue(undefined)
+    render(<AuthPhoneStep onBack={vi.fn()} onSuccess={vi.fn()} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('Phone number'), '0501234567')
+    await user.click(screen.getByRole('button', { name: 'Send code' }))
+    await user.click(await screen.findByRole('button', { name: 'Change phone number' }))
+    expect(screen.getByLabelText('Phone number')).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Resend in/ })).toBeDisabled()
+    expect(screen.queryByLabelText('6-digit verification code')).not.toBeInTheDocument()
+    expect(mocks.request).toHaveBeenCalledOnce()
+  })
+  it('labels the code, prevents immediate resend, and only completes after verification succeeds', async () => {
+    const complete = vi.fn()
+    mocks.request.mockResolvedValue(undefined)
+    mocks.verify.mockRejectedValueOnce('Invalid or expired code').mockResolvedValue(undefined)
+    render(<AuthPhoneStep onBack={vi.fn()} onSuccess={complete} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('Phone number'), '0501234567')
+    await user.click(screen.getByRole('button', { name: 'Send code' }))
+    const code = await screen.findByLabelText('6-digit verification code')
+    expect(code).toHaveAttribute('autocomplete', 'one-time-code')
+    expect(screen.getByRole('button', { name: /Resend in/ })).toBeDisabled()
+    await user.type(code, '123456')
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('invalid or expired')
+    expect(complete).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Verify and sign in' }))
+    expect(complete).toHaveBeenCalledOnce()
+    expect(mocks.verify).toHaveBeenCalledWith({ country_code: '+972', contact_number: '0501234567' }, '123456')
+  })
+  it('does not show a sent-code success state after request failure', async () => {
+    mocks.request.mockRejectedValue({ status: 429 })
+    render(<AuthPhoneStep onBack={vi.fn()} onSuccess={vi.fn()} />)
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('Phone number'), '0501234567')
+    await user.click(screen.getByRole('button', { name: 'Send code' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many attempts')
+    expect(screen.queryByLabelText('6-digit verification code')).not.toBeInTheDocument()
+  })
+})

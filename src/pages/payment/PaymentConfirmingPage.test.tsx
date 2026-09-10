@@ -1,6 +1,6 @@
 // src/pages/payment/PaymentConfirmingPage.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -27,6 +27,7 @@ function renderConfirming(
         <Routes>
           <Route path="/payments/confirming" element={<PaymentConfirmingPage />} />
           <Route path="/my-activity" element={<div>MY ACTIVITY</div>} />
+          <Route path="/join/:slug" element={<div>EVENT PAGE</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -103,6 +104,29 @@ describe('PaymentConfirmingPage — tournament pending vs confirmed (G3)', () =>
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/registration confirmed/i)
   })
 
+  it('a fully waived pair is "submitted", not "confirmed", while the club still has to check residency', () => {
+    // confirm-zero-payment leaves a ₪0 pair on registered + completed. Before the
+    // fix that short-circuited to "Registration Confirmed" seconds after they
+    // uploaded their proof of address.
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'completed', fee_waiver_status: 'pending' },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/registration submitted/i)
+  })
+
+  it('an approved waiver reads as confirmed like any other completed registration', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'confirmed', payment_status: 'completed', fee_waiver_status: 'approved' },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/registration confirmed/i)
+  })
+
   it('falls back to pending copy for a tournament when entity is null (error fallback)', () => {
     mockUseEntityPolling.mockReturnValue({ status: 'confirmed', attempts: 1, entity: null })
     renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
@@ -117,5 +141,25 @@ describe('PaymentConfirmingPage — tournament pending vs confirmed (G3)', () =>
     })
     renderConfirming('?type=booking&id=b-1')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/payment confirmed/i)
+  })
+})
+
+describe('PaymentConfirmingPage — return_to', () => {
+  it('offers "back to the event" and navigates to a same-origin return_to', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed', attempts: 1,
+      entity: { status: 'registered', payment_status: 'payment_held' },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1&return_to=%2Fjoin%2Facme')
+    const cta = screen.getByRole('button', { name: /back to the event/i })
+    fireEvent.click(cta)
+    expect(screen.getByText('EVENT PAGE')).toBeInTheDocument()
+  })
+
+  it('ignores an off-origin return_to and keeps the activity CTA', () => {
+    mockUseEntityPolling.mockReturnValue({ status: 'confirmed', attempts: 1, entity: null })
+    renderConfirming('?type=booking&id=b-1&return_to=https%3A%2F%2Fevil.example')
+    expect(screen.queryByRole('button', { name: /back to the event/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /activity/i })).toBeInTheDocument()
   })
 })

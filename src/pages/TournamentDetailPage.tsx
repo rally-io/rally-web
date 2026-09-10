@@ -8,6 +8,11 @@ import { useTournament } from '@/hooks/useTournament'
 import { useRtl } from '@/hooks/useRtl'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAppSession } from '@/hooks/useAppSession'
+import { useAuth } from '@/hooks/useAuth'
+import { useTournamentPartnerDraft } from '@/hooks/useTournamentPartnerDraft'
+import { getOnboardingStatus } from '@/services/api/profile'
+import { computeNeedsDetails } from '@/lib/onboardingGate'
+import { trackFunnel } from '@/lib/analytics'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FactCard } from '@/components/tournaments/FactCard'
 import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
@@ -18,13 +23,12 @@ import { PartnerSection } from '@/components/tournaments/PartnerSection'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import {
-  registerTournament, joinTournamentWaitlist, leaveTournamentWaitlist,
+  joinTournamentWaitlist, leaveTournamentWaitlist,
 } from '@/services/api/tournaments'
-import { confirmTournamentZeroPayment } from '@/services/api/payments'
-import { translateRegistrationError, translateWaitlistError } from '@/lib/registrationErrors'
+import { translateWaitlistError } from '@/lib/registrationErrors'
+import { useTournamentRegistration, buildRegisterPayload } from '@/hooks/useTournamentRegistration'
 import { ctaFor } from '@/lib/tournamentCta'
-import type { PartnerSelectionState } from '@/types/partner'
-import type { AcknowledgedMessageRef, RegisterPayload, TournamentWaitlistEntry } from '@/types/api'
+import type { TournamentWaitlistEntry } from '@/types/api'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
@@ -39,58 +43,52 @@ import { formatLabelKey, structureLabelKey } from '@/lib/tournamentTheme'
 // are unreachable here even though the type admits them.
 const REGISTRATION_GATE_ACTION = 'tournament_registration' as const
 
-// Pure helper — no side-effects, fully testable in isolation.
-function buildRegisterPayload(
-  format: string,
-  state: PartnerSelectionState,
-  acknowledgedMessages: AcknowledgedMessageRef[],
-): RegisterPayload {
-  const needsPartner = format === 'doubles' || format === 'mixed'
-  if (!needsPartner) return { partner_type: 'none', acknowledged_messages: acknowledgedMessages }
-
-  if (state.phase === 'selected') {
-    if (state.partner.type === 'existing') {
-      return {
-        partner_type: 'existing',
-        partner_player_id: state.partner.id,
-        acknowledged_messages: acknowledgedMessages,
-      }
-    }
-    return {
-      partner_type: 'invite',
-      invite_first_name: state.partner.firstName,
-      invite_last_name: state.partner.lastName,
-      invite_country_code: state.partner.countryCode,
-      invite_phone: state.partner.phone,
-      acknowledged_messages: acknowledgedMessages,
-    }
-  }
-  // Guard — unreachable when the partner-required gate below is enforced.
-  return { partner_type: 'none', acknowledged_messages: acknowledgedMessages }
+/**
+ * Every piece of registration state below (partner draft, in-flight register,
+ * profile check) belongs to ONE account. Remounting on the user id is what
+ * guarantees that: a sign-in, a sign-out or an account switch in another tab
+ * cannot leave the previous account's draft or error on screen.
+ */
+export default function TournamentDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
+  return <TournamentRegistrationPage key={`${id}:${user?.id ?? 'anonymous'}`} />
 }
 
-export default function TournamentDetailPage() {
+function TournamentRegistrationPage() {
   const { t } = useTranslation()
   const { locale } = useRtl()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: tr, isLoading, isError } = useTournament(id!)
   const { requireSignIn } = useAuthGate()
-  const { status: sessionStatus, refetchOnboarding } = useAppSession()
+  const { status: sessionStatus, refetchOnboarding, needsDetails } = useAppSession()
+  const { user } = useAuth()
   // Same query key as the ScreenMessageList mounted below (scope: 'tournament',
   // id: tr.id) — react-query dedupes the two into one fetch. `tr?.id` is
   // undefined while loading; useScreenMessages' own `enabled` handles that.
   const gate = useRegistrationGate({ scope: 'tournament', id: tr?.id }, REGISTRATION_GATE_ACTION)
 
-  const [partnerState, setPartnerState] = useState<PartnerSelectionState>({ phase: 'idle' })
-  const [isRegistering, setIsRegistering] = useState(false)
-  const [registerError, setRegisterError] = useState<string | null>(null)
-  // Separate from registerError on purpose: this is the ONE state a tick can
-  // retire on its own, without the player pressing anything. Overloading
-  // registerError meant a ticked, re-enabled button could still sit under a
-  // red "you must accept the terms" sentence from the 409 that led to the
-  // tick in the first place.
-  const [gateError, setGateError] = useState<string | null>(null)
+  // Only a *selected* partner survives the auth / profile detours; it is
+  // cleared the moment a registration or waitlist entry actually exists, so it
+  // can never be replayed into a second row.
+  const [partnerState, setPartnerState] = useTournamentPartnerDraft(id!, user?.id ?? '')
+
+  const {
+    register, isRegistering, registerError, gateError, setRegisterError, setGateError,
+  } = useTournamentRegistration(tr, gate, {
+    onRegistered: () => setPartnerState({ phase: 'idle' }),
+  })
+
+  const [isCheckingProfile, setIsCheckingProfile] = useState(false)
+  const checkingProfile = useRef(false)
+  // The register press can outlive this component (the wrapper above remounts
+  // it on an account switch); nothing awaited here may write state afterwards.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false)
   const [waitlistError, setWaitlistError] = useState<string | null>(null)
@@ -104,12 +102,43 @@ export default function TournamentDetailPage() {
 
   const isPartneredFormat = tr?.format === 'doubles' || tr?.format === 'mixed'
   const partnerRequired = isPartneredFormat && partnerState.phase === 'idle'
+  // Read at press time, not at render time: the handlers below run after an
+  // await (sign-in, then the profile check), by which point the partner choice
+  // or a gating tick may have changed under the captured closure.
+  const latestSelection = useRef({ partnerState, gate })
+  latestSelection.current = { partnerState, gate }
 
-  // The moment ticking satisfies the gate, any stale 409 note is wrong — the
-  // player just did the thing it was asking for.
-  useEffect(() => {
-    if (gate.isSatisfied) setGateError(null)
-  }, [gate.isSatisfied])
+  const profilePath = `/profile/edit?purpose=tournament&returnTo=${encodeURIComponent(`/tournaments/${id}`)}`
+
+  /**
+   * The same question asked of the SERVER, immediately before registering: the
+   * cached onboarding status can be minutes old and a 422 mid-register would
+   * strand the player on a page that cannot fix it. Returns false (and has
+   * already redirected, or shown the load error) when registration must stop.
+   */
+  async function checkRegistrationProfile() {
+    if (checkingProfile.current) return false
+    checkingProfile.current = true
+    setIsCheckingProfile(true)
+    setRegisterError(null)
+    try {
+      const result = await getOnboardingStatus()
+      if (!mounted.current) return false
+      if (!result.success || !result.data.is_authenticated) throw new Error('Profile unavailable')
+      if (computeNeedsDetails(result.data)) {
+        trackFunnel('registration_profile_required', { tournament_id: id })
+        navigate(profilePath)
+        return false
+      }
+      return true
+    } catch {
+      if (mounted.current) setRegisterError(t('edit_profile.loadError'))
+      return false
+    } finally {
+      checkingProfile.current = false
+      if (mounted.current) setIsCheckingProfile(false)
+    }
+  }
 
   // The 409 safety net (SCREEN_MESSAGES_WEB_SPEC.md §6a) names which messages
   // are outstanding; scroll to the first one once that state lands. This is
@@ -134,14 +163,18 @@ export default function TournamentDetailPage() {
     scrolledForRef.current = first.id
   }, [gate.outstanding, gate.blocking])
 
-  // Web registration: gate on sign-in only (no profile-completeness check).
+  // Register is one continuous flow: sign in, then prove the profile has what
+  // rally-api requires, then partner, then the terms gate, then submit.
   // requireSignIn() resolves immediately if already authenticated, otherwise
   // opens the auth gate modal and resolves once sign-in/sign-up succeeds.
   const handleRegisterNow = () => {
+    trackFunnel('registration_started', { tournament_id: id })
     void requireSignIn()
       .then(async () => {
-        if (!tr) return
-        if (partnerRequired) {
+        if (!tr || !mounted.current) return
+        if (!(await checkRegistrationProfile())) return
+        const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
+        if (isPartneredFormat && selectedPartner.phase === 'idle') {
           document
             .getElementById('partner-section')
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -152,8 +185,8 @@ export default function TournamentDetailPage() {
         // `useRegistrationGate.isSatisfied`, which also guarantees the
         // invariant this branch depends on: unsatisfied implies `blocking` is
         // non-empty, so there is always something to scroll to.
-        if (!gate.isSatisfied) {
-          const first = gate.blocking[0]
+        if (!currentGate.isSatisfied) {
+          const first = currentGate.blocking[0]
           if (first) {
             document
               .getElementById(`screen-message-${first.id}`)
@@ -161,73 +194,7 @@ export default function TournamentDetailPage() {
           }
           return
         }
-        setIsRegistering(true)
-        setRegisterError(null)
-        // Belt-and-suspenders: the isSatisfied effect above should already
-        // have cleared this by the time we get here, since we can only reach
-        // this line when isSatisfied is true.
-        setGateError(null)
-        try {
-          const payload = buildRegisterPayload(tr.format, partnerState, gate.payload)
-          const result = await registerTournament(tr.id, payload)
-          if (!result.success) {
-            setRegisterError(translateRegistrationError(result.error.message, t))
-            return
-          }
-          const reg = result.data
-          const amountToPay = reg.amount_to_pay ?? 0
-          // No intermediate summary screen — go straight from Register Now to
-          // the add-card step (or, for a free tournament, straight to confirming).
-          if (amountToPay < 0.01) {
-            const zeroResult = await confirmTournamentZeroPayment(reg.id)
-            if (!zeroResult.success) {
-              setRegisterError(zeroResult.error.message)
-              return
-            }
-            const sp = new URLSearchParams({
-              type: 'tournament_registration',
-              id: reg.id,
-              tournament_id: tr.id,
-            })
-            navigate(`/payments/confirming?${sp.toString()}`)
-            return
-          }
-          const sp = new URLSearchParams({
-            registration_id: reg.id,
-            tournament_id: tr.id,
-            amount: String(amountToPay),
-          })
-          navigate(`/payment-method?${sp.toString()}`)
-        } catch (e) {
-          // Validation failures (partner already registered, tournament closed,
-          // etc.) are RallyException on rally-api — a non-2xx response, which the
-          // axios client's interceptor turns into a rejected plain object
-          // ({status, code, message, details}), not an Error instance.
-          const err = e as { code?: string; message?: string; details?: unknown } | null
-          // The 409 safety net (SCREEN_MESSAGES_WEB_SPEC.md §6a): a message
-          // was published/edited between page load and register. Refetch,
-          // clear ticks, and say so — never auto-retry, the player hasn't
-          // seen the new text yet. Must run before the generic fallback below
-          // so ACKNOWLEDGMENT_REQUIRED never surfaces as raw backend text.
-          if (gate.handleGateError(err)) {
-            setGateError(
-              t('screenMessages.registrationGateRequired', {
-                defaultValue: 'You must accept the tournament terms to continue',
-              }),
-            )
-            return
-          }
-          // Extract the real backend message and translate it — rally-api
-          // sends plain English text with no distinct error code for most of
-          // these.
-          setRegisterError(
-            err?.message
-              ? translateRegistrationError(err.message, t)
-              : t('tournament.registrationFailedTitle'),
-          )
-        } finally {
-          setIsRegistering(false)
-        }
+        await register(selectedPartner)
       })
       .catch(() => {
         // USER_CANCELLED or SUPERSEDED — stay on the page as-is.
@@ -238,17 +205,20 @@ export default function TournamentDetailPage() {
   // acknowledgment) — join_waitlist replays the exact same payload shape
   // through the registration pipeline at promotion time.
   const handleJoinWaitlist = () => {
+    trackFunnel('registration_started', { tournament_id: id, step: 'waitlist' })
     void requireSignIn()
       .then(async () => {
-        if (!tr) return
-        if (partnerRequired) {
+        if (!tr || !mounted.current) return
+        if (!(await checkRegistrationProfile())) return
+        const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
+        if (isPartneredFormat && selectedPartner.phase === 'idle') {
           document
             .getElementById('partner-section')
             ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           return
         }
-        if (!gate.isSatisfied) {
-          const first = gate.blocking[0]
+        if (!currentGate.isSatisfied) {
+          const first = currentGate.blocking[0]
           if (first) {
             document
               .getElementById(`screen-message-${first.id}`)
@@ -260,13 +230,16 @@ export default function TournamentDetailPage() {
         setWaitlistError(null)
         setGateError(null)
         try {
-          const payload = buildRegisterPayload(tr.format, partnerState, gate.payload)
+          const payload = buildRegisterPayload(tr.format, selectedPartner, currentGate.payload)
           const result = await joinTournamentWaitlist(tr.id, payload)
+          if (!mounted.current) return
           if (!result.success) {
             setWaitlistError(translateWaitlistError(result.error.message, t))
             return
           }
           const entry = result.data
+          setPartnerState({ phase: 'idle' })
+          trackFunnel('registration_created', { tournament_id: tr.id, step: 'waitlist' })
           setWaitlistOverride(entry)
           const amount = (entry.entry_fee ?? 0) + (entry.service_fee ?? 0)
           // A paid tournament places a pre-auth hold via the same payment-method
@@ -283,6 +256,8 @@ export default function TournamentDetailPage() {
           }
         } catch (e) {
           const err = e as { code?: string; message?: string; details?: unknown } | null
+          if (!mounted.current) return
+          trackFunnel('registration_error', { tournament_id: tr.id, step: 'waitlist' })
           if (gate.handleGateError(err)) {
             setGateError(
               t('screenMessages.registrationGateRequired', {
@@ -297,7 +272,7 @@ export default function TournamentDetailPage() {
               : t('tournament.registrationFailedTitle'),
           )
         } finally {
-          setIsJoiningWaitlist(false)
+          if (mounted.current) setIsJoiningWaitlist(false)
         }
       })
       .catch(() => {
@@ -422,6 +397,16 @@ export default function TournamentDetailPage() {
       />
 
       <div className="container mx-auto px-4 max-w-3xl space-y-10 mt-10">
+        {!myReg && (cta === 'register' || cta === 'join_waitlist') && (
+          <ol aria-label={t('tournament.registrationSteps')} className="grid grid-cols-3 gap-2 text-xs sm:text-sm">
+            {['accountStep', 'detailsStep', 'paymentStep'].map((step, index) => {
+              const activeStep = sessionStatus === 'signed_out' ? 0 : needsDetails ? 1 : 2
+              return <li key={step} aria-current={index === activeStep ? 'step' : undefined} className={`rounded-xl border p-3 ${index === activeStep ? 'border-rally-accent/50 bg-rally-accent/10 text-rally-text' : 'border-rally-border text-rally-text-muted'}`}>
+                <span className="me-2 font-bold text-rally-accent">{index + 1}</span>{t(`tournament.${step}`)}
+              </li>
+            })}
+          </ol>
+        )}
         <section className="rounded-2xl bg-rally-surface border border-rally-border p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center gap-3 text-rally-text">
             <Calendar className="w-5 h-5 text-rally-accent shrink-0" />
@@ -575,13 +560,11 @@ export default function TournamentDetailPage() {
                     })
                 }}
               />
-            ) : sessionStatus === 'profile_incomplete' ? (
+            ) : needsDetails ? (
               <SignInRequiredPanel
                 message={t('tournament.partnerCompleteProfilePrompt')}
                 ctaLabel={t('user_menu.complete_profile')}
-                onSignIn={() =>
-                  navigate(`/profile/edit?returnTo=${encodeURIComponent(`/tournaments/${tr.id}`)}`)
-                }
+                onSignIn={() => navigate(profilePath)}
               />
             ) : sessionStatus === 'ready' ? (
               <>
@@ -592,6 +575,11 @@ export default function TournamentDetailPage() {
                 )}
                 <PartnerSection selectionState={partnerState} onPartnerChange={setPartnerState} />
               </>
+            ) : sessionStatus === 'profile_error' ? (
+              <div role="alert" className="space-y-2 text-sm text-rally-text-2">
+                <p>{t('edit_profile.loadError')}</p>
+                <button onClick={() => void refetchOnboarding()} className="font-semibold text-rally-accent">{t('edit_profile.retry')}</button>
+              </div>
             ) : null}
           </section>
         )}
@@ -717,11 +705,15 @@ export default function TournamentDetailPage() {
               <button
                 data-testid="tournament-join-waitlist-button"
                 onClick={handleJoinWaitlist}
-                disabled={isJoiningWaitlist}
+                disabled={isJoiningWaitlist || isCheckingProfile}
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full border-2 border-rally-accent text-rally-accent font-bold enabled:hover:bg-rally-accent/10 transition-all disabled:opacity-60"
               >
-                {isJoiningWaitlist
+                {isCheckingProfile ? t('common.loading') : isJoiningWaitlist
                   ? t('tournament.tournamentDetailRegistering')
+                  : sessionStatus === 'signed_out'
+                  ? t('tournament.continueRegistration')
+                  : needsDetails
+                  ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
                   : t('tournament.tournamentJoinWaitlist')}
@@ -736,12 +728,16 @@ export default function TournamentDetailPage() {
             ) : (
               <button
                 onClick={handleRegisterNow}
-                disabled={isRegistering}
+                disabled={isRegistering || isCheckingProfile}
                 aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
                 className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"
               >
-                {isRegistering
+                {isCheckingProfile ? t('common.loading') : isRegistering
                   ? t('tournament.tournamentDetailRegistering')
+                  : sessionStatus === 'signed_out'
+                  ? t('tournament.continueRegistration')
+                  : needsDetails
+                  ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
                   : t('tournament.tournamentDetailRegisterNow')}

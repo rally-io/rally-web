@@ -20,6 +20,7 @@ vi.mock('@/hooks/useAppSession', () => ({
     status: 'ready',
     onboardingStatus: { completion_percent: 100, has_player_profile: true, missing_steps: [], completed_steps: [], is_authenticated: true },
     playerProfile: { first_name: 'Dana', last_name: 'Levi', avatar_url: null, skill_tier: null, skill_level: null },
+    needsDetails: false,
     clearSession,
   }),
 }))

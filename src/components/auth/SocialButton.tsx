@@ -10,7 +10,9 @@ interface SocialButtonProps {
 }
 
 const STYLES: Record<OAuthProvider, string> = {
-  google: 'bg-white text-slate-900 hover:bg-slate-100',
+  google: 'bg-white text-rally-text-on-light hover:bg-slate-100',
+  apple: 'bg-black text-white border border-rally-border-strong hover:bg-rally-bg',
+  facebook: 'bg-[#1877F2] text-white hover:bg-[#166fe5]',
 }
 
 export function SocialButton({ provider, label, icon, onClick, disabled }: SocialButtonProps) {

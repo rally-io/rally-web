@@ -58,6 +58,23 @@
   --font-sans: "Heebo", "Rubik", system-ui, -apple-system, sans-serif;
 }
 
+/* Chrome paints an autofilled input with its OWN light background and dark text,
+   which no `background-color` can override — on a near-black page every filled
+   field turned into a white pill. The inset shadow is the only way to repaint
+   it; `-webkit-text-fill-color` is the only way to recolour the text. Applies to
+   every form on the site, which is where the damage was. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+select:-webkit-autofill,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-rally-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-rally-surface-2) inset;
+  box-shadow: 0 0 0 1000px var(--color-rally-surface-2) inset;
+  caret-color: var(--color-rally-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 html,
 body {
   font-family: var(--font-body);

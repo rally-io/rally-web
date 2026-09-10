@@ -122,7 +122,7 @@ export function ParticipantsSection({ tournamentId }: { tournamentId: string }) 
         <SignInRequiredPanel
           message={t('tournament.participantsCompleteProfilePrompt')}
           ctaLabel={t('user_menu.complete_profile')}
-          onSignIn={() => navigate('/profile/edit')}
+          onSignIn={() => navigate(`/profile/edit?returnTo=${encodeURIComponent(`/tournaments/${tournamentId}`)}`)}
         />
       </section>
     )

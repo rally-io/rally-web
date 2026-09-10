@@ -60,4 +60,25 @@ describe('registerTournament', () => {
       acknowledged_messages: [],
     })
   })
+
+  it('only forwards a config object when skipProfileRedirect is set', async () => {
+    await registerTournament(
+      't-1',
+      { partner_type: 'none', acknowledged_messages: [] },
+      { skipProfileRedirect: true },
+    )
+    expect(client.post).toHaveBeenCalledWith(
+      '/rally/v1/tournaments/t-1/register',
+      { partner_type: 'none', acknowledged_messages: [] },
+      { skipProfileRedirect: true },
+    )
+
+    vi.mocked(client.post).mockClear()
+    await registerTournament('t-1', { partner_type: 'none', acknowledged_messages: [] })
+    expect(client.post).toHaveBeenCalledWith('/rally/v1/tournaments/t-1/register', {
+      partner_type: 'none',
+      acknowledged_messages: [],
+    })
+    expect(vi.mocked(client.post).mock.calls[0]).toHaveLength(2)
+  })
 })

@@ -19,6 +19,7 @@ vi.mock('@/hooks/useAppSession', () => ({
     status: mockSessionState.status,
     onboardingStatus: null,
     playerProfile: null,
+    needsDetails: false,
     refetchOnboarding: vi.fn(),
     clearSession: vi.fn(),
   }),

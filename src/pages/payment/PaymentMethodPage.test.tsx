@@ -84,4 +84,11 @@ describe('PaymentMethodPage', () => {
     fireEvent.click(screen.getByRole('button', { name: i18n.t('payment.paymentMethodAddCardCta') }))
     expect(await screen.findByText(i18n.t('payment.checkoutError'))).toBeInTheDocument()
   })
+
+  it('stores return_to in the pending-payment context before redirecting', async () => {
+    mockInitiate.mockResolvedValue({ success: true, data: { payment_url: 'https://grow.example/checkout/abc' }, meta: null, error: null })
+    renderAt('?registration_id=r-1&tournament_id=t-1&amount=150&return_to=%2Fjoin%2Facme')
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('payment.paymentMethodAddCardCta') }))
+    await waitFor(() => expect(pendingPayment.get()?.returnTo).toBe('/join/acme'))
+  })
 })

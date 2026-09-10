@@ -32,6 +32,8 @@ async function verifyPhoneInUi(user: ReturnType<typeof import('@testing-library/
 }
 
 const requireSignIn = vi.fn()
+const signOut = vi.fn()
+const trackFunnelMock = vi.fn()
 const sessionState: {
   status: 'loading' | 'signed_out' | 'profile_error' | 'profile_incomplete' | 'ready'
   playerProfile: PlayerMe | null
@@ -45,17 +47,29 @@ vi.mock('@/hooks/useAppSession', () => ({
     status: sessionState.status,
     playerProfile: sessionState.playerProfile,
     onboardingStatus: null,
+    needsDetails: false,
     refetchOnboarding: vi.fn(),
     clearSession: vi.fn(),
   }),
 }))
 
+const authState: { user: { email: string; user_metadata?: Record<string, unknown> } } = {
+  user: { email: 'dana@example.com' },
+}
+
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: { email: 'dana@example.com' } }),
+  useAuth: () => ({ user: authState.user, signOut }),
 }))
 
 vi.mock('@/hooks/useAuthGate', () => ({
   useAuthGate: () => ({ requireSignIn }),
+}))
+
+// Partial mock: only trackFunnel is swapped so the rest of the analytics module
+// (imported transitively by other components) keeps its real implementation.
+vi.mock('@/lib/analytics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/analytics')>()),
+  trackFunnel: (...args: unknown[]) => trackFunnelMock(...args),
 }))
 
 function TournamentProbe() {
@@ -71,6 +85,7 @@ function renderPage(initialPath = '/profile/edit') {
         <Routes>
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/tournaments/:id" element={<TournamentProbe />} />
+          <Route path="/" element={<div data-testid="home-probe" />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -78,10 +93,16 @@ function renderPage(initialPath = '/profile/edit') {
 }
 
 beforeEach(() => {
+  vi.spyOn(profileApi, 'getOnboardingStatus').mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } } as any)
+  vi.spyOn(profileApi, 'getMyPlayerProfile').mockResolvedValue({ success: true, data: { id: 'p1', contact_number: '501234567', skill_level: 3 } } as any)
   requireSignIn.mockReset()
   requireSignIn.mockResolvedValue(undefined)
+  signOut.mockReset()
+  signOut.mockResolvedValue(undefined)
+  trackFunnelMock.mockReset()
   sessionState.status = 'signed_out'
   sessionState.playerProfile = null
+  authState.user = { email: 'dana@example.com' }
 })
 
 describe('EditProfilePage — signed-out branch', () => {
@@ -358,7 +379,7 @@ describe('EditProfilePage — partial edits on ready profile with gaps', () => {
 })
 
 describe('EditProfilePage — profile_incomplete partial save', () => {
-  it('creates a profile from skill_level alone, defaulting to Player for names', async () => {
+  it('requires real names before creating a player profile', async () => {
     const user = userEvent.setup()
     sessionState.status = 'profile_incomplete'
     sessionState.playerProfile = null
@@ -372,19 +393,293 @@ describe('EditProfilePage — profile_incomplete partial save', () => {
     const slider = screen.getByLabelText(/skill level slider/i) as HTMLInputElement
     fireEvent.change(slider, { target: { value: '4.5' } })
     const save = screen.getByRole('button', { name: /save changes/i })
+    expect(save).toBeDisabled()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)
     await waitFor(() => {
       expect(createSpy).toHaveBeenCalledTimes(1)
     })
-    // Names default to 'Player' (not email prefix) so social-signup users
-    // don't get leaderboard entries like "12345 12345".
+    // A new public player profile uses the name the player actually supplied.
     expect(createSpy.mock.calls[0][0]).toMatchObject({
       email: 'dana@example.com',
       skill_level: 4.5,
-      first_name: 'Player',
-      last_name: 'Player',
+      first_name: 'Dana',
+      last_name: 'Levi',
     })
     createSpy.mockRestore()
+  })
+})
+
+describe('tournament profile completion', () => {
+  it('retries refresh without creating the account twice after a successful save', async () => {
+    sessionState.status = 'profile_incomplete'
+    const create = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({ success: true, data: { id: 'p1' } } as any)
+    vi.mocked(profileApi.getMyPlayerProfile).mockRejectedValueOnce(new Error('offline'))
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '3.5' } })
+    await user.click(screen.getByRole('button', { name: /continue to tournament/i }))
+    expect(await screen.findByText(/details are saved/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/first name/i)).toBeDisabled()
+    expect(screen.queryByTestId('tournament-probe')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /try again/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    expect(create).toHaveBeenCalledTimes(1)
+    create.mockRestore()
+  })
+  /** The checklist rows still outstanding, by their label. */
+  function outstanding(): string[] {
+    const list = screen.getByRole('status')
+    return [...list.querySelectorAll('li')]
+      .filter((li) => /missing/i.test(li.textContent ?? ''))
+      .map((li) => (li.textContent ?? '').replace(/missing/i, '').trim())
+  }
+
+  it('details mode: continue stays disabled until names, a verified phone and a chosen level exist', async () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    expect(screen.getByRole('heading', { name: /almost in/i })).toBeInTheDocument()
+    expect(screen.getByText(/before you start/i)).toBeInTheDocument()
+    expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('') // no default level
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    const cont = () => screen.getByRole('button', { name: /^continue$/i })
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    expect(cont()).toBeDisabled()
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    expect(cont()).toBeDisabled()
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '3.5' } })
+    expect(cont()).toBeEnabled()
+    expect(trackFunnelMock).toHaveBeenCalledWith('onboarding_details_shown', { step: 'onboarding' })
+  })
+
+  it('details mode: a legacy player missing only the level chooses it and is sent back', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, skill_level: null }
+    vi.spyOn(profileApi, 'getOnboardingStatus').mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } } as any)
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled()
+    // 4.0 is where the empty slider parks, so a `change` to "4" fires no event
+    // at all; 4.5 is the nearest position that is real movement. A player can
+    // still choose 4.0 — releasing the thumb there commits it (see the slider's
+    // own pointer-up test).
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '4.5' } })
+    await user.click(screen.getByRole('button', { name: /^continue$/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    expect(update).toHaveBeenCalledWith({ skill_level: 4.5 })
+    expect(trackFunnelMock).toHaveBeenCalledWith('onboarding_details_completed', { step: 'onboarding' })
+    update.mockRestore()
+  })
+
+  it('details mode: the sign-out link exists and the tournament purpose keeps its own copy', () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    expect(screen.getByRole('heading', { name: /your details for this tournament/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /not your account\? sign out/i })).toBeInTheDocument()
+  })
+
+  it('details mode: the sign-out link signs out and goes home', async () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    await userEvent.click(screen.getByRole('button', { name: /not your account\? sign out/i }))
+    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1))
+    expect(await screen.findByTestId('home-probe')).toBeInTheDocument()
+  })
+
+  it('details mode: a failing sign-out still lets the player leave', async () => {
+    sessionState.status = 'profile_incomplete'
+    signOut.mockRejectedValue(new Error('offline'))
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    await userEvent.click(screen.getByRole('button', { name: /not your account\? sign out/i }))
+    expect(await screen.findByTestId('home-probe')).toBeInTheDocument()
+  })
+
+  it('details mode: a save that leaves a required step missing names it and stays usable', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, skill_level: null }
+    // The write succeeded, but the server still reports skill_level missing —
+    // the one case the "still missing" guard exists for.
+    vi.spyOn(profileApi, 'getOnboardingStatus').mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: ['skill_level'] } } as any)
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '4.5' } })
+    await user.click(screen.getByRole('button', { name: /^continue$/i }))
+    // Names what is actually missing instead of claiming a reload failed.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/we still need: your skill level/i)
+    expect(screen.queryByText(/couldn't reload them/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tournament-probe')).not.toBeInTheDocument()
+    expect(trackFunnelMock).not.toHaveBeenCalledWith('onboarding_details_completed', expect.anything())
+    // Not a dead end: the form stays editable and the CTA is still Continue…
+    expect(screen.getByLabelText(/first name/i)).toBeEnabled()
+    expect(screen.getByRole('slider')).toBeEnabled()
+    expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument()
+    expect(update).toHaveBeenCalledTimes(1)
+    // …and pressing it really re-submits rather than replaying the same state.
+    await user.click(screen.getByRole('button', { name: /^continue$/i }))
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2))
+    expect(update).toHaveBeenLastCalledWith({ skill_level: 4.5 })
+    update.mockRestore()
+  })
+
+  it('details mode: names prefilled from OAuth metadata are sent even though nothing was typed', async () => {
+    sessionState.status = 'ready'
+    // rally_users has no names; Google's metadata does. The boxes look full and
+    // react-hook-form calls them pristine, so without the stored-value disjunct
+    // the patch would be empty and onboarding-status would never change.
+    sessionState.playerProfile = { ...READY_PROFILE, first_name: null, last_name: null }
+    authState.user = { email: 'dana@example.com', user_metadata: { given_name: 'Dana', family_name: 'Levi' } }
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    expect((screen.getByLabelText(/first name/i) as HTMLInputElement).value).toBe('Dana')
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    expect(update).toHaveBeenCalledWith({ first_name: 'Dana', last_name: 'Levi' })
+    update.mockRestore()
+  })
+
+  it('details mode: a retry after a landed create patches instead of re-creating', async () => {
+    sessionState.status = 'profile_incomplete'
+    // The POST succeeds but the server still reports the phone missing (e.g.
+    // normalisation dropped it). A second Continue must NOT re-POST: the row
+    // exists now and rally-api's create has no "already exists" guard, so a
+    // replay hits the primary key and returns an opaque failure.
+    vi.spyOn(profileApi, 'getOnboardingStatus').mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: ['contact_number'] } } as any)
+    const create = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({ success: true, data: { id: 'p1' } } as any)
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: {} } as any)
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '3.5' } })
+    await user.click(screen.getByRole('button', { name: /^continue$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/we still need: a verified phone/i)
+    expect(create).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: /^continue$/i }))
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1))
+    expect(create).toHaveBeenCalledTimes(1)
+    // `profile` is still null, so the stored-value disjuncts send every
+    // required field — the right payload against a row we know exists.
+    expect(update.mock.calls[0][0]).toMatchObject({
+      first_name: 'Dana', last_name: 'Levi', contact_number: '501234567', skill_level: 3.5,
+    })
+    create.mockRestore()
+    update.mockRestore()
+  })
+
+  it('details mode: a brand-new profile sends the OAuth names on create', async () => {
+    sessionState.status = 'profile_incomplete'
+    authState.user = { email: 'dana@example.com', user_metadata: { given_name: 'Dana', family_name: 'Levi' } }
+    const create = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({ success: true, data: { id: 'p1' } } as any)
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '3.5' } })
+    await user.click(screen.getByRole('button', { name: /^continue$/i }))
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1))
+    expect(create.mock.calls[0][0]).toMatchObject({ first_name: 'Dana', last_name: 'Levi', skill_level: 3.5 })
+    create.mockRestore()
+  })
+
+  it('details mode: a mobile-created player with skill_level 0 sees the empty slider and must choose', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, skill_level: 0 }
+    vi.spyOn(profileApi, 'getOnboardingStatus').mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } } as any)
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2F')
+    expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('')
+    expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled()
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '2.5' } })
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }))
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ skill_level: 2.5 }))
+    update.mockRestore()
+  })
+
+  it('details mode: a complete player with no returnTo lands home instead of parking on the step', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    renderPage('/profile/edit?purpose=onboarding')
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }))
+    expect(await screen.findByTestId('home-probe')).toBeInTheDocument()
+  })
+
+  it('details mode: the inputs the checklist names carry the warning border and aria-invalid', async () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    const firstName = () => screen.getByLabelText(/first name/i)
+    expect(firstName()).toHaveAttribute('aria-invalid', 'true')
+    // Amber, not accent: it is the same colour the checklist marks that row
+    // with, and the accent is spent on the button. See MISSING_BORDER.
+    expect(firstName().className).toContain('border-rally-warning/50')
+    expect(screen.getByLabelText(/phone number/i)).toHaveAttribute('aria-invalid', 'true')
+    await user.type(firstName(), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    expect(firstName()).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByLabelText(/last name/i)).not.toHaveAttribute('aria-invalid')
+    // The phone is still missing, so its border stays.
+    expect(screen.getByLabelText(/phone number/i)).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('permissive mode: a junk ?purpose never reaches analytics', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    const update = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: {} } as any)
+    renderPage('/profile/edit?purpose=%3Cscript%3E')
+    const user = userEvent.setup()
+    expect(screen.queryByLabelText(/first name/i)).not.toHaveAttribute('aria-invalid')
+    await user.clear(screen.getByLabelText(/last name/i))
+    await user.type(screen.getByLabelText(/last name/i), 'Cohen')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+    await waitFor(() => expect(trackFunnelMock).toHaveBeenCalledWith('profile_completed', { step: 'profile' }))
+    update.mockRestore()
+  })
+
+  it('details mode: the checklist names exactly what is left, and empties as it is filled', async () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=onboarding&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    expect(outstanding()).toEqual(['full name', 'a verified phone', 'your skill level'])
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    expect(outstanding()).toEqual(['a verified phone', 'your skill level'])
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    expect(outstanding()).toEqual(['your skill level'])
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '3.5' } })
+    expect(outstanding()).toEqual([])
+  })
+
+  it('permissive mode: no note about required fields, no notice, Save label, level may stay unset', () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, skill_level: null }
+    renderPage('/profile/edit')
+    // The checklist belongs to the required step, not to ordinary profile editing.
+    expect(screen.queryByText(/before you start/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /not your account\? sign out/i })).not.toBeInTheDocument()
+    expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('')
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument()
+  })
+
+  it('lets a complete player continue without making a meaningless edit', async () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    expect(screen.queryByText(/before you continue we still need/i)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /continue to tournament/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
   })
 })

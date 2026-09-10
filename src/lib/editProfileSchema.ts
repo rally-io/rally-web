@@ -15,7 +15,7 @@ export const editProfileSchema = z.object({
     .optional()
     .or(z.literal(''))
     .refine((val) => !val || /^\d{6,15}$/.test(val), 'edit_profile.validation.phoneInvalid'),
-  skill_level: z.number().min(SKILL_MIN).max(SKILL_MAX).optional(),
+  skill_level: z.number().min(SKILL_MIN).max(SKILL_MAX).nullable().optional(),
 })
 
 export type EditProfileFormValues = z.infer<typeof editProfileSchema>
