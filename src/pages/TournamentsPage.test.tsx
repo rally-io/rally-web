@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom'
@@ -419,5 +419,157 @@ describe('TournamentsPage organizer, skill and month filters', () => {
       screen.getByRole('button', { name: /Clear all filters|ניקוי כל הסינונים/ }),
     )
     await waitFor(() => expect(router.state.location.search).toBe(''))
+  })
+})
+
+// --- Infinite scroll -------------------------------------------------------
+//
+// jsdom has no IntersectionObserver, so the other describe blocks above run
+// with the hook's "unsupported" guard and never page. This stub records each
+// observer so a test can scroll the sentinel into view by hand.
+
+type ObserverRecord = {
+  callback: (entries: Array<{ isIntersecting: boolean }>) => void
+  targets: Element[]
+}
+const observers: ObserverRecord[] = []
+
+class IntersectionObserverStub {
+  private record: ObserverRecord
+  constructor(callback: ObserverRecord['callback']) {
+    this.record = { callback, targets: [] }
+    observers.push(this.record)
+  }
+  observe(el: Element) {
+    this.record.targets.push(el)
+  }
+  unobserve() {}
+  disconnect() {
+    this.record.targets = []
+  }
+  takeRecords() {
+    return []
+  }
+}
+
+const reachSentinel = () => {
+  const live = observers.filter((o) => o.targets.length > 0)
+  expect(live).toHaveLength(1)
+  act(() => live[0].callback([{ isIntersecting: true }]))
+}
+
+const tournamentFixture = (id: string, name: string, start: string) => ({
+  id,
+  name,
+  format: 'doubles',
+  start_date: `${start}T09:00:00`,
+  end_date: `${start}T18:00:00`,
+  registration_deadline: `${start}T00:00:00`,
+  skill_level_min: 3,
+  skill_level_max: 3.5,
+  skill_level: '3.0 - 3.5 (C1)',
+  entry_fee: 400,
+  image_url: null,
+  thumb_url: null,
+  structure: 'groups',
+  club_name: 'Padel Time',
+  registration_id: null,
+  registration_status: null,
+  available_seats: 4,
+})
+
+const page = (items: unknown[], next_cursor: string | null) => ({
+  success: true,
+  data: { items, next_cursor },
+})
+
+const TEASER = /Registration opens soon|ההרשמה תיפתח בקרוב/
+const LOAD_MORE = /Load more|Load earlier months|טעינת חודשים נוספים|טען עוד/
+
+describe('TournamentsPage infinite scroll', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    observers.length = 0
+    vi.stubGlobal('IntersectionObserver', IntersectionObserverStub)
+    // Default for any call a test's `mockResolvedValueOnce` queue does not
+    // cover, so no test depends on what the previous one left installed.
+    vi.mocked(getTournaments).mockResolvedValue(emptyPage as never)
+    vi.mocked(getTournamentFilterOptions).mockResolvedValue({
+      success: true,
+      data: { clubs: [], organizers: [] },
+    } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('offers no load-more button and holds the teasers back while more pages remain', async () => {
+    vi.mocked(getTournaments).mockResolvedValue(
+      page([tournamentFixture('up-1', 'Alpha Open', '2099-07-04')], 'c1') as never,
+    )
+    renderPage()
+    expect(await screen.findByText('Alpha Open')).toBeInTheDocument()
+
+    expect(screen.queryByRole('button', { name: LOAD_MORE })).not.toBeInTheDocument()
+    expect(screen.queryByText(TEASER)).not.toBeInTheDocument()
+    // The sentinel is on the page and watched.
+    expect(observers.some((o) => o.targets.length > 0)).toBe(true)
+  })
+
+  it('pulls the next page when the sentinel is reached, then closes the feed with the teasers', async () => {
+    vi.mocked(getTournaments)
+      .mockResolvedValueOnce(page([tournamentFixture('up-1', 'Alpha Open', '2099-07-04')], 'c1') as never)
+      .mockResolvedValueOnce(page([tournamentFixture('up-2', 'Beta Cup', '2099-07-11')], null) as never)
+    renderPage()
+    expect(await screen.findByText('Alpha Open')).toBeInTheDocument()
+    expect(screen.queryByText(TEASER)).not.toBeInTheDocument()
+
+    reachSentinel()
+
+    expect(await screen.findByText('Beta Cup')).toBeInTheDocument()
+    const calls = vi.mocked(getTournaments).mock.calls
+    expect(calls).toHaveLength(2)
+    expect(calls[1][0]!.cursor).toBe('c1')
+    // Both pages are in and the feed is exhausted: the teasers now close it,
+    // after every real tournament, and nothing is left to observe.
+    expect(screen.getAllByText(TEASER).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: LOAD_MORE })).not.toBeInTheDocument()
+    // Teasers are aria-hidden, so ask for hidden headings too to read the order.
+    const cards = screen
+      .getAllByRole('heading', { level: 3, hidden: true })
+      .map((h) => h.textContent)
+    const firstTeaser = cards.indexOf('Spring Padel Classic')
+    expect(firstTeaser).toBeGreaterThan(-1)
+    expect(cards.indexOf('Beta Cup')).toBeLessThan(firstTeaser)
+    expect(observers.every((o) => o.targets.length === 0)).toBe(true)
+  })
+
+  it('does not fetch a second page until the sentinel is reached', async () => {
+    vi.mocked(getTournaments).mockResolvedValue(
+      page([tournamentFixture('up-1', 'Alpha Open', '2099-07-04')], 'c1') as never,
+    )
+    renderPage()
+    expect(await screen.findByText('Alpha Open')).toBeInTheDocument()
+    // Give any eager fetch a chance to fire before asserting it did not.
+    await new Promise((r) => setTimeout(r, 50))
+    expect(vi.mocked(getTournaments)).toHaveBeenCalledTimes(1)
+  })
+
+  it('auto-loads earlier months on the history tab too', async () => {
+    vi.mocked(getTournaments)
+      .mockResolvedValueOnce(page([tournamentFixture('past-1', 'Winter Slam', '2026-07-04')], 'h1') as never)
+      .mockResolvedValueOnce(page([tournamentFixture('past-2', 'Autumn Bowl', '2026-06-06')], null) as never)
+    renderPage('/tournaments?tab=history')
+    expect(await screen.findByText('Winter Slam')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: LOAD_MORE })).not.toBeInTheDocument()
+
+    reachSentinel()
+
+    expect(await screen.findByText('Autumn Bowl')).toBeInTheDocument()
+    const calls = vi.mocked(getTournaments).mock.calls
+    expect(calls).toHaveLength(2)
+    expect(calls[1][0]!.scope).toBe('past')
+    expect(calls[1][0]!.cursor).toBe('h1')
   })
 })

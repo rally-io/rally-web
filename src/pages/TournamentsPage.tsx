@@ -5,6 +5,7 @@ import { Search, Lock, Calendar, MapPin } from 'lucide-react'
 import { useTournaments } from '@/hooks/useTournaments'
 import { usePastTournaments } from '@/hooks/usePastTournaments'
 import { useAutoDrainPages } from '@/hooks/useAutoDrainPages'
+import { useLoadMoreOnScroll } from '@/hooks/useLoadMoreOnScroll'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useRtl } from '@/hooks/useRtl'
 import { TournamentFilterBar } from '@/components/tournaments/TournamentFilterBar'
@@ -37,6 +38,9 @@ type TournamentsTab = 'upcoming' | 'history' | 'my'
  * this site has, small enough that it can never turn into an endless crawl.
  */
 const CLIENT_FILTER_ITEM_CAP = 200
+
+/** Placeholder cards shown at the foot of a list while its next page loads. */
+const LOADING_MORE_KEYS = ['more-1', 'more-2', 'more-3']
 
 const getStartDate = (tr: Tournament) => tr.start_date
 
@@ -143,6 +147,12 @@ export default function TournamentsPage() {
     loadedCount: loadedHistory.length,
     maxItems: CLIENT_FILTER_ITEM_CAP,
   })
+
+  // Infinite scroll: an empty sentinel after each list pulls the next page
+  // as it scrolls into view. The sentinel is only rendered while there is a
+  // next page, so its removal is what marks the end of the feed.
+  const listSentinelRef = useLoadMoreOnScroll(list)
+  const historySentinelRef = useLoadMoreOnScroll(history)
 
   const visibleList = useMemo(
     () => (clientFiltering ? loadedList.filter((tr) => matchesFilters(tr, filters)) : loadedList),
@@ -293,16 +303,14 @@ export default function TournamentsPage() {
               empty={historyEmptyState}
               footer={
                 history.hasNextPage ? (
-                  <div className="mt-6 text-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => history.fetchNextPage()}
-                      disabled={history.isFetchingNextPage}
-                    >
-                      {history.isFetchingNextPage
-                        ? t('common.loading')
-                        : t('clubs.loadMoreMonths')}
-                    </Button>
+                  <div ref={historySentinelRef} aria-hidden className="mt-6 min-h-px">
+                    {history.isFetchingNextPage && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {LOADING_MORE_KEYS.map((key) => (
+                          <Skeleton key={key} className="h-80 rounded-[20px] bg-rally-surface" />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : null
               }
@@ -374,29 +382,24 @@ export default function TournamentsPage() {
           )
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {tournaments.map((tr) => (
                 <TournamentCard key={tr.id} tournament={tr} tab={tab === 'my' ? 'my' : 'upcoming'} />
               ))}
+              {list.isFetchingNextPage &&
+                LOADING_MORE_KEYS.map((key) => (
+                  <Skeleton key={key} className="h-80 rounded-xl bg-rally-surface" />
+                ))}
+              {/* The teasers close the feed, so they only render once every
+                  page is in — never between one page and the next. */}
               {tab === 'upcoming' &&
+                !list.hasNextPage &&
                 TEASER_CONFIGS.map((cfg, i) => (
                   <TournamentCardTeaser key={`teaser-${i}`} {...cfg} />
                 ))}
             </div>
-            {list.hasNextPage && (
-              <div className="text-center">
-                <Button
-                  onClick={() => list.fetchNextPage()}
-                  disabled={list.isFetchingNextPage}
-                  variant="outline"
-                >
-                  {list.isFetchingNextPage
-                    ? t('common.loading')
-                    : t('common.load_more')}
-                </Button>
-              </div>
-            )}
-            {tab === 'upcoming' && (
+            {list.hasNextPage && <div ref={listSentinelRef} aria-hidden className="min-h-px" />}
+            {tab === 'upcoming' && !list.hasNextPage && (
               <div className="text-center mt-10">
                 <p className="text-sm text-rally-text-2 mb-3">
                   {t('tournament.tournamentsUpdatesHint')}
