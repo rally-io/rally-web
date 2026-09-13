@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
 
-interface DrainableQuery {
+/** The slice of a React Query infinite result that paging hooks need. */
+export interface DrainableQuery {
   hasNextPage: boolean
   isFetchingNextPage: boolean
-  fetchNextPage: () => unknown
+  fetchNextPage: (options?: { cancelRefetch?: boolean }) => unknown
 }
 
 interface Options {
