@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { useEntityPolling } from '@/hooks/useEntityPolling'
 import { pendingPayment } from '@/hooks/usePendingPayment'
+import { sanitizeReturnTo } from '@/lib/authReturn'
 import type { PaymentEntityType } from '@/types/api'
 
 export default function PaymentConfirmingPage() {
@@ -18,6 +19,7 @@ export default function PaymentConfirmingPage() {
   const id = params.get('id')
   const tournamentId = params.get('tournament_id') ?? undefined
   const eventId = params.get('event_id') ?? undefined
+  const returnTo = sanitizeReturnTo(params.get('return_to'))
 
   const { status, entity } = useEntityPolling({
     type: type as PaymentEntityType,
@@ -60,12 +62,21 @@ export default function PaymentConfirmingPage() {
     // Pre-auth hold ⇒ money held, TM approval pending. When the error-fallback
     // path fires (2 consecutive fetch errors) `entity` is null — default a
     // tournament to the pending copy, matching mobile (gap spec §5).
+    // A residency waiver still awaiting the club outranks the payment state. A
+    // fully waived pair pays nothing, so confirm-zero-payment lands them on
+    // `registered` + `completed` while `fee_waiver_status` is still `pending` --
+    // which used to short-circuit straight to "Registration Confirmed" and tell
+    // them the club had accepted their proof of address seconds after they
+    // uploaded it. `registrationSubmittedTitle` ("the tournament manager will
+    // review the registration") is the honest copy and already exists.
+    const isWaiverPending = isTournament && entity?.fee_waiver_status === 'pending'
     const isTournamentPending =
       isTournament &&
-      entity?.payment_status !== 'completed' &&
-      (!entity ||
-        entity.payment_status === 'payment_held' ||
-        entity.status === 'registered')
+      (isWaiverPending ||
+        (entity?.payment_status !== 'completed' &&
+          (!entity ||
+            entity.payment_status === 'payment_held' ||
+            entity.status === 'registered')))
 
     const title = isWaitlistHold
       ? t('payment.waitlistHoldConfirmedTitle')
@@ -100,10 +111,10 @@ export default function PaymentConfirmingPage() {
             </p>
           )}
           <button
-            onClick={() => navigate('/my-activity')}
+            onClick={() => navigate(returnTo ?? '/my-activity')}
             className="w-full h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold"
           >
-            {t('payment.viewActivity')}
+            {returnTo ? t('payment.backToEvent') : t('payment.viewActivity')}
           </button>
         </div>
       </main>
@@ -121,10 +132,10 @@ export default function PaymentConfirmingPage() {
           {t('payment.stillProcessingSubtitle')}
         </p>
         <button
-          onClick={() => navigate('/my-activity')}
+          onClick={() => navigate(returnTo ?? '/my-activity')}
           className="w-full h-12 rounded-full bg-rally-accent text-rally-accent-text font-bold"
         >
-          {t('payment.stillProcessingCta')}
+          {returnTo ? t('payment.backToEvent') : t('payment.stillProcessingCta')}
         </button>
       </div>
     </main>

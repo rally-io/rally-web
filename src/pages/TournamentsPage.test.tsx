@@ -61,7 +61,7 @@ describe('TournamentsPage filters', () => {
         ],
       },
     } as never)
-    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out', needsDetails: false } as never)
   })
 
   it('bare URL queries with default sort and no club filter', async () => {
@@ -97,7 +97,7 @@ describe('TournamentsPage filters', () => {
   })
 
   it('my tab ignores club/sort URL params and hides the toolbar', async () => {
-    vi.mocked(useAppSession).mockReturnValue({ status: 'ready' } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'ready', needsDetails: false } as never)
     renderPage(`/tournaments?tab=my&clubs=${CLUB_A}&sort=latest`)
     await waitFor(() => expect(getTournaments).toHaveBeenCalled())
     const params = vi.mocked(getTournaments).mock.calls[0][0]!
@@ -231,20 +231,20 @@ describe('TournamentsPage history tab', () => {
       success: true,
       data: { clubs: [], organizers: [] },
     } as never)
-    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out', needsDetails: false } as never)
   })
 
   it('is offered to signed-out visitors, unlike the "my tournaments" tab', async () => {
     // The `my` matcher is deliberately checked positively first: an
     // absence assertion on a label that never matches anything passes for
     // the wrong reason, and the tab copy has already changed once.
-    vi.mocked(useAppSession).mockReturnValue({ status: 'ready' } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'ready', needsDetails: false } as never)
     const { unmount } = renderPage()
     await waitFor(() => expect(getTournaments).toHaveBeenCalled())
     expect(screen.getByRole('button', { name: MY_TAB })).toBeInTheDocument()
     unmount()
 
-    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out', needsDetails: false } as never)
     renderPage()
     await waitFor(() => expect(getTournaments).toHaveBeenCalled())
     expect(
@@ -335,7 +335,7 @@ describe('TournamentsPage organizer, skill and month filters', () => {
         ],
       },
     } as never)
-    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out' } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out', needsDetails: false } as never)
   })
 
   it('sends organizer slugs to the API as manager_slugs', async () => {

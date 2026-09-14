@@ -13,6 +13,7 @@ vi.mock('@/services/api/leads')
 vi.mock('@/constants/corporateEvents')
 
 const EVENT: CorporateEvent = {
+  mode: 'lead',
   slug: 'acme',
   sheetSource: 'corporate_acme',
   company: 'Acme Ltd',

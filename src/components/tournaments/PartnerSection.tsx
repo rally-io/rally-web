@@ -46,13 +46,26 @@ function isInviteValid(form: InviteFormState): boolean {
 interface Props {
   selectionState: PartnerSelectionState
   onPartnerChange: (next: PartnerSelectionState) => void
+  /**
+   * A fresh employee has no player profile yet, so `GET /players/search` 403s
+   * with "Player profile not found" and the axios interceptor bounces them to
+   * `/profile/edit`, losing the half-filled form. When `false`, the name
+   * search (input, results/no-results, "or" divider) is not rendered and
+   * `usePlayerSearch` is kept inactive (called with `''`) so no request is
+   * ever issued — only invite-by-phone, which resolves an existing player
+   * server-side by phone. Defaults to `true` (today's behaviour).
+   */
+  searchEnabled?: boolean
 }
 
-export function PartnerSection({ selectionState, onPartnerChange }: Props) {
+export function PartnerSection({ selectionState, onPartnerChange, searchEnabled = true }: Props) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [inviteForm, setInviteForm] = useState<InviteFormState>(INITIAL_INVITE)
-  const { results, isLoading, isActive } = usePlayerSearch(query)
+  // Hooks stay unconditional: pass '' (inactive query) instead of skipping the
+  // call when search is disabled — usePlayerSearch is already a no-op below
+  // one character (`enabled: debounced.length > 0`), so this issues no request.
+  const { results, isLoading, isActive } = usePlayerSearch(searchEnabled ? query : '')
 
   const handleSelectExisting = (player: PlayerSearchResult) => {
     const displayName = buildDisplayName(player.first_name, player.last_name)
@@ -125,57 +138,61 @@ export function PartnerSection({ selectionState, onPartnerChange }: Props) {
 
   return (
     <div className="rounded-2xl bg-rally-surface border border-rally-border p-4 space-y-4">
-      <div className="relative">
-        <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rally-text-muted" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('tournament.partnerSearchPlaceholder')}
-          className="ps-9"
-        />
-      </div>
+      {searchEnabled && (
+        <>
+          <div className="relative">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rally-text-muted" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('tournament.partnerSearchPlaceholder')}
+              className="ps-9"
+            />
+          </div>
 
-      {showNoResults ? (
-        <p className="text-sm text-rally-text-muted text-center py-2">
-          {t('tournament.partnerNoResults')}
-        </p>
-      ) : results.length > 0 ? (
-        <div className="space-y-1 max-h-56 overflow-y-auto">
-          {results.map((player) => {
-            const displayName = buildDisplayName(player.first_name, player.last_name)
-            return (
-              <button
-                type="button"
-                key={player.id}
-                onClick={() => handleSelectExisting(player)}
-                className="w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-rally-surface-2 text-start transition-colors"
-              >
-                <div className="w-9 h-9 rounded-full bg-rally-accent/15 border border-rally-accent/30 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-extrabold text-rally-accent">
-                    {getInitials(displayName)}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-rally-text font-semibold text-sm truncate">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-rally-text-muted">
-                    {t('tournament.partnerBadgeRally')}
-                  </p>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
+          {showNoResults ? (
+            <p className="text-sm text-rally-text-muted text-center py-2">
+              {t('tournament.partnerNoResults')}
+            </p>
+          ) : results.length > 0 ? (
+            <div className="space-y-1 max-h-56 overflow-y-auto">
+              {results.map((player) => {
+                const displayName = buildDisplayName(player.first_name, player.last_name)
+                return (
+                  <button
+                    type="button"
+                    key={player.id}
+                    onClick={() => handleSelectExisting(player)}
+                    className="w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-rally-surface-2 text-start transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-rally-accent/15 border border-rally-accent/30 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-extrabold text-rally-accent">
+                        {getInitials(displayName)}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rally-text font-semibold text-sm truncate">
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-rally-text-muted">
+                        {t('tournament.partnerBadgeRally')}
+                      </p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-rally-border" />
-        <span className="text-xs uppercase tracking-wider text-rally-text-muted">
-          {t('tournament.partnerOrDivider')}
-        </span>
-        <div className="h-px flex-1 bg-rally-border" />
-      </div>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-rally-border" />
+            <span className="text-xs uppercase tracking-wider text-rally-text-muted">
+              {t('tournament.partnerOrDivider')}
+            </span>
+            <div className="h-px flex-1 bg-rally-border" />
+          </div>
+        </>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs text-rally-text-2">{t('tournament.partnerInviteHeading')}</p>

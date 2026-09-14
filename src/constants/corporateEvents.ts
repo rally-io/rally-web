@@ -1,3 +1,5 @@
+import type { CorporateFeeWaiver } from './corporateFeeWaiver'
+
 /**
  * Closed corporate tournaments — one entry per event.
  *
@@ -10,13 +12,12 @@
  * docs/leads-google-sheet.md). `sheetSource` must match the
  * CORPORATE_SOURCE_PATTERN allow-list in api/lead.ts.
  *
- * Adding the next client is this object plus a hero image. No new code.
+ * Adding the next client is this object plus a hero image (and, for a
+ * tournament-mode event, the tournament's id). No new code.
  */
-export interface CorporateEvent {
+export interface CorporateEventBase {
   /** URL segment: /join/<slug>. The private link. */
   slug: string
-  /** Google Sheet tab name. Must be `corporate_<a-z0-9_>`. */
-  sheetSource: string
   /** Company name, shown in the page copy. */
   company: string
   /**
@@ -30,7 +31,13 @@ export interface CorporateEvent {
   /** Street address, shown as plain text (no map embed — keeps the page private). */
   clubAddress: string
   /** Hero image: a file in public/, or a full URL. */
-  heroImage: string
+  /**
+   * The client's own artwork, served from `public/`. Optional: with no entry
+   * here a tournament-mode page falls back to the banner the manager uploaded
+   * in the CRM (`tournaments.image_url`), so a new event needs no asset in the
+   * repo. Set it only to override that with supplied artwork.
+   */
+  heroImage?: string
   /**
    * How `heroImage` fills the hero band.
    *  - 'cover'   (default) crop to fill — right for a real photo of the courts.
@@ -41,15 +48,50 @@ export interface CorporateEvent {
    * asset still produces a full-bleed header.
    */
   heroFit?: 'cover' | 'contain'
+  /**
+   * The lock badge ("closed event") above the title. Omitted = shown, because
+   * corporate events are employee-only by nature; set `false` for a page that
+   * fronts a tournament anyone with the link may join.
+   */
+  closedBadge?: boolean
   /** Human-readable date, already in Hebrew. Not parsed — copy, not data. */
   dateLabel: string
   /** Human-readable time window, e.g. '17:00–21:00'. */
   timeLabel: string
 }
 
+/**
+ * Lead mode: the form writes a row to the leads Google Sheet on a tab named
+ * after `sheetSource`; staff turn it into registrations by hand afterwards.
+ */
+export interface CorporateLeadEvent extends CorporateEventBase {
+  mode: 'lead'
+  /** Google Sheet tab name. Must be `corporate_<a-z0-9_>` (api/lead.ts allow-list). */
+  sheetSource: string
+}
+
+/**
+ * Tournament mode: the page signs the employee in, writes their profile
+ * essentials, registers a pair on the real tournament and hands off to the
+ * Grow payment hold. The tournament must be `registration_open`; make it
+ * `is_unlisted` so it stays out of every public list.
+ */
+export interface CorporateTournamentEvent extends CorporateEventBase {
+  mode: 'tournament'
+  /** rally-api tournament UUID — the row the registration lands on. */
+  tournamentId: string
+  /** Offered only when the tournament's `fee_waiver_type` (from the API)
+   *  matches this entry's `feeWaiver.type` — the page never trusts the
+   *  constant alone. */
+  feeWaiver?: CorporateFeeWaiver
+}
+
+export type CorporateEvent = CorporateLeadEvent | CorporateTournamentEvent
+
 export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
   // Private link: /join/samsung-fold8
   'samsung-fold8': {
+    mode: 'lead',
     slug: 'samsung-fold8',
     // → Google Sheet tab "corporate_samsung".
     sheetSource: 'corporate_samsung',
@@ -72,6 +114,7 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
   // A private tournament thrown for a couple getting married — same shape as a
   // corporate event, so `company` carries the couple rather than a client.
   'dani-shoval': {
+    mode: 'lead',
     slug: 'dani-shoval',
     sheetSource: 'corporate_dani_shoval',
     company: 'Dani & Shoval',

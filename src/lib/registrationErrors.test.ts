@@ -62,3 +62,18 @@ describe('translateRegistrationError', () => {
     )
   })
 })
+
+describe('translateRegistrationError — corporate page additions', () => {
+  const t = i18n.t.bind(i18n)
+  it('maps the own-phone partner refusal', () => {
+    expect(translateRegistrationError('That is your own phone number. Choose a different partner.', t))
+      .toBe(i18n.t('tournament.registrationErrors.ownPhone'))
+  })
+  it('maps the missing-invite-details refusal', () => {
+    expect(translateRegistrationError('Missing invite details (first name, phone, or country code)', t))
+      .toBe(i18n.t('tournament.registrationErrors.missingInviteDetails'))
+  })
+  it('still falls back to the raw text for unknown messages', () => {
+    expect(translateRegistrationError('Something new', t)).toBe('Something new')
+  })
+})

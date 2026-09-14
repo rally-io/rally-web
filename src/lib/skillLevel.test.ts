@@ -6,6 +6,7 @@ import {
   SKILL_DEFAULT,
   snapToSkillStep,
   clampSkill,
+  normalizeSkillLevel,
 } from './skillLevel'
 
 describe('skillLevel helpers', () => {
@@ -31,5 +32,20 @@ describe('skillLevel helpers', () => {
     expect(clampSkill(99)).toBe(SKILL_MAX)
     expect(clampSkill(4.3)).toBe(4.5)
     expect(clampSkill(Number.NaN)).toBe(SKILL_DEFAULT)
+  })
+})
+
+describe('normalizeSkillLevel', () => {
+  it.each([null, undefined, 0, 0.5, -1, NaN])('reads %s as not chosen', (v) => {
+    expect(normalizeSkillLevel(v as number | null | undefined)).toBeNull()
+  })
+  it('passes real levels through UNSNAPPED, clamping only the high end', () => {
+    expect(normalizeSkillLevel(1)).toBe(1)
+    expect(normalizeSkillLevel(7)).toBe(7)
+    expect(normalizeSkillLevel(9)).toBe(7)
+    // Off-step values are what the rating engine writes; snapping them here
+    // would misreport the stored level and hide it from the dirty check.
+    expect(normalizeSkillLevel(3.3)).toBe(3.3)
+    expect(normalizeSkillLevel(4.68)).toBe(4.68)
   })
 })

@@ -211,6 +211,12 @@ export interface MyRegistration {
   team_name?: string | null
   status: string
   payment_status?: string | null
+  fee_waiver_type?: string | null
+  fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
+  fee_waiver_resident_count?: number | null
+  /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
+   *  absent from the object — never assume both keys are present. */
+  evidence_counts?: Partial<Record<'1' | '2', number>>
 }
 
 export interface TournamentParticipantPlayer {
@@ -245,6 +251,8 @@ export interface TournamentDetail extends Tournament {
   /** Null (not omitted) when the viewer is not queued — `ctaFor` branches on this. */
   my_waitlist_entry: TournamentWaitlistEntry | null
   waitlist_count: number
+  /** e.g. 'holon_resident'. Null when the tournament offers no fee waiver. */
+  fee_waiver_type?: string | null
 }
 
 /**
@@ -280,6 +288,11 @@ export interface RegistrationDetail {
   within_cancellation_window: boolean
   /** True ⇒ pre-auth (J4/J5 hold) entity: saved-card capture is forbidden, hosted checkout only. (gap spec §2.5) */
   requires_approval_event?: boolean
+  /** Residency fee waiver, when the tournament offers one. Present on the wire
+   *  from rally-api's TournamentRegistrationResponse. */
+  fee_waiver_type?: string | null
+  fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
+  fee_waiver_resident_count?: number | null
 }
 
 // --- Tournament registration request ---
@@ -294,7 +307,18 @@ export interface AcknowledgedMessageRef {
   version: number
 }
 
-export type RegisterPayload = { acknowledged_messages: AcknowledgedMessageRef[] } & (
+/** Declares 1 or 2 Holon residents on a registration — POST .../register body
+ *  (residency-fee-waiver-web spec). Evidence is uploaded separately, after the
+ *  registration row exists, via `registrationEvidence.ts`. */
+export interface FeeWaiverRequest {
+  type: 'holon_resident'
+  resident_count: 1 | 2
+}
+
+export type RegisterPayload = {
+  acknowledged_messages: AcknowledgedMessageRef[]
+  fee_waiver?: FeeWaiverRequest
+} & (
   | { partner_type: 'none' }
   | { partner_type: 'existing'; partner_player_id: string }
   | {
@@ -315,6 +339,22 @@ export interface TournamentRegistrationResult {
   service_fee: number
   amount_to_pay: number | null
   entry_fee: number | null
+  fee_waiver_type?: string | null
+  fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
+  fee_waiver_resident_count?: number | null
+  /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
+   *  absent from the object — never assume both keys are present. */
+  evidence_counts?: Partial<Record<'1' | '2', number>>
+}
+
+/** One uploaded proof-of-residency file — GET/POST
+ *  .../registrations/{id}/evidence (residency-fee-waiver-web spec). */
+export interface EvidenceItem {
+  id: string
+  for_player: 1 | 2
+  content_type: string
+  size_bytes: number
+  created_at: string
 }
 
 // --- Player search (partner selection) ---
@@ -369,7 +409,7 @@ export interface PlayerCreatePayload {
   email: string
   contact_number: string
   country_code?: string            // ISO style — e.g. '+972'. Omit if no contact_number.
-  gender: Gender
+  gender?: Gender
   date_of_birth?: string           // 'YYYY-MM-DD'
   skill_level?: number
   membership?: string

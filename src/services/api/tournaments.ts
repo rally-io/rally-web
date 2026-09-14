@@ -92,11 +92,21 @@ export async function getRegistration(
   )
 }
 
+export interface RegisterCallOptions {
+  /** Keep a residual 422 PROFILE_FIELDS_REQUIRED on the calling page instead of
+   *  the global redirect to /profile/edit (see client.ts). */
+  skipProfileRedirect?: boolean
+}
+
 export async function registerTournament(
   tournamentId: string,
   payload: RegisterPayload,
+  options?: RegisterCallOptions,
 ): Promise<ApiResponse<TournamentRegistrationResult>> {
-  return client.post(`/rally/v1/tournaments/${tournamentId}/register`, payload)
+  const url = `/rally/v1/tournaments/${tournamentId}/register`
+  return options?.skipProfileRedirect
+    ? client.post(url, payload, { skipProfileRedirect: true })
+    : client.post(url, payload)
 }
 
 /** Queue for a full tournament. Body is the same shape as `register` — it is

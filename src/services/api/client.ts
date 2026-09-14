@@ -3,6 +3,15 @@ import axios, { AxiosError } from 'axios'
 import { supabase } from '@/lib/supabase'
 import { isAuthError } from '@/lib/auth'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** Keep a 422 PROFILE_FIELDS_REQUIRED on the calling page instead of the
+     *  global redirect to /profile/edit. Set by pages that collect the missing
+     *  fields themselves (CorporateRegistrationPage). */
+    skipProfileRedirect?: boolean
+  }
+}
+
 // Bridge to AppSessionContext — set once when the provider mounts.
 // Kept here (not React) so axios stays free of React imports.
 type ApiBridge = {
@@ -77,7 +86,7 @@ client.interceptors.response.use(
       code === 'PLAYER_NOT_FOUND' ||
       (typeof detailMsg === 'string' && /player.*(not.*found|profile.*incomplete)/i.test(detailMsg))
 
-    if ((status === 403 || status === 422) && needsPlayerRow) {
+    if ((status === 403 || status === 422) && needsPlayerRow && !error.config?.skipProfileRedirect) {
       _bridge?.redirectToProfileEdit()
     }
 

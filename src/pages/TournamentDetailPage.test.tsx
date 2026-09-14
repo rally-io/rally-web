@@ -24,6 +24,7 @@ vi.mock('@/hooks/usePlayerSearch', () => ({
   usePlayerSearch: vi.fn(() => ({ results: [], isLoading: false, isActive: false })),
 }))
 vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
+vi.mock('@/services/api/profile', () => ({ getOnboardingStatus: vi.fn() }))
 vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
 // ScreenMessageList calls this real useQuery-backed hook — this file mounts no
 // QueryClientProvider, so it must be mocked like every other hook here.
@@ -46,14 +47,16 @@ vi.mock('@/features/screenMessages/hooks/useMessageActions', () => ({
 vi.mock('@/features/screenMessages/hooks/useRegistrationGate', () => ({
   useRegistrationGate: vi.fn(),
 }))
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ session: null }) }))
+vi.mock('@/hooks/useAuth', () => ({ useAuth: vi.fn(() => ({ session: null })) }))
 
 import TournamentDetailPage from './TournamentDetailPage'
 import { useTournament } from '@/hooks/useTournament'
 import { useAuthGate } from '@/hooks/useAuthGate'
+import { useAuth } from '@/hooks/useAuth'
 import { useAppSession } from '@/hooks/useAppSession'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
 import { registerTournament } from '@/services/api/tournaments'
+import { getOnboardingStatus } from '@/services/api/profile'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
 import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
 import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
@@ -91,6 +94,7 @@ function session(status: string) {
     status,
     onboardingStatus: null,
     playerProfile: null,
+    needsDetails: false,
     refetchOnboarding: vi.fn(),
     clearSession: vi.fn(),
   } as any
@@ -143,6 +147,9 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(useAuth).mockReturnValue({ session: null, user: null } as any)
+  sessionStorage.clear()
+  vi.mocked(getOnboardingStatus).mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } } as any)
   mockRequireSignIn.mockResolvedValue(undefined)
   mockUseAuthGate.mockReturnValue({ requireSignIn: mockRequireSignIn })
   mockUsePlayerSearch.mockReturnValue({ results: [], isLoading: false, isActive: false })
@@ -151,6 +158,59 @@ beforeEach(() => {
   mockUseRegistrationGate.mockReturnValue(defaultGate())
   // jsdom doesn't implement scrollIntoView — the partner-required gate calls it.
   Element.prototype.scrollIntoView = vi.fn()
+})
+
+describe('registration profile prerequisites', () => {
+  it('does not navigate an old free registration after changing accounts', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, session: null } as any)
+    mockRegisterTournament.mockResolvedValue({ success: true, data: { id: 'r1', amount_to_pay: 0 } } as any)
+    let resolve!: (value: any) => void
+    mockConfirmZeroPayment.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    const page = renderPage()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    await waitFor(() => expect(mockConfirmZeroPayment).toHaveBeenCalledOnce())
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u2' }, session: null } as any)
+    page.rerender(pageTree())
+    resolve({ success: true, data: {} })
+    await waitFor(() => expect(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') })).toBeEnabled())
+    expect(screen.queryByTestId('route-probe')).not.toBeInTheDocument()
+  })
+  it('does not submit an old registration after the account changes during a profile check', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, session: null } as any)
+    let resolve!: (value: any) => void
+    vi.mocked(getOnboardingStatus).mockReturnValue(new Promise((done) => { resolve = done }))
+    const page = renderPage()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    await waitFor(() => expect(getOnboardingStatus).toHaveBeenCalledOnce())
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u2' }, session: null } as any)
+    page.rerender(pageTree())
+    resolve({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: [] } })
+    await waitFor(() => expect(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') })).toBeEnabled())
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
+  it('asks for missing details before a registration attempt', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    vi.mocked(getOnboardingStatus).mockResolvedValue({ success: true, data: { is_authenticated: true, has_player_profile: true, missing_steps: ['contact_number'] } } as any)
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    const route = await screen.findByTestId('route-probe')
+    expect(route.textContent).toContain('purpose=tournament')
+    expect(route.textContent).toContain('returnTo=%2Ftournaments%2Ft-1')
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
+
+  it('keeps the tournament retryable when profile checking fails', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    vi.mocked(getOnboardingStatus).mockRejectedValue(new Error('offline'))
+    renderPage()
+    const button = screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') })
+    fireEvent.click(button)
+    expect(await screen.findByText(i18n.t('edit_profile.loadError'))).toBeInTheDocument()
+    expect(button).toBeEnabled()
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
 })
 
 afterEach(() => {
@@ -241,7 +301,7 @@ describe('TournamentDetailPage CTA', () => {
   })
 
   it('the profile-incomplete "Complete Profile" CTA carries a returnTo back to this tournament', () => {
-    mockUseAppSession.mockReturnValue(session('profile_incomplete'))
+    mockUseAppSession.mockReturnValue({ ...session('profile_incomplete'), needsDetails: true })
     mockUseTournament.mockReturnValue(tr({ id: 't-1', format: 'doubles' }))
     renderPage()
     const partnerSection = document.getElementById('partner-section') as HTMLElement
@@ -254,7 +314,7 @@ describe('TournamentDetailPage CTA', () => {
   })
 
   it('shows a complete-profile prompt instead of the partner form when onboarding is incomplete', () => {
-    mockUseAppSession.mockReturnValue(session('profile_incomplete'))
+    mockUseAppSession.mockReturnValue({ ...session('profile_incomplete'), needsDetails: true })
     mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
     renderPage()
     const partnerSection = document.getElementById('partner-section') as HTMLElement
@@ -902,4 +962,3 @@ describe('TournamentDetailPage participants roster', () => {
     expect(screen.queryByText('Dana Cohen')).not.toBeInTheDocument()
   })
 })
-

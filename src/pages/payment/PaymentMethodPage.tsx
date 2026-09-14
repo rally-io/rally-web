@@ -7,12 +7,14 @@ import { useTranslation } from 'react-i18next'
 import { CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/tournamentHelpers'
+import { sanitizeReturnTo } from '@/lib/authReturn'
 import { pendingPayment } from '@/hooks/usePendingPayment'
 import { useRegistration } from '@/hooks/useRegistration'
 import {
   initiateTournamentRegistrationPayment, initiateTournamentWaitlistHoldPayment,
 } from '@/services/api/payments'
 import type { PaymentEntityType } from '@/types/api'
+import { trackFunnel } from '@/lib/analytics'
 
 export default function PaymentMethodPage() {
   const { t } = useTranslation()
@@ -30,6 +32,7 @@ export default function PaymentMethodPage() {
   const waitlistEntryId = params.get('waitlist_entry_id') ?? ''
   const entityId = isWaitlistHold ? waitlistEntryId : registrationId
   const tournamentId = params.get('tournament_id') ?? ''
+  const returnTo = sanitizeReturnTo(params.get('return_to'))
   // The fresh-registration flow already passes `amount`; the "resume payment"
   // entry point (from an existing pending registration) only carries the two
   // ids, so fall back to fetching the registration detail for its amount.
@@ -61,7 +64,9 @@ export default function PaymentMethodPage() {
         entityId,
         tournamentId,
         amount,
+        returnTo: returnTo ?? undefined,
       })
+      trackFunnel('checkout_started', { tournament_id: tournamentId })
       window.location.href = result.data.payment_url
     } catch {
       setError(t('payment.checkoutError'))

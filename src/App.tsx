@@ -32,7 +32,7 @@ import PaymentMethodPage from './pages/payment/PaymentMethodPage'
 import PaymentReturnPage from './pages/payment/PaymentReturnPage'
 import PaymentConfirmingPage from './pages/payment/PaymentConfirmingPage'
 import PaymentFailedPage from './pages/payment/PaymentFailedPage'
-import CorporateSignupPage from './pages/CorporateSignupPage'
+import CorporateEventPage from './pages/CorporateEventPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 import LoginPage from './pages/auth/LoginPage'
@@ -60,9 +60,8 @@ export default function App() {
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/set-password" element={<SetPasswordPage />} />
 
-        {/* Unlisted closed-event signup. Bare on purpose: employees get a
-            private link to sign up and nothing else — no nav, no app prompt. */}
-        <Route path="/join/:slug" element={<CorporateSignupPage />} />
+        {/* Unlisted corporate event pages (lead signup or real registration — see CorporateEventPage). Bare on purpose: no nav, no app prompt. */}
+        <Route path="/join/:slug" element={<CorporateEventPage />} />
 
         {/* Public live tournament results. Bare on purpose: this is a spectator screen
             shown on club TVs and phones — Navbar/Footer would eat the vertical space the

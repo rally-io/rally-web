@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { pendingPayment } from '@/hooks/usePendingPayment'
+import { sanitizeReturnTo } from '@/lib/authReturn'
 
 const ALLOWED_ENTITY_TYPES = new Set([
   'booking',
@@ -38,6 +39,12 @@ export default function PaymentReturnPage() {
       const eid = params.get('event_id') ?? pending?.eventId
       if (tid) sp.set('tournament_id', tid)
       if (eid) sp.set('event_id', eid)
+      // `pendingPayment` round-trips through sessionStorage and its shape check
+      // never looks at `returnTo`, so this is an unvalidated string on its way to
+      // a page that navigates to it. Same-origin path or nothing (defence in depth
+      // — the confirming page sanitizes too).
+      const backTo = sanitizeReturnTo(pending?.returnTo)
+      if (backTo) sp.set('return_to', backTo)
       navigate(`/payments/confirming?${sp.toString()}`, { replace: true })
     } else {
       const sp = new URLSearchParams()
