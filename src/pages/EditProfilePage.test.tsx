@@ -159,12 +159,13 @@ describe('EditProfilePage — profile_incomplete branch', () => {
   })
 })
 
+// The real GET /rally/v1/players/me payload: `player_id`, and no email — the address on
+// screen comes from the auth user (mocked above), which is what production does.
 const READY_PROFILE: PlayerMe = {
-  id: 'p1',
+  player_id: 'p1',
   first_name: 'Dana',
   last_name: 'Levi',
   contact_number: '501234567',
-  email: 'dana@example.com',
   skill_level: 4.2,
   skill_tier: 'silver',
   avatar_url: null,
@@ -681,5 +682,252 @@ describe('tournament profile completion', () => {
     expect(screen.queryByText(/before you continue we still need/i)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /continue to tournament/i }))
     expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+  })
+})
+
+describe('EditProfilePage — verified level: warning, confirm, reveal', () => {
+  const VERIFIED_PROFILE: PlayerMe = { ...READY_PROFILE, level_verified: true, level_reliability: 91 }
+  const UNVERIFIED_PROFILE: PlayerMe = { ...READY_PROFILE, level_verified: false, level_reliability: 40 }
+
+  function saved(profile: PlayerMe) {
+    return vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({
+      success: true, data: profile, meta: null, error: null,
+    } as any)
+  }
+
+  it('shows the current level with its status and the verified warning', () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    renderPage()
+    expect(screen.getByTestId('level-chip')).toHaveAttribute('data-state', 'verified')
+    expect(screen.getByText('4.20')).toBeInTheDocument()
+    expect(screen.getByText(/level reliability/).textContent).toBe('⁦91%⁩ level reliability')
+    expect(screen.getByText(/removes your verified seal/)).toBeInTheDocument()
+  })
+
+  it('shows the unverified warning for an unverified profile, and no level block on create', () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = UNVERIFIED_PROFILE
+    const { unmount } = renderPage()
+    expect(screen.getByTestId('level-chip')).toHaveAttribute('data-state', 'unverified')
+    expect(screen.getByText(/resets its reliability/)).toBeInTheDocument()
+    unmount()
+    sessionState.status = 'profile_incomplete'
+    sessionState.playerProfile = null
+    renderPage()
+    expect(screen.queryByTestId('level-chip')).not.toBeInTheDocument()
+    expect(screen.queryByText(/resets its reliability/)).not.toBeInTheDocument()
+  })
+
+  /* The explainer had no entry point on web at all: LevelExplainerSheet was built for the
+     globe's PlayerStatsTab, which lives on a different branch. Edit Profile is where the level
+     lives here, so the link lives here — and unconditionally, because a player with no level
+     yet is the one most likely to ask what the number means. */
+  it('the "How is my level calculated?" link opens the explainer, both on a ready profile and on create', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const { unmount } = renderPage()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'How is my level calculated?' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('How your level works')
+    unmount()
+
+    sessionState.status = 'profile_incomplete'
+    sessionState.playerProfile = null
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'How is my level calculated?' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('How your level works')
+  })
+
+  it('a verified profile: moving the slider and saving asks first; "Keep" saves nothing', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, skill_level: 5.5, level_verified: false, level_reliability: 0 })
+    renderPage()
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Give up your verified seal?')
+    expect(dialog).toHaveTextContent('Your level ⁦4.20⁩ is verified at ⁦91%⁩ level reliability')
+    expect(updateSpy).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /keep my verified level/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(updateSpy).not.toHaveBeenCalled()
+    /* "Keep" has to put the edit back, not just close the dialog. Leaving the form dirty at 5.5
+       showed the 4.20 verified chip above a slider reading 5.5 with Save still armed — so the
+       next Save re-opened this same dialog, and a player who read "Keep" as "undo" was one
+       click from giving up the seal they had just protected. */
+    expect(screen.getByRole('spinbutton')).toHaveValue(4.2)
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /save changes/i })).not.toBeInTheDocument(),
+    )
+    updateSpy.mockRestore()
+  })
+
+  it('a verified profile: dismissing the confirm with Escape also puts the level back', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, skill_level: 5.5 })
+    renderPage()
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await screen.findByRole('dialog')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(updateSpy).not.toHaveBeenCalled()
+    expect(screen.getByRole('spinbutton')).toHaveValue(4.2)
+    updateSpy.mockRestore()
+  })
+
+  it('moving the slider and putting it back is not a declaration: no dialog, no PATCH', async () => {
+    /* The step has to be fine enough to land back on the player's own level. At 0.5 a rated
+       4.17 could only reach 4.0 or 4.5, so touching the control at all forced a declaration
+       with no way home — and the server's "an unchanged value is a no-op" guard was
+       unreachable from this page. */
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved(VERIFIED_PROFILE)
+    renderPage()
+    const slider = screen.getByLabelText(/skill level slider/i)
+    fireEvent.change(slider, { target: { value: '5.5' } })
+    await screen.findByRole('button', { name: /save changes/i })
+    fireEvent.change(slider, { target: { value: '4.2' } })
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /save changes/i })).not.toBeInTheDocument(),
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(updateSpy).not.toHaveBeenCalled()
+    updateSpy.mockRestore()
+  })
+
+  it('"Reassess anyway" saves, then reveals the new level with its ring', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, skill_level: 5.5, level_verified: false, level_reliability: 0 })
+    renderPage()
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await user.click(await screen.findByRole('button', { name: /reassess anyway/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    const reveal = await screen.findByRole('dialog')
+    expect(reveal).toHaveTextContent('Your new level')
+    expect(screen.getByTestId('reliability-ring')).toHaveAccessibleName('5.50')
+    expect(screen.queryByTestId('ring-fill')).not.toBeInTheDocument() // 0 %: track only
+    expect(reveal).toHaveTextContent('Not verified yet')
+    await user.click(screen.getByRole('button', { name: /^done$/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    updateSpy.mockRestore()
+  })
+
+  it('an unverified profile saves a new level without asking, and still reveals it', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = UNVERIFIED_PROFILE
+    const updateSpy = saved({ ...UNVERIFIED_PROFILE, skill_level: 5.5, level_reliability: 0 })
+    renderPage()
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    expect(screen.queryByText('Give up your verified seal?')).not.toBeInTheDocument()
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Your new level')
+    updateSpy.mockRestore()
+  })
+
+  it('navigates back to returnTo only after the reveal is dismissed with Done (level change defers the hop)', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, skill_level: 5.5, level_verified: false, level_reliability: 0 })
+    renderPage(`/profile/edit?returnTo=${encodeURIComponent('/tournaments/t-1')}`)
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await user.click(await screen.findByRole('button', { name: /reassess anyway/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    const reveal = await screen.findByRole('dialog')
+    expect(reveal).toHaveTextContent('Your new level')
+    // The hop hasn't happened yet — it's gated behind the reveal, not the save.
+    expect(screen.queryByTestId('tournament-probe')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^done$/i }))
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    updateSpy.mockRestore()
+  })
+
+  it('navigates back to returnTo when the reveal is dismissed via Escape instead of Done', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, skill_level: 5.5, level_verified: false, level_reliability: 0 })
+    renderPage(`/profile/edit?returnTo=${encodeURIComponent('/tournaments/t-1')}`)
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await user.click(await screen.findByRole('button', { name: /reassess anyway/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    const reveal = await screen.findByRole('dialog')
+    expect(reveal).toHaveTextContent('Your new level')
+    fireEvent.keyDown(reveal, { key: 'Escape' })
+    expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
+    updateSpy.mockRestore()
+  })
+
+  it('a name-only change on a verified profile neither asks nor reveals', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, first_name: 'Dani' })
+    renderPage()
+    const first = screen.getByLabelText(/first name/i)
+    await user.clear(first)
+    await user.type(first, 'Dani')
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ first_name: 'Dani' }))
+    await screen.findByText(/profile updated/i)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    updateSpy.mockRestore()
+  })
+
+  it('Retry after a failed refresh re-runs the save without re-asking or re-revealing', async () => {
+    // finishSave marks the write as landed, so a failed refresh leaves the form
+    // dirty behind a "Try again" button and mutationFn short-circuits — handing
+    // finishSave the WHOLE form, which always carries a skill_level, rather than
+    // the dirty-fields patch. Neither the confirm nor the reveal may read that as
+    // a level change: the player only edited their name, and the write is done.
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = VERIFIED_PROFILE
+    const updateSpy = saved({ ...VERIFIED_PROFILE, first_name: 'Dani' })
+    vi.mocked(profileApi.getMyPlayerProfile).mockRejectedValueOnce(new Error('offline'))
+    renderPage()
+    const first = screen.getByLabelText(/first name/i)
+    await user.clear(first)
+    await user.type(first, 'Dani')
+    const save = await screen.findByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    const retry = await screen.findByRole('button', { name: /try again/i })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(retry)
+    await screen.findByText(/profile updated/i)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // The level was never in the patch, so the retry must not re-PATCH either.
+    expect(updateSpy).toHaveBeenCalledTimes(1)
+    updateSpy.mockRestore()
   })
 })

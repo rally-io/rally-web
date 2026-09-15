@@ -8,7 +8,9 @@ import {
   ShoppingBag,
   Newspaper,
   Dumbbell,
+  Medal,
 } from 'lucide-react'
+import { BallMark } from '@/components/icons/BallMark'
 import AvailabilityGrid from '@/components/home/AvailabilityGrid'
 import { useDevicePlatform } from '@/hooks/useDevicePlatform'
 import { cn } from '@/lib/utils'
@@ -292,6 +294,61 @@ export default function HomePage() {
                 offset={5}
                 className="hidden lg:block rotate-[6deg] translate-y-4 opacity-90"
               />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* COMMUNITY — the ball and the ranking. A still, never the scene: a WebGL canvas in
+          the landing page costs LCP on desktop and battery on phones. */}
+      <section data-testid="home-community" className="relative py-12 sm:py-16 overflow-hidden">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(204,255,0,0.06)_0%,transparent_55%)]"
+        />
+        <div className="relative container mx-auto px-4 max-w-6xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            {/* Picture first in DOM order: first on phones, and on the start side on
+                desktop because grid order follows `dir`. */}
+            <div>
+              <img
+                src="/images/rally-ball-home.webp"
+                alt=""
+                width={900}
+                height={801}
+                loading="lazy"
+                decoding="async"
+                className="w-full max-w-md mx-auto lg:max-w-none rounded-3xl"
+              />
+            </div>
+            <div>
+              <span className="inline-block text-xs sm:text-sm font-bold text-rally-accent uppercase tracking-widest mb-4">
+                {t('home.communityEyebrow')}
+              </span>
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 leading-tight">
+                {t('home.communityTitle')}
+              </h2>
+              <p className="text-base sm:text-lg text-rally-text-2 leading-relaxed mb-6 max-w-lg">
+                {t('home.communityDesc')}
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  to="/network"
+                  state={{ source: 'home' }}
+                  className="group inline-flex items-center gap-3 px-6 py-3.5 rounded-full bg-rally-accent text-rally-accent-text font-bold text-sm sm:text-base hover:bg-rally-accent/90 transition-colors"
+                >
+                  <BallMark size={18} />
+                  <span>{t('home.communityBallCta')}</span>
+                  <ArrowRight className="w-4 h-4 rtl:rotate-180 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
+                </Link>
+                <Link
+                  to="/ranking"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-rally-border text-rally-text font-bold text-sm sm:text-base hover:border-rally-accent/40 hover:bg-white/5 transition-colors"
+                >
+                  <Medal className="w-4 h-4" />
+                  <span>{t('home.communityRankingCta')}</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

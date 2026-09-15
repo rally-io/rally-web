@@ -20,7 +20,15 @@ describe('SkillLevelSlider', () => {
   it('renders the controlled value in the number input', () => {
     render(<SkillLevelSlider value={3.5} onChange={() => {}} />)
     const input = screen.getByRole('spinbutton') as HTMLInputElement
-    expect(input.value).toBe('3.5')
+    expect(input.value).toBe('3.50')
+  })
+
+  it('renders an off-grid engine level exactly, at the same precision as the level chip', () => {
+    // A rated level is rarely round. The readout used to print 4.2 for 4.17 while the chip
+    // beside it printed 4.20 — and the coarse step meant the player could not get back to
+    // 4.17 once they touched the control, so editing anything cost them the seal.
+    render(<SkillLevelSlider value={4.17} onChange={() => {}} />)
+    expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('4.17')
   })
 
   it('renders ticks 1.0 through 7.0', () => {
@@ -37,7 +45,7 @@ describe('SkillLevelSlider', () => {
     expect(onChange).toHaveBeenCalledWith(4.5)
   })
 
-  it('snaps and clamps the text input on blur', async () => {
+  it('clamps the text input to the top of the scale on blur', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     render(<SkillLevelSlider value={3} onChange={onChange} />)
@@ -54,8 +62,8 @@ describe('SkillLevelSlider', () => {
     const input = screen.getByRole('spinbutton') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'abc' } })
     fireEvent.blur(input)
-    // Input is re-synced to '3.0' visually; onChange not called with NaN.
-    expect(input.value).toBe('3.0')
+    // Input is re-synced to '3.00' visually; onChange not called with NaN.
+    expect(input.value).toBe('3.00')
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -73,8 +81,11 @@ describe('SkillLevelSlider', () => {
   it('the first slider move emits a snapped value', () => {
     const onChange = vi.fn()
     render(<SkillLevelSlider value={null} onChange={onChange} />)
-    fireEvent.change(screen.getByRole('slider'), { target: { value: '4.3' } })
-    expect(onChange).toHaveBeenCalledWith(4.5)
+    // Snapped to the scale's own precision, which is the engine's: 0.01, not
+    // the 0.5 grid this test was written against. A coarser grid is what made a
+    // rated level inexpressible in the first place.
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '4.234' } })
+    expect(onChange).toHaveBeenCalledWith(4.23)
   })
 
   it('typing a number while empty sets a value', () => {
@@ -135,16 +146,18 @@ describe('SkillLevelSlider', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('blurring an untouched off-step level does not snap it away', () => {
+  it('blurring an untouched engine level does not round it away', () => {
     const onChange = vi.fn()
     render(<SkillLevelSlider value={4.68} onChange={onChange} />)
     const input = screen.getByRole('spinbutton') as HTMLInputElement
-    // The rating engine's 4.68 shows as "4.7"; focus passing through must not
-    // rewrite it as 4.5.
-    expect(input.value).toBe('4.7')
+    // The rating engine's 4.68 is shown as it is stored. It used to read "4.7"
+    // here, back when the grid was 0.5 and the box could only ever approximate
+    // the stored value; at 0.01 the readout IS the value, so focus passing
+    // through has nothing to round and nothing to save.
+    expect(input.value).toBe('4.68')
     fireEvent.blur(input)
     expect(onChange).not.toHaveBeenCalled()
-    expect(input.value).toBe('4.7')
+    expect(input.value).toBe('4.68')
   })
 
   it('shows the note under a set value too', () => {

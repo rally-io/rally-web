@@ -1,13 +1,16 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { Layout } from './components/layout/Layout'
 import { AuthGateModal } from './components/auth/AuthGateModal'
 import RouteTracker from './components/analytics/RouteTracker'
+import { useDocumentLanguage } from './hooks/useDocumentLanguage'
 
 // Lazy on purpose: this feature ships its own theme stylesheet, which @imports the
 // Karantina display face. A static import would make every marketing page fetch it.
 const LiveTournamentPage = lazy(() => import('./features/publicTournament'))
+// Lazy on purpose: the player network pulls in three.js and its own textures — only this
+// route should pay for them.
+const PlayerNetworkPage = lazy(() => import('./features/playerGlobe'))
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -15,6 +18,9 @@ import CrmPage from './pages/CrmPage'
 import AppDownloadPage from './pages/AppDownloadPage'
 import CoachesPage from './pages/CoachesPage'
 import LevelPage from './pages/LevelPage'
+import RankingPage from './features/leagueRanking/pages/RankingPage'
+import PlayerSeasonPage from './features/leagueRanking/pages/PlayerSeasonPage'
+import HowScoringPage from './features/leagueRanking/pages/HowScoringPage'
 import PricingPage from './pages/PricingPage'
 import ContactPage from './pages/ContactPage'
 import PrivacyPage from './pages/PrivacyPage'
@@ -43,10 +49,15 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import SetPasswordPage from './pages/auth/SetPasswordPage'
 
 export default function App() {
-  const { i18n } = useTranslation()
+  /* Direction is derived in exactly one place — `useDocumentLanguage`, which mirrors the locale
+     onto <html>, where it reaches portalled dialogs and sheets too. This wrapper used to repeat
+     the same `language === 'he'` predicate on itself; two copies of one rule drift the moment
+     either changes, and the <html> attribute already covers this subtree. index.html resolves
+     the stored locale before first paint, so there is no unstyled-direction frame to cover. */
+  useDocumentLanguage()
 
   return (
-    <div dir={i18n.language === 'he' ? 'rtl' : 'ltr'}>
+    <div>
       {/* Mounted once — opens when any page calls requireSignIn() from useAuthGate */}
       <AuthGateModal />
 
@@ -81,6 +92,20 @@ export default function App() {
           <Route path="/download" element={<AppDownloadPage />} />
           <Route path="/crm" element={<CrmPage />} />
           <Route path="/level" element={<LevelPage />} />
+          {/* The player network on the padel ball. */}
+          <Route
+            path="/network"
+            element={
+              <Suspense fallback={<div className="min-h-[60vh] bg-rally-bg" />}>
+                <PlayerNetworkPage />
+              </Suspense>
+            }
+          />
+          {/* Public league ranking. Inside Layout on purpose: unlike /live/:token this
+              is a marketing surface — it should carry the nav and be linkable. */}
+          <Route path="/ranking" element={<RankingPage />} />
+          <Route path="/ranking/player/:id" element={<PlayerSeasonPage />} />
+          <Route path="/ranking/how" element={<HowScoringPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/coaches" element={<CoachesPage />} />

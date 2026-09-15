@@ -3,6 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      The static lang/dir above is the Hebrew default, correct for a first visit. A returning
+      English user would otherwise get one RTL frame before `useDocumentLanguage` runs, so
+      resolve the stored locale before first paint. Same storage key as src/i18n/index.ts;
+      wrapped because Safari's private mode throws on localStorage access.
+    -->
+    <script>
+      try {
+        var lang = localStorage.getItem('rallyLang')
+        if (lang) {
+          document.documentElement.lang = lang
+          document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr'
+        }
+      } catch (e) { /* no stored preference reachable — keep the markup default */ }
+    </script>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />

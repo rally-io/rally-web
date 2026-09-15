@@ -27,6 +27,8 @@ import { useAppSession } from '@/hooks/useAppSession'
 import { ProfileRing } from './ProfileRing'
 import { Logo } from '@/components/ui/Logo'
 import { cn } from '@/lib/utils'
+import { describeLevel, LevelChip } from '@/components/players/level'
+import { BallMark } from '@/components/icons/BallMark'
 
 type SkillTier = 'bronze' | 'silver' | 'gold'
 
@@ -35,6 +37,12 @@ const TIER_COLOR_CLASS: Record<SkillTier, string> = {
   silver: 'bg-slate-400',
   gold: 'bg-yellow-500',
 }
+
+/* The ball's own mark in the `LucideIcon` slot the nav renders (`<Icon size={n} className=… />`).
+ * A generic network glyph said "graph"; the mark says "the ball" — the same object the app draws. */
+const BallIcon = (({ size, className }: { size?: number | string; className?: string }) => (
+  <BallMark size={typeof size === 'number' ? size : 20} className={className} />
+)) as unknown as LucideIcon
 
 function getInitials(name: string, email: string | null | undefined): string {
   const trimmed = name.trim()
@@ -72,13 +80,19 @@ export function Navbar() {
   const { status, playerProfile, clearSession } = useAppSession()
   const isSignedIn = !!session
 
-  const navLinks: { to: string; label: string; icon: LucideIcon }[] = [
+  // Player destinations first, business links last. Seven is the ceiling — an eighth
+  // link means something here has to go, not a smaller font.
+  // `state` travels with the navigation (never a query param a visitor could copy): the ball
+  // page reads it as the door the visit came through, so nav opens are not "direct" opens.
+  const navLinks: { to: string; label: string; icon: LucideIcon; state?: { source: 'nav' } }[] = [
     { to: '/', label: t('nav.app'), icon: Home },
-    { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
-    // { to: '/clubs', label: t('nav.clubs'), icon: MapPin },
     { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
-    { to: '/contact', label: t('nav.contact'), icon: Mail },
+    { to: '/ranking', label: t('nav.ranking'), icon: Medal },
+    { to: '/network', label: t('nav.ball'), icon: BallIcon, state: { source: 'nav' } },
+    // { to: '/clubs', label: t('nav.clubs'), icon: MapPin },
+    { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
     { to: '/coaches', label: t('nav.coaches'), icon: Dumbbell },
+    { to: '/contact', label: t('nav.contact'), icon: Mail },
   ]
 
   // Mirrors the mobile drawer (AppDrawerItems). Items without a web route are
@@ -141,7 +155,13 @@ export function Navbar() {
   }, [location.pathname, location.search])
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-rally-bg/80 backdrop-blur-xl shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
+    // `will-change-[opacity]` pins the glass header to its own compositor
+    // layer so animated page content can't flicker above it mid-scroll
+    // (Chromium backdrop-filter re-sorting). Opacity specifically: a
+    // transform/filter promotion would become the containing block for the
+    // `fixed inset-0` click-away overlays below and shrink them to the
+    // header strip.
+    <header className="sticky top-0 z-50 will-change-[opacity] border-b border-white/10 bg-rally-bg/80 backdrop-blur-xl shadow-[0_1px_0_0_rgba(255,255,255,0.04)]">
       <div className="container mx-auto flex items-center justify-between px-4 py-4 md:py-5 rtl:max-md:flex-row-reverse">
         <Link to="/" className="flex-shrink-0">
           <Logo size="md" showText={true} />
@@ -154,6 +174,7 @@ export function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
+                state={link.state}
                 className={cn(
                   'relative font-display font-semibold text-base px-4 py-2.5 rounded-lg transition-all duration-200',
                   isActive
@@ -243,15 +264,21 @@ export function Navbar() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-slate-100 truncate">{displayName}</p>
                           {skillTier && (
-                            <span
-                              className={cn(
-                                'mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-slate-900',
-                                TIER_COLOR_CLASS[skillTier],
-                              )}
-                            >
-                              <Medal size={11} />
-                              {`${skillTier.toUpperCase()}${skillLevel != null ? ` · ${skillLevel}` : ''}`}
-                            </span>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-slate-900',
+                                  TIER_COLOR_CLASS[skillTier],
+                                )}
+                              >
+                                <Medal size={11} />
+                                {skillTier.toUpperCase()}
+                              </span>
+                              <LevelChip
+                                descriptor={describeLevel(skillLevel, playerProfile?.level_verified, playerProfile?.level_reliability)}
+                                size="sm"
+                              />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -330,6 +357,7 @@ export function Navbar() {
               <Link
                 key={link.to}
                 to={link.to}
+                state={link.state}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl font-display font-semibold text-base transition-colors min-h-[48px]',

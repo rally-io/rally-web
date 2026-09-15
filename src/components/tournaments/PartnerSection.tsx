@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { describeLevel, LevelChip } from '@/components/players/level'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import type { PartnerSelectionState } from '@/types/partner'
@@ -178,6 +179,13 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
                         {t('tournament.partnerBadgeRally')}
                       </p>
                     </div>
+                    {player.skill_level != null && (
+                      <LevelChip
+                        descriptor={describeLevel(player.skill_level, player.level_verified, player.level_reliability)}
+                        size="sm"
+                        className="shrink-0"
+                      />
+                    )}
                   </button>
                 )
               })}
