@@ -31,7 +31,7 @@ describe('ReliabilityRing', () => {
   it('draws the track, the notch and the number; 0 % has no fill arc', () => {
     const { container } = render(<ReliabilityRing value="3.50" reliability={0} verified={false} />)
     expect(container.querySelector('circle[stroke="var(--color-rally-surface-2)"]')).toHaveAttribute('stroke-width', '6')
-    expect(container.querySelector('line')).toHaveAttribute('x1', '21.5')
+    expect(container.querySelector('line')).toHaveAttribute('x1', '16.9') // 82 % notch; the derived check is the next test
     expect(screen.getByText('3.50')).toHaveAttribute('fill', 'var(--color-rally-accent)')
     expect(fillDash()).toBeNull()
   })

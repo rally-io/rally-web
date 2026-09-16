@@ -15,8 +15,8 @@ describe('LevelExplainerSheet', () => {
     for (const title of ['Your level', 'Level reliability', 'Verified', 'What counts', 'Keeping it', 'Tier']) {
       expect(screen.getByRole('heading', { name: title })).toBeInTheDocument()
     }
-    expect(dialog).toHaveTextContent(/the notch — ⁦86%⁩ —/) // the % token is bidi-isolated (Global constraints)
-    expect(dialog).toHaveTextContent('about 15 rated matches, roughly 3 tournaments')
+    expect(dialog).toHaveTextContent(/the notch — ⁦82%⁩ —/) // the % token is bidi-isolated (Global constraints)
+    expect(dialog).toHaveTextContent('about 10 rated matches, roughly 3 tournaments')
     expect(dialog).toHaveTextContent('3 months without a rated match')
     expect(screen.getByRole('link', { name: 'Read more' })).toHaveAttribute('href', '/level')
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()

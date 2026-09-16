@@ -32,7 +32,7 @@ export interface ReliabilityRingProps {
 
 /** The owner's gauge (spec §5.4 / Appendix A): a 96×96 SVG with the track, the fill arc from
     12 o'clock, a notch at the `VERIFIED_RELIABILITY_THRESHOLD` % threshold and the number inside. The fill colour follows
-    the verified *flag*, so a verified player in the hysteresis band (79–86 %) still sees lime
+    the verified *flag*, so a verified player in the hysteresis band (74–82 %) still sees lime
     stopping short of the notch — which is exactly the story a fading seal tells.
     It is a gauge, not text: `dir="ltr"` keeps it from mirroring in Hebrew. */
 export function ReliabilityRing({ value, reliability, verified, className }: ReliabilityRingProps) {

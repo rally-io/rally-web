@@ -22,7 +22,9 @@ describe('LevelPage', () => {
     for (const title of ['Your level', 'Level reliability', 'Verified', 'What counts', 'Keeping it', 'Tier']) {
       expect(screen.getByRole('heading', { level: 3, name: title })).toBeInTheDocument()
     }
-    expect(screen.getByText(/the notch — \u206686%\u2069 —/)).toBeInTheDocument()
+    // 82, not 86: the notch reads VERIFIED_RELIABILITY_THRESHOLD, moved by the 2026-09-16
+    // verification decision (σ_on 0.45). Pinned as a literal so a constant drift shows here.
+    expect(screen.getByText(/the notch — \u206682%\u2069 —/)).toBeInTheDocument()
   })
 
   it('the old games→influence table is gone', () => {
