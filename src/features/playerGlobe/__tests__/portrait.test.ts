@@ -1,16 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { genericAvatarUrl, playerPhotoUrl } from '@/lib/playerPortrait'
-import { GENERIC_FEMALE_KEY, GENERIC_MALE_KEY, genericKeyFor, portraitFor } from '../lib/images'
+import {
+  GENERIC_FEMALE_KEY, GENERIC_MALE_KEY, genericKeyFor, portraitFor, portraitSourceFor,
+} from '../lib/images'
 import type { GlobeImages } from '../lib/images'
 import type { GlobeNode } from '../types'
 
 const node = (over: Partial<GlobeNode> = {}): GlobeNode => ({
-  id: 'p1', name: 'Noa Levi', avatarUrl: null, avatarCleanUrl: null, gender: null,
+  id: 'p1', name: 'Noa Levi', avatarUrl: null, avatarCleanUrl: null, portraitUrl: null, gender: null,
   skillLevel: null, skillTier: null, levelVerified: null, levelReliability: null,
   club: null, matches: 0, winRate: 0, since: 2024, ...over,
 })
 
 describe('which portrait a player wears', () => {
+  it('downloads the server-resized portrait first, then the cut-out, then the raw upload', () => {
+    // The resized one is the same face at the texture's own size — ~2 KB against up to 1 MB.
+    // Measured on prod 2026-09-16: 255 full-size portraits were ~38 MB and the ball waited for
+    // every one of them. The two fallbacks exist for an API that predates `portrait_url`.
+    expect(portraitSourceFor(node({ portraitUrl: '/p.webp', avatarCleanUrl: '/c.png', avatarUrl: '/r.png' }))).toBe('/p.webp')
+    expect(portraitSourceFor(node({ avatarCleanUrl: '/c.png', avatarUrl: '/r.png' }))).toBe('/c.png')
+    expect(portraitSourceFor(node({ avatarUrl: '/r.png' }))).toBe('/r.png')
+    expect(portraitSourceFor(node())).toBeNull()
+  })
+
   it('prefers the cut-out over the raw upload — the same order the ranking shield uses', () => {
     expect(playerPhotoUrl('/clean.png', '/raw.png')).toBe('/clean.png')
     expect(playerPhotoUrl(null, '/raw.png')).toBe('/raw.png')

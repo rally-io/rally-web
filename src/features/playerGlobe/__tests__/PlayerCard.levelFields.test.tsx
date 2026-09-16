@@ -16,7 +16,7 @@ import type { GlobeGraph, GlobeNode } from '../types'
  */
 
 const node = (id: string, name: string, over: Partial<GlobeNode> = {}): GlobeNode => ({
-  id, name, avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 4, skillTier: 'gold', levelVerified: false, levelReliability: null,
+  id, name, avatarUrl: null, avatarCleanUrl: null, portraitUrl: null, gender: null, skillLevel: 4, skillTier: 'gold', levelVerified: false, levelReliability: null,
   club: null, matches: 12, winRate: 58, since: 2024, ...over,
 })
 

@@ -58,7 +58,7 @@ vi.mock('../components/PlayerGlobe', async () => {
 })
 
 const node = (id: string, name: string): GlobeNode => ({
-  id, name, avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: null, skillTier: null, levelVerified: false, levelReliability: null,
+  id, name, avatarUrl: null, avatarCleanUrl: null, portraitUrl: null, gender: null, skillLevel: null, skillTier: null, levelVerified: false, levelReliability: null,
   club: null, matches: 0, winRate: 0, since: 2024,
 })
 const graph: GlobeGraph = {

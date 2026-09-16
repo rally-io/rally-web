@@ -12,6 +12,8 @@ const nodeSchema = z.object({
   // Both `.catch(null)` for the same reason the level pair is: an older backend that sends
   // neither must degrade to the neutral stand-in, never throw and blank the whole globe.
   avatar_clean_url: z.string().nullable().catch(null),
+  // Landed one API deploy later than the pair above; same degrade-to-null contract.
+  portrait_url: z.string().nullable().catch(null),
   gender: z.string().nullable().catch(null),
   skill_level: z.number().nullable(),
   skill_tier: z.enum(['bronze', 'silver', 'gold']).nullable(),
@@ -53,6 +55,7 @@ export function toGlobeGraph(payload: NetworkPayload): GlobeGraph {
       name: n.name,
       avatarUrl: n.avatar_url,
       avatarCleanUrl: n.avatar_clean_url,
+      portraitUrl: n.portrait_url,
       gender: n.gender,
       skillLevel: n.skill_level,
       skillTier: n.skill_tier,

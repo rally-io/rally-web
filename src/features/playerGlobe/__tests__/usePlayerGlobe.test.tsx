@@ -57,7 +57,7 @@ const graph: GlobeGraph = {
   generatedAt: 'now',
   nodes: [
     {
-      id: 'p1', name: 'Omer Levi', avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: null, skillTier: null,
+      id: 'p1', name: 'Omer Levi', avatarUrl: null, avatarCleanUrl: null, portraitUrl: null, gender: null, skillLevel: null, skillTier: null,
       levelVerified: false, levelReliability: null, club: null, matches: 0, winRate: 0, since: 2024,
     },
   ],

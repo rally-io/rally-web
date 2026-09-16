@@ -7,7 +7,7 @@ import { PlayerStatsTab } from '../components/PlayerStatsTab'
 import type { GlobeNode } from '../types'
 
 const node: GlobeNode = {
-  id: 'p1', name: 'Dana Levi', avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 3.5, skillTier: 'silver',
+  id: 'p1', name: 'Dana Levi', avatarUrl: null, avatarCleanUrl: null, portraitUrl: null, gender: null, skillLevel: 3.5, skillTier: 'silver',
   levelVerified: false, levelReliability: null,
   club: { id: 'c', name: 'Rally TLV', city: 'Tel Aviv' }, matches: 12, winRate: 58, since: 2024,
 }

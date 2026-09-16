@@ -15,6 +15,12 @@ export const GENERIC_FEMALE_KEY = '__generic_female'
 export const genericKeyFor = (gender: string | null | undefined): string =>
   genericAvatarUrl(gender) === genericAvatarUrl('female') ? GENERIC_FEMALE_KEY : GENERIC_MALE_KEY
 
+/** The URL a node's own photo is fetched from: the server-resized portrait (the same face at
+    the texture's size, ~2 KB), else `playerPhotoUrl`'s cut-out-then-raw order — the fallback
+    for an API that predates `portrait_url`. Null when the player has no photo at all. */
+export const portraitSourceFor = (n: GlobeNode): string | null =>
+  n.portraitUrl || playerPhotoUrl(n.avatarCleanUrl, n.avatarUrl)
+
 /** The portrait a node should draw: its own photo, else its stand-in. */
 export const portraitFor = (images: GlobeImages, node: GlobeNode): HTMLImageElement | null =>
   images.get(node.id) ?? images.get(genericKeyFor(node.gender)) ?? null
@@ -47,11 +53,14 @@ export type GlobeImages = Map<string, HTMLImageElement | null>
 
 /** Every raster the scene needs: one portrait per node that has one (keyed by node id),
     the two stand-ins, the logo tile and the felt photo. A node with no photo of its own
-    draws the stand-in for its gender — see `portraitFor`. */
+    draws the stand-in for its gender — see `portraitFor`. The server-resized portrait wins:
+    the same face at the texture's own size, ~2 KB instead of up to 1 MB (255 of them were
+    ~38 MB, and the ball waited for every one); `playerPhotoUrl` is the fallback for an API
+    that predates `portrait_url`. */
 export async function loadGlobeImages(graph: GlobeGraph): Promise<GlobeImages> {
   const pairs = await Promise.all([
     ...graph.nodes
-      .map((n) => [n, playerPhotoUrl(n.avatarCleanUrl, n.avatarUrl)] as const)
+      .map((n) => [n, portraitSourceFor(n)] as const)
       .filter(([, url]) => url)
       .map(([n, url]) => loadImage(url as string).then((img) => [n.id, img] as const)),
     loadImage(GENERIC_MALE_URL).then((img) => [GENERIC_MALE_KEY, img] as const),

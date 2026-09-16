@@ -9,8 +9,8 @@ const payload = {
       club: { id: 'c1', name: 'Rally Tel Aviv', city: 'Tel Aviv' }, matches: 3, win_rate: 67, since: 2025,
     },
     {
-      id: 'b', name: 'Bob Ross', avatar_url: 'https://x/b.jpg', skill_level: null, skill_tier: null,
-      club: null, matches: 0, win_rate: 0, since: 2024,
+      id: 'b', name: 'Bob Ross', avatar_url: 'https://x/b.jpg', portrait_url: 'https://x/b-224.webp',
+      skill_level: null, skill_tier: null, club: null, matches: 0, win_rate: 0, since: 2024,
     },
   ],
   links: [{ source: 'a', target: 'b', type: 'partner', games: 3, last_played_at: null }],
@@ -24,10 +24,13 @@ describe('networkPayloadSchema', () => {
     // incidentally proves the absent-pair case too: it decodes as null (unknown),
     // never as a negative "unverified" claim.
     expect(graph.nodes[0]).toEqual({
-      id: 'a', name: 'Ada Lovelace', avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 4, skillTier: 'gold',
+      id: 'a', name: 'Ada Lovelace', avatarUrl: null, avatarCleanUrl: null, portraitUrl: null, gender: null, skillLevel: 4, skillTier: 'gold',
       levelVerified: null, levelReliability: null,
       club: { id: 'c1', name: 'Rally Tel Aviv', city: 'Tel Aviv' }, matches: 3, winRate: 67, since: 2025,
     })
+    // The server-resized portrait rides along when the API sends it (node a above proves
+    // the absent case decodes to null, not a throw).
+    expect(graph.nodes[1].portraitUrl).toBe('https://x/b-224.webp')
     expect(graph.links[0]).toEqual({ source: 'a', target: 'b', type: 'partner', games: 3, lastPlayedAt: null })
   })
 

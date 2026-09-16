@@ -20,6 +20,9 @@ export interface GlobeNode {
   avatarUrl: string | null
   /** background-removed cut-out; preferred over `avatarUrl` — see lib/playerPortrait */
   avatarCleanUrl: string | null
+  /** the face the ball downloads: cut-out else raw photo, resized server-side to the node
+      texture's size (~2 KB instead of up to 1 MB). The full-size URLs stay for the card. */
+  portraitUrl: string | null
   /** 'male' | 'female' | 'choose_not_to_answer' | null — picks the stand-in portrait only */
   gender: string | null
   skillLevel: number | null
