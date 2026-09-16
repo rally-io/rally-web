@@ -312,6 +312,22 @@ export class GlobeScene {
 
   /* ---------- public API ---------- */
 
+  /** Put a player's real face on the ball after it is already up. The scene is built with
+      every player wearing a stand-in so it can appear at once; `streamPortraits` then calls
+      this per loaded thumbnail. Same texture recipe as construction (an own photo is
+      centre-cropped); the stand-in texture is disposed so 500 swaps do not leak 500 canvases. */
+  setPortrait(id: string, img: HTMLImageElement): void {
+    if (this.disposed) return
+    const sprite = this.sprites.get(id)
+    const node = this.nodeById.get(id)
+    if (!sprite || !node) return
+    const color = node.skillTier ? TIER_COLOR[node.skillTier] : NO_TIER_COLOR
+    const material = sprite.material as SpriteMaterial
+    material.map?.dispose()
+    material.map = avatarTexture(img, color, initialsOf(node.name), 'center')
+    material.needsUpdate = true
+  }
+
   resize(width: number, height: number): void {
     if (this.disposed || (width === this.width && height === this.height)) return
     this.width = width

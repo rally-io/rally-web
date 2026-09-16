@@ -12,6 +12,7 @@ interface SceneStub {
   setSpinning: Mock
   setViewer: Mock
   resize: Mock
+  setPortrait: Mock
   dispose: Mock
 }
 
@@ -20,6 +21,7 @@ interface SceneStub {
    rasters are here, so the scene exists". */
 const scenes = vi.hoisted(() => ({ instances: [] as SceneStub[] }))
 const images = vi.hoisted(() => ({ resolve: null as ((v: Map<string, unknown>) => void) | null }))
+const streams = vi.hoisted(() => ({ calls: [] as unknown[][], stop: vi.fn() }))
 
 vi.mock('../scene/GlobeScene', () => ({
   GlobeScene: class {
@@ -30,6 +32,7 @@ vi.mock('../scene/GlobeScene', () => ({
     setSpinning = vi.fn()
     setViewer = vi.fn()
     resize = vi.fn()
+    setPortrait = vi.fn()
     dispose = vi.fn()
     constructor() {
       scenes.instances.push(this as unknown as SceneStub)
@@ -40,10 +43,14 @@ vi.mock('../scene/GlobeScene', () => ({
 vi.mock('../lib/images', () => ({
   LOGO_IMAGE_KEY: '__logo',
   FELT_IMAGE_KEY: '__felt',
-  loadGlobeImages: () =>
+  loadBaseImages: () =>
     new Promise<Map<string, unknown>>((resolve) => {
       images.resolve = resolve
     }),
+  streamPortraits: (...args: unknown[]) => {
+    streams.calls.push(args)
+    return { done: Promise.resolve(), stop: streams.stop }
+  },
 }))
 
 class ResizeObserverStub {
@@ -82,6 +89,8 @@ async function loadImages(): Promise<void> {
 describe('usePlayerGlobe', () => {
   beforeEach(() => {
     scenes.instances.length = 0
+    streams.calls.length = 0
+    streams.stop.mockClear()
     images.resolve = null
     handle = null
   })
@@ -106,5 +115,26 @@ describe('usePlayerGlobe', () => {
     await loadImages()
 
     expect(scenes.instances[0].focusPlayer).not.toHaveBeenCalled()
+  })
+  it('streams the faces only once the scene exists, onto that scene, and stops with it', async () => {
+    const { unmount } = render(<Harness />)
+    // Before the base rasters land there is no scene and nothing to stream onto.
+    expect(streams.calls).toHaveLength(0)
+    await loadImages()
+    expect(scenes.instances).toHaveLength(1)
+    expect(streams.calls).toHaveLength(1)
+    const [streamedGraph, viewerId, onPortrait] = streams.calls[0] as [
+      GlobeGraph, string | null, (id: string, img: unknown) => void,
+    ]
+    expect(streamedGraph).toBe(graph)
+    expect(viewerId).toBeNull()
+    // A loaded thumbnail goes straight onto the sprite of the scene that was just built.
+    const img = {} as HTMLImageElement
+    onPortrait('p1', img)
+    expect(scenes.instances[0].setPortrait).toHaveBeenCalledWith('p1', img)
+    // Unmounting stops the stream before disposing the scene: no swap onto a dead scene.
+    unmount()
+    expect(streams.stop).toHaveBeenCalledTimes(1)
+    expect(scenes.instances[0].dispose).toHaveBeenCalledTimes(1)
   })
 })

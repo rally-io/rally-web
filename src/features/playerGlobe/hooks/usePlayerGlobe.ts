@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { DEFAULT_BACKGROUND } from '../constants'
-import { loadGlobeImages } from '../lib/images'
+import { loadBaseImages, streamPortraits, type PortraitStream } from '../lib/images'
 import { GlobeScene } from '../scene/GlobeScene'
 import type { GlobeGraph } from '../types'
 
@@ -39,9 +39,11 @@ export interface UsePlayerGlobeResult {
   handle: PlayerGlobeHandle
 }
 
-/** Owns one `GlobeScene` for the lifetime of the container. The scene is created only once
-    every raster has loaded, is resized from a ResizeObserver, and is fully disposed on
-    cleanup — so a StrictMode double-mount builds it twice and leaks nothing. Callbacks are
+/** Owns one `GlobeScene` for the lifetime of the container. The scene is created as soon as
+    the four local rasters have loaded — every player wears a stand-in at first and the real
+    faces stream in behind the ball — is resized from a ResizeObserver, and is fully disposed
+    on cleanup (the portrait stream stopped with it), so a StrictMode double-mount builds it
+    twice and leaks nothing. Callbacks are
     read through a ref, so a parent re-render never rebuilds the scene. */
 export function usePlayerGlobe(
   containerRef: RefObject<HTMLElement>,
@@ -62,9 +64,10 @@ export function usePlayerGlobe(
     let alive = true
     let scene: GlobeScene | null = null
     let observer: ResizeObserver | null = null
+    let portraits: PortraitStream | null = null
 
     void (async () => {
-      const images = await loadGlobeImages(graph)
+      const images = await loadBaseImages()
       if (!alive) return
       /* Initials are rasterised into a texture once, at construction, and never redrawn — so
          a scene built before the webfont lands bakes the fallback face in permanently. */
@@ -102,10 +105,16 @@ export function usePlayerGlobe(
       })
       observer.observe(el)
       setReady(true)
+      /* Faces land behind the ball, the viewer's own first: ~2 KB each, a few at a time. */
+      const built = scene
+      portraits = streamPortraits(graph, optionsRef.current.viewerId ?? null, (id, img) =>
+        built.setPortrait(id, img),
+      )
     })()
 
     return () => {
       alive = false
+      portraits?.stop()
       observer?.disconnect()
       scene?.dispose()
       sceneRef.current = null
