@@ -20,7 +20,7 @@ import type { GlobeNode } from '../types'
  */
 
 const node: GlobeNode = {
-  id: 'p1', name: 'Dana Levi', avatarUrl: null, skillLevel: 4, skillTier: 'silver',
+  id: 'p1', name: 'Dana Levi', avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 4, skillTier: 'silver',
   levelVerified: false, levelReliability: null,
   club: null, matches: 12, winRate: 58, since: 2024,
 }

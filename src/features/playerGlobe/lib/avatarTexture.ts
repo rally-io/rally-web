@@ -1,9 +1,17 @@
 import { CanvasTexture, LinearFilter } from 'three'
 
 /** A player's node texture: a circular portrait — or their initials on a tinted disc when
-    there is no photo — with a rim in the tier colour and a baked glow falloff. The portrait
-    fills NODE_PORTRAIT_FRACTION of the canvas. */
-export function avatarTexture(img: HTMLImageElement | null, ringColor: string, initials: string): CanvasTexture {
+    there is no image at all — with a rim in the tier colour and a baked glow falloff. The
+    portrait fills NODE_PORTRAIT_FRACTION of the canvas.
+    `align` places the square crop: 'center' for a real photo, 'top' for the stand-in
+    portraits, which are full figures whose head is at the top of the frame — the same
+    `xMidYMin slice` the ranking's shield card uses, so a centred crop does not behead them. */
+export function avatarTexture(
+  img: HTMLImageElement | null,
+  ringColor: string,
+  initials: string,
+  align: 'center' | 'top' = 'center',
+): CanvasTexture {
   const S = 224
   const canvas = document.createElement('canvas')
   canvas.width = S
@@ -36,7 +44,7 @@ export function avatarTexture(img: HTMLImageElement | null, ringColor: string, i
     ctx.drawImage(
       img,
       (img.naturalWidth - side) / 2,
-      (img.naturalHeight - side) / 2,
+      align === 'top' ? 0 : (img.naturalHeight - side) / 2,
       side,
       side,
       c - r,

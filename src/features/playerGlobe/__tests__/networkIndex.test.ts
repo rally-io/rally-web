@@ -4,7 +4,7 @@ import { initialsOf } from '../lib/initials'
 import type { GlobeGraph, GlobeNode } from '../types'
 
 const node = (id: string, name: string): GlobeNode => ({
-  id, name, avatarUrl: null, skillLevel: null, skillTier: null, levelVerified: false, levelReliability: null,
+  id, name, avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: null, skillTier: null, levelVerified: false, levelReliability: null,
   club: null, matches: 0, winRate: 0, since: 2024,
 })
 

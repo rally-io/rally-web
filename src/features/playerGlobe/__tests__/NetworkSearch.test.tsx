@@ -5,7 +5,7 @@ import type { SearchResult } from '../lib/searchNodes'
 import type { GlobeNode } from '../types'
 
 const node = (id: string, name: string): GlobeNode => ({
-  id, name, avatarUrl: null, skillLevel: 3.5, skillTier: 'silver', levelVerified: false, levelReliability: null,
+  id, name, avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 3.5, skillTier: 'silver', levelVerified: false, levelReliability: null,
   club: { id: 'c', name: 'Rally TLV', city: 'Tel Aviv' }, matches: 4, winRate: 50, since: 2024,
 })
 const results: SearchResult[] = [

@@ -12,11 +12,11 @@ const payload = (generatedAt: string, matches = 12): GlobeGraph => ({
   generatedAt,
   nodes: [
     {
-      id: 'p1', name: 'Omer Levi', avatarUrl: null, skillLevel: 4, skillTier: 'silver',
+      id: 'p1', name: 'Omer Levi', avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 4, skillTier: 'silver',
       levelVerified: false, levelReliability: null, club: null, matches, winRate: 50, since: 2024,
     },
     {
-      id: 'p2', name: 'Dani Shoval', avatarUrl: null, skillLevel: 3, skillTier: 'bronze',
+      id: 'p2', name: 'Dani Shoval', avatarUrl: null, avatarCleanUrl: null, gender: null, skillLevel: 3, skillTier: 'bronze',
       levelVerified: false, levelReliability: null, club: null, matches: 7, winRate: 40, since: 2023,
     },
   ],

@@ -67,7 +67,15 @@ export const LINK_STRENGTH = 0.03
    sqrt(reference / count) — a quarter of the players doubles the portrait, four times halves it —
    clamped so a near-empty ball does not become a few giant faces and a crowded one stays legible. */
 export const NODE_REFERENCE_COUNT = 120
-export const NODE_SIZE_FACTOR_MIN = 0.6
+/* The floor is what a portrait may never shrink BELOW, and it is the only thing that can
+   override the rule above. It was 0.6, tuned when a full ball was ~120 players: at 490 the
+   rule asks for 0.495 and the floor was overriding it, so portraits ran 21% wide and covered
+   39% of the visible disc instead of 26%. Lowered to 0.4 so the rule governs up to ~750
+   players, which is where a portrait reaches ~15px and stops reading as a person. Past that
+   the ball is genuinely full and the answer is to draw less per player, not to shrink further
+   — a face nobody can see is not worth the overdraw. Nobody scans this ball for themselves;
+   that is what the search is for, so legibility of any ONE face is not the binding constraint. */
+export const NODE_SIZE_FACTOR_MIN = 0.4
 export const NODE_SIZE_FACTOR_MAX = 1.8
 /** the portrait fills this fraction of the avatar texture; the rest is glow falloff */
 export const NODE_PORTRAIT_FRACTION = 0.58

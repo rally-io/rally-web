@@ -18,6 +18,10 @@ export interface GlobeNode {
   id: string
   name: string
   avatarUrl: string | null
+  /** background-removed cut-out; preferred over `avatarUrl` — see lib/playerPortrait */
+  avatarCleanUrl: string | null
+  /** 'male' | 'female' | 'choose_not_to_answer' | null — picks the stand-in portrait only */
+  gender: string | null
   skillLevel: number | null
   skillTier: SkillTier | null
   /** Verified level pair (see components/players/level's describeLevel for the shared

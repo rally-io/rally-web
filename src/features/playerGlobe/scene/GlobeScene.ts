@@ -16,7 +16,7 @@ import {
   OCCLUDE_FEATHER, PINNED_PARTNER, PINNED_RIVAL, TIER_COLOR,
 } from '../constants'
 import { avatarTexture } from '../lib/avatarTexture'
-import { FELT_IMAGE_KEY, LOGO_IMAGE_KEY, type GlobeImages } from '../lib/images'
+import { FELT_IMAGE_KEY, LOGO_IMAGE_KEY, portraitFor, type GlobeImages } from '../lib/images'
 import { initialsOf } from '../lib/initials'
 import { collideRadius, nodeSizeFactor, spriteScale } from '../lib/nodeSize'
 import { makePicker, type Picker } from '../lib/pulses'
@@ -267,11 +267,15 @@ export class GlobeScene {
     this.scene.add(this.stars.points)
 
     for (const node of this.nodes) {
-      const img = opts.images.get(node.id) ?? null
+      /* A player's own photo, else the stand-in for their gender. Initials remain the last
+         resort (both stand-ins failed to load), never the normal case: half a real population
+         has no photo, and a ball of initials reads as a chart rather than as people. */
+      const own = opts.images.get(node.id) ?? null
+      const img = own ?? portraitFor(opts.images, node)
       const color = node.skillTier ? TIER_COLOR[node.skillTier] : NO_TIER_COLOR
       // depthTest off: see OCCLUDE_FEATHER — the ball would otherwise cut into rim portraits
       const material = new SpriteMaterial({ transparent: true, depthWrite: false, depthTest: false })
-      material.map = avatarTexture(img, color, initialsOf(node.name))
+      material.map = avatarTexture(img, color, initialsOf(node.name), own ? 'center' : 'top')
       const sprite = new Sprite(material)
       const s = spriteScale(node, this.sizeFactor)
       sprite.scale.set(s, s, 1)

@@ -9,6 +9,10 @@ const nodeSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   avatar_url: z.string().nullable(),
+  // Both `.catch(null)` for the same reason the level pair is: an older backend that sends
+  // neither must degrade to the neutral stand-in, never throw and blank the whole globe.
+  avatar_clean_url: z.string().nullable().catch(null),
+  gender: z.string().nullable().catch(null),
   skill_level: z.number().nullable(),
   skill_tier: z.enum(['bronze', 'silver', 'gold']).nullable(),
   // Three states, not two (spec §4), same convention as the league decoder
@@ -48,6 +52,8 @@ export function toGlobeGraph(payload: NetworkPayload): GlobeGraph {
       id: n.id,
       name: n.name,
       avatarUrl: n.avatar_url,
+      avatarCleanUrl: n.avatar_clean_url,
+      gender: n.gender,
       skillLevel: n.skill_level,
       skillTier: n.skill_tier,
       levelVerified: n.level_verified,
