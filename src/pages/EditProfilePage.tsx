@@ -518,7 +518,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
               <select
                 id="country_code"
                 {...form.register('country_code')}
-                className="h-11 w-full rounded-lg border border-rally-border bg-rally-surface-2 px-3 text-sm text-rally-text"
+                className="h-11 w-full rounded-lg border border-rally-border bg-rally-surface-2 px-3 text-base sm:text-sm text-rally-text"
               >
                 {COUNTRY_CODES.map((c) => (
                   <option key={c.iso} value={c.dial}>
@@ -529,7 +529,14 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
             </div>
           </div>
 
-          <div className="mt-2">
+          <div className="mt-2 space-y-2">
+            {/* Above the verify button, not under it: underneath, this amber line
+                (shown from the first digit typed) read as the reply to tapping verify. */}
+            {phoneDirtyUnverified && (
+              <p className="text-sm text-rally-warning">
+                {t('edit_profile.validation.phoneNotVerified')}
+              </p>
+            )}
             <PhoneOtpVerification
               countryCode={values.country_code ?? DEFAULT_COUNTRY.dial}
               phone={values.contact_number ?? ''}
@@ -537,11 +544,6 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
               onVerifiedChange={setPhoneVerified}
               initiallyVerified={Boolean(profile?.contact_number)}
             />
-            {phoneDirtyUnverified && (
-              <p className="text-sm text-rally-warning mt-2">
-                {t('edit_profile.validation.phoneNotVerified')}
-              </p>
-            )}
           </div>
         </Card>
 
