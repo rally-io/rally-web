@@ -12,7 +12,6 @@ import { useReadyViewerId } from '@/hooks/useReadyViewerId';
 import { usePlayerFullStats } from '@/features/playerGlobe/hooks/usePlayerStats';
 import { playerFullName } from './playerName';
 import { PlayerShield } from './PlayerShield';
-import { QuarterTiles } from './QuarterTiles';
 import { RankCell } from './RankCell';
 import { ResultMatchList } from './ResultMatchList';
 import { Reveal } from './Reveal';
@@ -186,36 +185,6 @@ export function PlayerSeasonContent({
             <TopPartnersList partners={full.stats.top_partners} />
             <TopClubsList clubs={full.stats.top_clubs} />
           </div>
-        </MaybeReveal>
-      ) : null}
-
-      {/* THE WINDOW ITSELF — the rule the whole ranking runs on ("four rolling
-          quarters") stated in the only place a visitor can check it against the
-          points above. Public data, straight off `/public/league/player/{id}`.
-
-          PAGE ONLY. The modal is a glance taken while browsing the board, and it
-          already carries the card, the career stats and the full result list inside
-          85vh; a second grid pushes the thing it exists for (the results) below the
-          fold. The two new one-liners are light enough to render on both surfaces —
-          this is the one block that is not. The same `variant` gate the reveals use.
-
-          The length check is on the SECTION, not left to `QuarterTiles` (which
-          already returns null for an empty array): without it an older API that
-          sends no quarters would still print a heading over nothing.
-
-          `emptyLabel` overrides `league.quarters.empty` ("you did not play") — the
-          personal card addressing its owner, and this page is about somebody else. */}
-      {variant === 'page' && player.quarters.length > 0 ? (
-        <MaybeReveal animate>
-          <section className="mb-6" data-testid="player-season-window">
-            <h2 className="font-display text-lg font-bold">{t('league.player.quartersTitle')}</h2>
-            <p className="mt-1 text-sm text-rally-text-2">{t('league.player.quartersScope')}</p>
-            <QuarterTiles
-              quarters={player.quarters}
-              emptyLabel={t('league.player.quartersEmpty')}
-              className="mt-3"
-            />
-          </section>
         </MaybeReveal>
       ) : null}
 
@@ -452,6 +421,8 @@ const BUCKET_KEYS: Record<string, string> = {
   top8: 'league.bucket.top8',
   top16: 'league.bucket.top16',
   top32: 'league.bucket.top32',
+  // A pair that never reached the knockout (2026-09-17; the wire used to say `top16`).
+  group: 'league.bucket.group',
 };
 
 /**
@@ -508,6 +479,13 @@ function ResultRow({
               </span>
             ) : null}
             {bucketKey ? <span className="font-bold">{t(bucketKey)}</span> : null}
+            {/* The record behind the points — under per-win scoring the points ARE
+                the wins. Absent on a row settled before 2026-09-17. */}
+            {result.matches_played != null ? (
+              <span data-testid="league-result-record" className="tabular-nums" dir="ltr">
+                {result.matches_won ?? 0}–{result.matches_played - (result.matches_won ?? 0)}
+              </span>
+            ) : null}
             <span className="text-rally-text-muted">
               {t('league.player.drawSize', { pairs: result.draw_size })}
             </span>

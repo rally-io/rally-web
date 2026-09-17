@@ -148,6 +148,13 @@ export const LeagueResultSchema = z.object({
    */
   counted: z.boolean(),
   awarded_at: z.string().nullish(),
+  /**
+   * Per-win scoring (2026-09-17): the units the player's wins earned and the
+   * record behind them. Null on a row settled under the old placement rule.
+   */
+  units: z.number().nullish(),
+  matches_won: z.number().nullish(),
+  matches_played: z.number().nullish(),
   quarter: z.string().nullish().catch(null),
 });
 export type LeagueResult = z.infer<typeof LeagueResultSchema>;
