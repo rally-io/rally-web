@@ -179,7 +179,7 @@ export function PhoneOtpVerification({
             type="button"
             onClick={() => void handleVerify()}
             disabled={status === 'verifying' || otp.length !== 6}
-            className="h-9 px-4 rounded-lg bg-rally-accent text-rally-accent-text text-sm font-bold disabled:opacity-60"
+            className="h-11 px-4 rounded-lg bg-rally-accent text-rally-accent-text text-sm font-bold disabled:opacity-60"
           >
             {status === 'verifying' ? t('edit_profile.verifying') : t('edit_profile.verifyCode')}
           </button>
@@ -187,7 +187,7 @@ export function PhoneOtpVerification({
             type="button"
             onClick={() => void handleResend()}
             disabled={cooldown > 0 || status !== 'code-entry'}
-            className="text-sm font-semibold text-rally-accent disabled:text-rally-text-muted"
+            className="h-11 px-2 text-sm font-semibold text-rally-accent disabled:text-rally-text-muted"
           >
             {cooldown > 0
               ? t('edit_profile.resendCodeIn', { seconds: cooldown })
@@ -198,14 +198,17 @@ export function PhoneOtpVerification({
     )
   }
 
+  // A full-size button, full width on phones. This was a bare text link about
+  // 20px tall right under the phone field: on 2026-09-17 an iPhone customer tried
+  // to verify from it for minutes and not one request reached the API.
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {banner && <p className="text-sm text-red-400">{banner}</p>}
       <button
         type="button"
         onClick={() => void handleSendCode()}
         disabled={isBusy || !/^\d{6,15}$/.test(phone.trim()) || cooldown > 0}
-        className="text-sm font-semibold text-rally-accent disabled:opacity-60"
+        className="h-11 w-full sm:w-auto px-5 rounded-lg border border-rally-accent/60 text-sm font-semibold text-rally-accent disabled:opacity-60"
       >
         {isBusy ? t('edit_profile.sending') : t('edit_profile.verifyPhoneNumber')}
       </button>
