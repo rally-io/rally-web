@@ -4,6 +4,7 @@
     { "source": "/tournaments/:id", "destination": "/api/tournament-og?id=:id" },
     { "source": "/join/:slug", "destination": "/api/join-og?slug=:slug" },
     { "source": "/live/:token", "destination": "/api/live-og?token=:token" },
+    { "source": "/team-tasks", "destination": "/team-tasks.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
