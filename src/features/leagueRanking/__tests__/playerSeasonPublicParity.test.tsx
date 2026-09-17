@@ -176,28 +176,16 @@ describe('quarters — the rolling window the ranking is actually built from', (
     quarter('2026-Q3', '2027-06-30T21:00:00Z', 205, 353, [result('b', 205, true)]),
   ];
 
-  it('breaks the window into its four quarters, newest first, with what drops next', async () => {
+  it('shows NO quarter breakdown on the page, even when the API sends all four quarters', async () => {
+    // Owner's call, 2026-09-17: the card and the page show the score alone for now. The
+    // wire still carries `quarters`; nothing here reads them.
     vi.mocked(fetchPublicPlayerSeason).mockResolvedValue(season({ quarters: fourQuarters }));
     renderContent();
 
-    const tiles = await screen.findByTestId('league-quarters');
-    expect(within(tiles).getAllByTestId(/^league-quarter-/).map(el => el.dataset.quarter))
-      .toEqual(['2026-Q3', '2026-Q2', '2026-Q1', '2025-Q4']);
-    expect(within(tiles).getByTestId('league-quarter-2026-Q3')).toHaveTextContent('205');
-    // The oldest tile is the one a player can watch approach.
-    expect(within(tiles).getByTestId('league-quarter-2025-Q4')).toHaveTextContent('1.10.2026');
-  });
-
-  it('speaks about the player in the third person, never "you did not play"', async () => {
-    // This page is about SOMEBODY ELSE — the same reason `league.reason.played` is not
-    // reused here. `league.quarters.empty` addresses the viewer, so the tiles take the
-    // page's own impersonal label instead.
-    vi.mocked(fetchPublicPlayerSeason).mockResolvedValue(season({ quarters: fourQuarters }));
-    renderContent();
-
-    const tiles = await screen.findByTestId('league-quarters');
-    expect(within(tiles).getByTestId('league-quarter-2026-Q1')).toHaveTextContent('no tournaments');
-    expect(tiles.textContent).not.toMatch(/you did not play/i);
+    await screen.findByTestId('player-season-header');
+    expect(screen.queryByTestId('player-season-window')).toBeNull();
+    expect(screen.queryByTestId('league-quarters')).toBeNull();
+    expect(screen.queryAllByTestId(/^league-quarter-/)).toHaveLength(0);
   });
 
   it('renders NOTHING when the API sent no quarters', async () => {
@@ -227,7 +215,7 @@ describe('quarters — the rolling window the ranking is actually built from', (
 });
 
 describe('the anonymous visitor — the page must not have grown a session requirement', () => {
-  it('renders all three fields with no session and issues NO in-network request', async () => {
+  it('renders both fields with no session and issues NO in-network request', async () => {
     const full = vi.spyOn(statsApi, 'fetchFullPlayerStats');
     vi.mocked(fetchPublicPlayerSeason).mockResolvedValue(season({
       gap_to_above: 25,
@@ -239,9 +227,9 @@ describe('the anonymous visitor — the page must not have grown a session requi
 
     expect(await screen.findByTestId('player-season-gap')).toBeTruthy();
     expect(screen.getByTestId('player-season-overall')).toBeTruthy();
-    expect(screen.getByTestId('league-quarters')).toBeTruthy();
-    // The three additions come from `/public/league/player/{id}`; not one of them may
-    // reach for the viewer-scoped endpoint.
+    // Both come from `/public/league/player/{id}`; neither may reach for the
+    // viewer-scoped endpoint. (The quarter tiles used to be the third field here;
+    // they are off the page since 2026-09-17 — see the `quarters` block below.)
     expect(full).not.toHaveBeenCalled();
     expect(screen.queryByTestId('skill-line')).toBeNull();
     expect(screen.queryByTestId('top-partners')).toBeNull();

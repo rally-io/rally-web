@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils';
 import { ltrIsolate } from '@/lib/bidi';
 import { VERIFIED_RELIABILITY_THRESHOLD, VerificationMark } from '@/components/players/level';
 import { playerFullName } from './playerName';
-import { QuarterTiles } from './QuarterTiles';
 import type { BandCode, MyLeagueCard, StandingsRow } from '../types';
 import { RankCell } from './RankCell';
 
@@ -263,8 +262,6 @@ export function PersonalCard({
           </span>
         </div>
       ) : null}
-
-      <QuarterTiles quarters={card.quarters} />
     </section>
   );
 }

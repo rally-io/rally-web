@@ -8,29 +8,44 @@ import { Reveal } from '../components/Reveal';
 
 /**
  * The public explanation of league scoring — the page behind the board's
- * "how the scoring works" link. Content mirrors the reviewed scoring spec
- * (the six rules, band row × size multiplier, the bucket ladder, the rolling
- * four-quarter window, real ties), minus its internal open-questions section:
- * this page explains the system to a player, it doesn't draft it.
+ * "how the scoring works" link. Scoring is PER MATCH WON since 2026-09-17
+ * (spec: rally-api docs/superpowers/specs/2026-09-17-ranking-points-per-win-design.md):
+ * every win earns units by the stage it was won at, a unit is worth a
+ * band-dependent amount, the draw-size multiplier scales the lot, and a loss
+ * earns nothing. The six rules, the rolling four-quarter window and real ties
+ * are unchanged from the original spec.
  *
  * The numbers in the tables are DISPLAY COPIES of the engine's constants
- * (`rally-api-rating app/services/league/points.py` — note the repo: the
- * engine lives in the rating worktree, not `rally-api`). If the engine's table ever
- * changes, this page must change with it — they are the same product fact.
+ * (`rally-api app/services/league/points.py`). If the engine's constants ever
+ * change, this page must change with it — they are the same product fact.
  */
 
-const BAND_ROWS: Array<{ band: string; values: number[] }> = [
-  { band: 'A', values: [300, 180, 90, 50, 25, 14] },
-  { band: 'B', values: [150, 90, 50, 25, 14, 8] },
-  { band: 'C', values: [80, 45, 25, 14, 8, 5] },
-  { band: 'D', values: [40, 22, 14, 8, 5, 3] },
+/** Units for winning a match at each stage — the final first. */
+const STAGE_ROWS: Array<{ key: string; units: number }> = [
+  { key: 'league.how.stageFinal', units: 5 },
+  { key: 'league.how.stageSemi', units: 3 },
+  { key: 'league.how.stageQuarter', units: 2 },
+  { key: 'league.how.stageEarly', units: 1 },
+  { key: 'league.how.stageGroup', units: 1 },
+  { key: 'league.how.stageThird', units: 1 },
+  { key: 'league.how.stageLeague', units: 1 },
+  { key: 'league.how.stagePlate', units: 0 },
+  { key: 'league.how.stageLoss', units: 0 },
+];
+
+/** Points per unit by band, and what ONE win pays at each stage in a 16–31-pair draw. */
+const BAND_ROWS: Array<{ band: string; unit: number; values: number[] }> = [
+  { band: 'A', unit: 23, values: [115, 69, 46, 23] },
+  { band: 'B', unit: 12, values: [60, 36, 24, 12] },
+  { band: 'C', unit: 6, values: [30, 18, 12, 6] },
+  { band: 'D', unit: 3, values: [15, 9, 6, 3] },
 ];
 
 const SIZE_TIERS: Array<{ range: string; mult: string; effect: string }> = [
-  { range: '4–7', mult: '× 0.50', effect: '150 → 75' },
-  { range: '8–15', mult: '× 0.75', effect: '150 → 113' },
-  { range: '16–31', mult: '× 1.00', effect: '150 → 150' },
-  { range: '32+', mult: '× 1.25', effect: '150 → 188' },
+  { range: '4–7', mult: '× 0.50', effect: '60 → 30' },
+  { range: '8–15', mult: '× 0.75', effect: '60 → 45' },
+  { range: '16–31', mult: '× 1.00', effect: '60 → 60' },
+  { range: '32+', mult: '× 1.25', effect: '60 → 75' },
 ];
 
 /**
@@ -49,15 +64,17 @@ const RULE_KEYS: Array<{ title: string; body: string }> = [
 
 /**
  * The worked window's four quarters (Noa's example): the current quarter and
- * the three before it. Points here are a DISPLAY EXAMPLE, chosen to match
- * the s4Lede narrative (Q4 2025 = 150, the quarter that rolls off) and to sum
- * to the same 421 shown for Noa in the section 5 table below.
+ * the three before it. Points here are a DISPLAY EXAMPLE under per-win
+ * scoring — 156 is a B-band sixteen-pair title (13 units × 12), 117 the same
+ * title in a 8–15-pair draw — chosen to match the s4Lede narrative (Q4 2025 =
+ * 156, the quarter that rolls off) and to sum to the same 441 shown for Noa
+ * in the section 5 table below.
  */
 const WINDOW_QUARTERS: Array<{ n: number; year: number; events: number; points: number }> = [
-  { n: 4, year: 2025, events: 2, points: 150 },
-  { n: 1, year: 2026, events: 2, points: 113 },
-  { n: 2, year: 2026, events: 2, points: 90 },
-  { n: 3, year: 2026, events: 1, points: 68 },
+  { n: 4, year: 2025, events: 2, points: 156 },
+  { n: 1, year: 2026, events: 2, points: 117 },
+  { n: 2, year: 2026, events: 2, points: 96 },
+  { n: 3, year: 2026, events: 1, points: 72 },
 ];
 const WINDOW_TOTAL = WINDOW_QUARTERS.reduce((sum, q) => sum + q.points, 0);
 
@@ -76,15 +93,6 @@ export default function HowScoringPage(): ReactElement {
       navigate('/ranking');
     }
   };
-
-  const bucketCells: Array<[string, string, string, string]> = [
-    [t('league.bucket.first'), t('league.how.cellWinner'), t('league.how.cellT1'), t('league.how.cellWinner')],
-    [t('league.bucket.second'), t('league.how.cellFinalist'), t('league.how.cellT2'), t('league.how.cellFinalist')],
-    [t('league.bucket.top4'), t('league.how.cellSemi'), t('league.how.cellT34'), t('league.how.cellSemi')],
-    [t('league.bucket.top8'), t('league.how.cellQuarter'), t('league.how.cellT58'), t('league.how.cellQuarter')],
-    [t('league.bucket.top16'), t('league.how.cellR16'), t('league.how.cellT916'), t('league.how.cellGroupOut')],
-    [t('league.bucket.top32'), t('league.how.cellR32'), t('league.how.cellT1732'), '—'],
-  ];
 
   return (
     <main className="isolate overflow-x-clip pt-32 pb-24">
@@ -111,10 +119,9 @@ export default function HowScoringPage(): ReactElement {
           <p className="font-display text-lg font-black sm:text-xl" dir="rtl">
             <span className="text-rally-accent">{t('league.how.formulaPoints')}</span>
             <span className="text-rally-text-muted"> = </span>
-            {t('league.how.formulaBand')}
-            <span className="text-rally-text-muted">[</span>
-            {t('league.how.formulaBucket')}
-            <span className="text-rally-text-muted">]</span>
+            {t('league.how.formulaUnits')}
+            <span className="text-rally-text-muted"> × </span>
+            {t('league.how.formulaUnit')}
             <span className="text-rally-text-muted"> × </span>
             {t('league.how.formulaSize')}
           </p>
@@ -141,22 +148,20 @@ export default function HowScoringPage(): ReactElement {
         <Section title={t('league.how.s1Title')} lede={t('league.how.s1Lede')}>
           <TableShell>
             <thead>
-              <HeadRow
-                cells={[
-                  t('league.how.colBucket'),
-                  t('league.how.colElim'),
-                  t('league.how.colRR'),
-                  t('league.how.colGroupKO'),
-                ]}
-              />
+              <HeadRow cells={[t('league.how.colStage'), t('league.how.colUnits')]} />
             </thead>
             <tbody>
-              {bucketCells.map(([bucket, elim, rr, gko]) => (
-                <tr key={bucket} className="border-b border-rally-border-subtle last:border-b-0">
-                  <td className="px-4 py-2.5 text-start text-sm font-bold text-rally-text">{bucket}</td>
-                  <td className="px-4 py-2.5 text-start text-sm text-rally-text-2">{elim}</td>
-                  <td className="px-4 py-2.5 text-start text-sm text-rally-text-2">{rr}</td>
-                  <td className="px-4 py-2.5 text-start text-sm text-rally-text-2">{gko}</td>
+              {STAGE_ROWS.map(row => (
+                <tr key={row.key} className="border-b border-rally-border-subtle last:border-b-0">
+                  <td className="px-4 py-2.5 text-start text-sm font-bold text-rally-text">{t(row.key)}</td>
+                  <td
+                    className={cn(
+                      'px-4 py-2.5 text-start text-sm tabular-nums',
+                      row.units === 0 ? 'text-rally-text-muted' : 'font-black text-rally-accent',
+                    )}
+                  >
+                    {row.units}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -169,12 +174,11 @@ export default function HowScoringPage(): ReactElement {
               <HeadRow
                 cells={[
                   t('league.how.colBand'),
-                  t('league.bucket.first'),
-                  t('league.bucket.second'),
-                  t('league.bucket.top4'),
-                  t('league.bucket.top8'),
-                  t('league.bucket.top16'),
-                  t('league.bucket.top32'),
+                  t('league.how.colUnit'),
+                  t('league.how.stageFinal'),
+                  t('league.how.stageSemi'),
+                  t('league.how.stageQuarter'),
+                  t('league.how.stageEarly'),
                 ]}
               />
             </thead>
@@ -186,6 +190,7 @@ export default function HowScoringPage(): ReactElement {
                       {row.band}
                     </span>
                   </td>
+                  <td className="px-4 py-2.5 text-start text-sm font-bold tabular-nums text-rally-text">{row.unit}</td>
                   {row.values.map((v, i) => (
                     <td
                       key={i}
@@ -279,10 +284,10 @@ export default function HowScoringPage(): ReactElement {
             </thead>
             <tbody>
               {[
-                ['1', 'נועה לוי', '150 + 113 + 90 + 68', '421', true],
-                ['1', 'דנה כהן', '150 + 113 + 90 + 68', '421', true],
-                ['3', 'יותם בר', '225 + 50 + 50 + 38', '363', false],
-                ['4', 'מאיה אדלר', '150 + 80 + 60 + 50', '340', false],
+                ['1', 'נועה לוי', '156 + 117 + 96 + 72', '441', true],
+                ['1', 'דנה כהן', '156 + 117 + 96 + 72', '441', true],
+                ['3', 'יותם בר', '230 + 60 + 60 + 45', '395', false],
+                ['4', 'מאיה אדלר', '156 + 84 + 60 + 48', '348', false],
               ].map(([rank, name2, best, pts, tied], i) => (
                 <tr key={i} className="border-b border-rally-border-subtle last:border-b-0">
                   <td className="px-4 py-2.5 text-start text-base font-black tabular-nums text-rally-text">

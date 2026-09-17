@@ -259,7 +259,10 @@ describe('the game layer on the page', () => {
   const quarter = (key: string, dropsAt: string, points: number, available: number, results: LeagueResult[]) =>
     ({ key, starts_at: '', ends_at: '', drops_at: dropsAt, points, available, results });
 
-  it('shows the four quarter tiles, newest first, with totals and the last counting day', async () => {
+  it('shows NO quarter tiles on the card, even when the season carries all four quarters', async () => {
+    // Owner's call, 2026-09-17: the quarter breakdown confused more than it explained, so
+    // the card shows the score alone for now. The wire still sends `quarters`; a tile
+    // reappearing here is a regression, not a partial render.
     signIn([result('a', 150, true), result('b', 90, true), result('c', 115, true)], 19, {
       quarters: [
         quarter('2025-Q4', '2026-09-30T21:00:00Z', 0, 0, []),
@@ -272,14 +275,10 @@ describe('the game layer on the page', () => {
 
     renderPage();
 
-    const tiles = await screen.findByTestId('league-quarters');
-    const keys = within(tiles).getAllByTestId(/^league-quarter-/).map(el => el.getAttribute('data-quarter'));
-    expect(keys).toEqual(['2026-Q3', '2026-Q2', '2026-Q1', '2025-Q4']);
-    const q3 = within(tiles).getByTestId('league-quarter-2026-Q3');
-    expect(q3).toHaveTextContent('205');
-    expect(q3).toHaveTextContent('30.6.2027');
-    // The oldest tile says when it leaves, not until when it counts.
-    expect(within(tiles).getByTestId('league-quarter-2025-Q4')).toHaveTextContent('1.10.2026');
+    const card = await screen.findByTestId('league-personal-card');
+    expect(within(card).queryByTestId('league-quarters')).toBeNull();
+    expect(within(card).queryAllByTestId(/^league-quarter-/)).toHaveLength(0);
+    expect(card).not.toHaveTextContent(/counts until|leaves the count/);
   });
 
   it('says leading only when the rank on the board being viewed is 1', async () => {
