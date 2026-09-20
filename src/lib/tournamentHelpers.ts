@@ -1,5 +1,7 @@
 // src/lib/tournamentHelpers.ts — ported 1:1 from mobile (spec §7)
 
+import type { Placement } from '@/types/api'
+
 export function isRegistrationOpen(deadline: string | null | undefined): boolean {
   if (!deadline) return true
   const t = new Date(deadline).getTime()
@@ -48,6 +50,79 @@ export function isTournamentLive(tr: {
   if (!Number.isFinite(start) || !Number.isFinite(end)) return false
   const now = Date.now()
   return start <= now && now <= end
+}
+
+/** Structural shape `orderLiveFirstKeepingPromoted` needs from a placement. */
+type PlacementLike = Placement | null
+
+/**
+ * Single pass over `list`: live items first, each group keeping its
+ * relative order. `isTournamentLive` reads `Date.now()`, so evaluating it
+ * twice per item across two separate `.filter()` passes lets an item's
+ * liveness flip between the two reads — the item then matches neither pass
+ * (or both) and the result silently drops or duplicates it. One evaluation
+ * per item avoids that.
+ */
+function liveFirstPartition<
+  T extends { start_date: string; end_date: string; status?: string | null },
+>(list: T[]): T[] {
+  const live: T[] = []
+  const notLive: T[] = []
+  for (const tr of list) (isTournamentLive(tr) ? live : notLive).push(tr)
+  return [...live, ...notLive]
+}
+
+/**
+ * Live-first ordering that respects the API's promoted slots.
+ *
+ * The API returns promoted items in fixed first-page slots (e.g. positions
+ * 2 and 4) chosen so two promoted cards are never adjacent. A naive "live
+ * items first" partition over the whole page would still move an organic
+ * live item ahead of a promoted item that follows it, which can slide two
+ * promoted cards next to each other.
+ *
+ * This walks the API order and rebuilds it in place: every promoted item
+ * stays at its original index; every organic index is filled, in order,
+ * from `[...organicLive, ...organicNotLive]`. With no promoted items this
+ * is exactly the old "live items first" partition of the whole list.
+ *
+ * Pinning only makes sense over the API's own served order — once an array
+ * has been re-sliced by a client-side filter, an item's index within it no
+ * longer means anything the API chose. Only call this on the unfiltered
+ * page; use `orderLiveFirst` once a client-side filter (skill/month) is
+ * active.
+ *
+ * This hoists live tournaments to the front regardless of the requested
+ * `sort`. That reinforces `sort=soonest` (which already puts live items
+ * first, since they started earliest) but *inverts* `sort=latest`, which
+ * asks for the furthest-future tournaments first — pre-existing behaviour,
+ * not something this function tries to correct.
+ */
+export function orderLiveFirstKeepingPromoted<
+  T extends { start_date: string; end_date: string; status?: string | null; placement?: PlacementLike },
+>(list: T[]): T[] {
+  const organic = list.filter((tr) => !tr.placement?.promoted)
+  const organicOrdered = liveFirstPartition(organic)
+  let i = 0
+  return list.map((tr) => (tr.placement?.promoted ? tr : organicOrdered[i++]))
+}
+
+/**
+ * Plain live-first ordering, with no promoted pinning at all.
+ *
+ * Promotion applies to the API's unfiltered discovery feed only (mirrors
+ * Task A3 on the API side, which drops slots for a `club_id`/`search`
+ * request). Once a client-side filter (skill/month) is active, the array
+ * the page hands this function is no longer the API's served page — it has
+ * been re-sliced — so a promoted item's index within it is meaningless and
+ * pinning to it can put two promoted cards back-to-back, exactly the
+ * arrangement slots exist to prevent. Under a filter every item, promoted
+ * or not, is just sorted live-first.
+ */
+export function orderLiveFirst<
+  T extends { start_date: string; end_date: string; status?: string | null },
+>(list: T[]): T[] {
+  return liveFirstPartition(list)
 }
 
 /**

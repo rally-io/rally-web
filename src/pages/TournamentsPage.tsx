@@ -17,7 +17,7 @@ import {
 } from '@/components/tournaments/TournamentUpdatesModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isPastTournament, isTournamentLive } from '@/lib/tournamentHelpers'
+import { isPastTournament, orderLiveFirst, orderLiveFirstKeepingPromoted } from '@/lib/tournamentHelpers'
 import {
   EMPTY_FILTERS,
   activeFilterCount,
@@ -164,10 +164,16 @@ export default function TournamentsPage() {
     [clientFiltering, loadedHistory, filters],
   )
 
-  const tournaments: Tournament[] = [
-    ...visibleList.filter(isTournamentLive),
-    ...visibleList.filter((tr) => !isTournamentLive(tr)),
-  ]
+  // Promoted slots are only meaningful over the API's own served order —
+  // once a client-side filter (skill/month) has re-sliced the array, an
+  // item's index no longer means what the API chose, so pinning breaks
+  // down. Drop it and sort plain live-first instead (mirrors Task A3 on
+  // the API side, which drops slots the same way for a filtered request).
+  const tournaments: Tournament[] = useMemo(
+    () =>
+      clientFiltering ? orderLiveFirst(visibleList) : orderLiveFirstKeepingPromoted(visibleList),
+    [clientFiltering, visibleList],
+  )
 
   // Months come from the loaded data, so the dropdown never offers a month
   // with nothing behind it — and reads in list order on each tab.
