@@ -109,6 +109,32 @@ export interface Tournament {
    * below is detail-only.
    */
   waitlist_position?: number | null
+  /**
+   * Listing-priority placement. Present on every item once the API ships the
+   * feature — organic items carry `{promoted:false, slot:null}` rather than
+   * omitting the field. Feature-detected: absent (undefined) on API builds
+   * predating it, which reads the same as organic. The API returns promoted
+   * items already in slotted order — never re-sort or dedupe on the client.
+   *
+   * `promoted`/`slot` exist ONLY so the client can keep a promoted row at its
+   * served index while re-ordering the rest (see
+   * `orderLiveFirstKeepingPromoted`) — never to label or style a promoted row
+   * differently from an organic one. The API does not send a paid/sponsored
+   * signal to consumer clients; whether a slot is paid is staff-only, visible
+   * in the CRM, never here.
+   */
+  placement?: Placement | null
+}
+
+/**
+ * Listing-priority placement. See `Tournament.placement` for the full
+ * contract — kept as a named export (matching `Prize`/`Sponsor`/`Organizer`
+ * below) so it has exactly one declaration instead of being re-shaped at
+ * each consumer.
+ */
+export interface Placement {
+  promoted: boolean
+  slot?: number | null
 }
 
 export interface Organizer {

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import i18n from '@/i18n'
 import { TournamentCard } from './TournamentCard'
-import type { Tournament } from '@/types/api'
+import type { Placement, Tournament } from '@/types/api'
 
 const base: Tournament = {
   id: 't1', name: 'Rally Open', format: 'doubles',
@@ -281,5 +281,50 @@ describe('TournamentCard registration count', () => {
     const row = container.querySelector('[dir="ltr"].tabular-nums')!.parentElement!
     expect(row.className).toContain('text-rally-text-2')
     expect(row.className).not.toContain('text-rally-accent')
+  })
+})
+
+describe('TournamentCard promoted slot disclosure', () => {
+  // Owner decision (feedback round 3): visitors must never be able to tell a
+  // tournament was promoted. A promoted card renders byte-for-byte the same
+  // markup as an organic one — no badge, no testid, no distinguishing text —
+  // even though `orderLiveFirstKeepingPromoted` still pins it to its served
+  // index upstream of this component.
+  it('renders a promoted slot identically to an organic item, with no featured/promoted testid or label', () => {
+    // The testid/label assertions below are strictly weaker than the
+    // innerHTML equality above them — they only catch someone re-adding
+    // the exact badge/testid/copy that was deleted, where the innerHTML
+    // diff catches any disclosure at all (a class, an aria-label, anything).
+    // Folded into one test rather than kept as two: the innerHTML check
+    // already implies the specific absences, but stating them once here
+    // still documents which exact regression they'd have caught.
+    const { container: promotedContainer } = renderCard({
+      placement: { promoted: true, slot: 2 },
+    })
+    const { container: organicContainer } = renderCard({
+      placement: { promoted: false, slot: null },
+    })
+    expect(promotedContainer.innerHTML).toBe(organicContainer.innerHTML)
+    expect(screen.queryByTestId('tournament-card-featured-badge')).toBeNull()
+    expect(screen.queryByText('Featured')).not.toBeInTheDocument()
+    expect(screen.queryByText('מקודם')).not.toBeInTheDocument()
+  })
+
+  it('stays plain even if a stale payload still carries the removed source field', () => {
+    // The `placement` type no longer has `source` (the API is dropping it in
+    // the same rollout), but a client can be deployed slightly ahead of or
+    // behind the API — the transition window is exactly when a stale
+    // `source: 'sponsored'` value could still show up on the wire. Smuggled
+    // through `unknown` since the type intentionally no longer allows it.
+    const stalePlacement = { promoted: true, source: 'sponsored', slot: 2 } as unknown as Placement
+    renderCard({ placement: stalePlacement })
+    expect(screen.queryByTestId('tournament-card-featured-badge')).toBeNull()
+    expect(screen.queryByText('Featured')).not.toBeInTheDocument()
+    expect(screen.queryByText('מקודם')).not.toBeInTheDocument()
+  })
+
+  it('renders an item with no placement (older API) the same way', () => {
+    renderCard({})
+    expect(screen.queryByTestId('tournament-card-featured-badge')).toBeNull()
   })
 })
