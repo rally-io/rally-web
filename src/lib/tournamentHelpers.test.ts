@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange,
@@ -6,6 +6,8 @@ import {
   registrationSummaryKey,
   registrationSummary,
   isLastSpots,
+  orderLiveFirstKeepingPromoted,
+  orderLiveFirst,
 } from './tournamentHelpers'
 
 /** ISO-ish local timestamp `offsetHours` from now, in the API's format. */
@@ -207,6 +209,122 @@ describe('isLastSpots', () => {
   it('is false when the seat count is missing rather than guessing', () => {
     expect(isLastSpots(undefined)).toBe(false)
     expect(isLastSpots(null)).toBe(false)
+  })
+})
+
+describe('orderLiveFirstKeepingPromoted', () => {
+  type Fixture = {
+    id: string
+    start_date: string
+    end_date: string
+    placement?: { promoted: boolean } | null
+  }
+  // Live/not-live windows just need to satisfy isTournamentLive; promoted
+  // items are skipped by the live check entirely, so their dates don't
+  // matter for these tests and are left as an arbitrary future window.
+  const liveItem = (id: string, promoted = false): Fixture => ({
+    id,
+    start_date: hoursFromNow(-1),
+    end_date: hoursFromNow(1),
+    ...(promoted ? { placement: { promoted: true } } : {}),
+  })
+  const notLiveItem = (id: string, promoted = false): Fixture => ({
+    id,
+    start_date: hoursFromNow(2),
+    end_date: hoursFromNow(4),
+    ...(promoted ? { placement: { promoted: true } } : {}),
+  })
+  const ids = (list: Fixture[]) => list.map((tr) => tr.id)
+
+  it('matches the old live-first partition when nothing is promoted', () => {
+    const list = [notLiveItem('O1'), liveItem('L1'), notLiveItem('O2'), liveItem('L2')]
+    const oldPartition = [...list.filter(isTournamentLive), ...list.filter((tr) => !isTournamentLive(tr))]
+    expect(ids(orderLiveFirstKeepingPromoted(list))).toEqual(ids(oldPartition))
+    expect(ids(orderLiveFirstKeepingPromoted(list))).toEqual(['L1', 'L2', 'O1', 'O2'])
+  })
+
+  it('keeps promoted items pinned while hoisting live organic items around them', () => {
+    // [L1, P1, L2, P2, O1], both promoted items NOT live -> unchanged. The
+    // old "hoist every live item to the front of the whole list" partition
+    // would instead pull L1 and L2 together and push P1/P2 down to be
+    // adjacent at positions 3-4 — exactly the regression this guards.
+    const list = [
+      liveItem('L1'), notLiveItem('P1', true), liveItem('L2'), notLiveItem('P2', true), notLiveItem('O1'),
+    ]
+    expect(ids(orderLiveFirstKeepingPromoted(list))).toEqual(['L1', 'P1', 'L2', 'P2', 'O1'])
+  })
+
+  it('hoists an organic live item past organic-not-live slots without disturbing promoted slots', () => {
+    // [O1, P1, L1, P2] -> [L1, P1, O1, P2]: L1 hoists ahead of O1 within the
+    // organic slots (0 and 2), while P1 and P2 never move from slots 1 and 3.
+    const list = [
+      notLiveItem('O1'), liveItem('P1', true), liveItem('L1'), notLiveItem('P2', true),
+    ]
+    expect(ids(orderLiveFirstKeepingPromoted(list))).toEqual(['L1', 'P1', 'O1', 'P2'])
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('does not drop an item whose liveness flips between two Date.now() reads (single-pass partition)', () => {
+    // Two separate `.filter(isTournamentLive)` passes over the same item
+    // each call `Date.now()` once. If the item's start date falls between
+    // those two reads, the first read says "not live yet" (excluded from
+    // the live half) and the second says "live now" (excluded from the
+    // not-live half too, since `!true` is false) — the item vanishes from
+    // both halves and `organicOrdered[i++]` yields `undefined` at its slot.
+    // A single pass reads `Date.now()` once per item and can't produce that
+    // gap. Every fixture is built with the *real* clock, before the spy.
+    const start = Date.now()
+    const flipsAt = start + 500
+    const flipItem = {
+      id: 'FLIP',
+      start_date: new Date(flipsAt).toISOString(),
+      end_date: new Date(start + 3_600_000).toISOString(),
+    }
+    let calls = 0
+    vi.spyOn(Date, 'now').mockImplementation(() => (calls++ === 0 ? start : flipsAt + 1))
+    const result = orderLiveFirstKeepingPromoted([flipItem])
+    expect(result.map((tr) => tr?.id)).toEqual(['FLIP'])
+  })
+})
+
+describe('orderLiveFirst', () => {
+  type Fixture = {
+    id: string
+    start_date: string
+    end_date: string
+    placement?: { promoted: boolean } | null
+  }
+  const liveItem = (id: string, promoted = false): Fixture => ({
+    id,
+    start_date: hoursFromNow(-1),
+    end_date: hoursFromNow(1),
+    ...(promoted ? { placement: { promoted: true } } : {}),
+  })
+  const notLiveItem = (id: string, promoted = false): Fixture => ({
+    id,
+    start_date: hoursFromNow(2),
+    end_date: hoursFromNow(4),
+    ...(promoted ? { placement: { promoted: true } } : {}),
+  })
+  const ids = (list: Fixture[]) => list.map((tr) => tr.id)
+
+  it('is the identity-plus-live-first partition when nothing is promoted, same as orderLiveFirstKeepingPromoted', () => {
+    const list = [notLiveItem('O1'), liveItem('L1'), notLiveItem('O2'), liveItem('L2')]
+    expect(ids(orderLiveFirst(list))).toEqual(['L1', 'L2', 'O1', 'O2'])
+  })
+
+  it('ignores placement entirely — promoted items are not pinned and can end up adjacent or reordered', () => {
+    // Same input as the "keeps promoted items pinned" case above, but here
+    // nothing is pinned: P1 and P2 sort by liveness like everything else.
+    // This is deliberate — see the function's docstring — used only once a
+    // client-side filter has already broken the served-index contract.
+    const list = [
+      liveItem('L1'), notLiveItem('P1', true), liveItem('L2'), notLiveItem('P2', true), notLiveItem('O1'),
+    ]
+    expect(ids(orderLiveFirst(list))).toEqual(['L1', 'L2', 'P1', 'P2', 'O1'])
   })
 })
 

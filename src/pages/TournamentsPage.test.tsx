@@ -486,6 +486,84 @@ const page = (items: unknown[], next_cursor: string | null) => ({
 const TEASER = /Registration opens soon|ההרשמה תיפתח בקרוב/
 const LOAD_MORE = /Load more|Load earlier months|טעינת חודשים נוספים|טען עוד/
 
+// --- Promoted ordering (Task W1/W4) -----------------------------------------
+
+const placementFixture = (
+  id: string,
+  name: string,
+  start: string,
+  placement: { promoted: boolean; slot?: number | null } | null = null,
+) => ({ ...tournamentFixture(id, name, start), placement })
+
+/** A start/end window straddling "now" — for a fixture that must read as
+ * live regardless of the arbitrary `start` string other fixtures use. */
+const liveWindow = () => ({
+  start_date: new Date(Date.now() - 3_600_000).toISOString(),
+  end_date: new Date(Date.now() + 3_600_000).toISOString(),
+})
+
+describe('TournamentsPage promoted ordering', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getTournamentFilterOptions).mockResolvedValue({
+      success: true,
+      data: { clubs: [], organizers: [] },
+    } as never)
+    vi.mocked(useAppSession).mockReturnValue({ status: 'signed_out', needsDetails: false } as never)
+  })
+
+  it('keeps the API-served promoted pin in place when no client filter is active', async () => {
+    vi.mocked(getTournaments).mockResolvedValue(
+      page(
+        [
+          placementFixture('t-a', 'Alpha', '2099-07-01'),
+          placementFixture('t-p1', 'Promo One', '2099-07-02', { promoted: true, slot: 2 }),
+          placementFixture('t-b', 'Bravo', '2099-07-03'),
+          placementFixture('t-p2', 'Promo Two', '2099-07-04', { promoted: true, slot: 4 }),
+        ],
+        // Non-null cursor is safe here: no client filter is active, so the
+        // auto-drain effect (W1's gate) never fires and this can't loop.
+        'more',
+      ) as never,
+    )
+    renderPage()
+    await screen.findByText('Alpha')
+    const names = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(names).toEqual(['Alpha', 'Promo One', 'Bravo', 'Promo Two'])
+  })
+
+  it('drops the promoted pin and sorts plain live-first once a client filter is active (W1)', async () => {
+    vi.mocked(getTournaments).mockResolvedValue(
+      page(
+        [
+          placementFixture('t-p1', 'Promo One', '2099-07-02', { promoted: true, slot: 2 }),
+          placementFixture('t-p2', 'Promo Two', '2099-07-04', { promoted: true, slot: 4 }),
+          { ...placementFixture('t-b', 'Bravo Live', '2099-07-03'), ...liveWindow() },
+        ],
+        // Null cursor: hasNextPage is false, so the drain effect this
+        // filter switches on has nothing to fetch and can't loop.
+        null,
+      ) as never,
+    )
+    renderPage('/tournaments?skill=intermediate')
+    await screen.findByText('Bravo Live')
+    const names = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    // The unfiltered pin-preserving order would be ['Promo One', 'Promo
+    // Two', 'Bravo Live'] — the promoted items stay at served indices 0/1
+    // regardless of liveness. Once the skill filter is active, promotion no
+    // longer pins anything: the live item sorts first like any organic one.
+    expect(names).toEqual(['Bravo Live', 'Promo One', 'Promo Two'])
+  })
+
+  it('renders a placement: null fixture as an ordinary organic card without crashing', async () => {
+    vi.mocked(getTournaments).mockResolvedValue(
+      page([placementFixture('t-n', 'Null Placement', '2099-07-01', null)], null) as never,
+    )
+    renderPage()
+    expect(await screen.findByText('Null Placement')).toBeInTheDocument()
+  })
+})
+
 describe('TournamentsPage infinite scroll', () => {
   beforeEach(() => {
     vi.clearAllMocks()

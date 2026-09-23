@@ -664,6 +664,26 @@ describe('tournament profile completion', () => {
     expect(outstanding()).toEqual([])
   })
 
+  // 2026-09-17: an iPhone customer on this step could not get a verify request
+  // out. Nothing here fails on a desktop browser, so pin the pieces down.
+  it('details mode on a phone: no iOS focus zoom, a full-size verify button, and the hint above it', async () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    const user = userEvent.setup()
+    const phone = screen.getByLabelText(/phone number/i)
+    // iOS Safari zooms into any focused field under 16px and stays zoomed.
+    expect(phone.className.split(' ')).toContain('text-base')
+    expect(screen.getByLabelText(/^country$/i).className.split(' ')).toContain('text-base')
+
+    await user.type(phone, '0586281254')
+    const verify = screen.getByRole('button', { name: /verify phone number/i })
+    expect(verify).toBeEnabled()
+    expect(verify.className.split(' ')).toEqual(expect.arrayContaining(['h-11', 'w-full']))
+    // Under the button, the amber line read as the reply to tapping it.
+    const hint = screen.getByText(/please verify your phone number/i)
+    expect(hint.compareDocumentPosition(verify) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('permissive mode: no note about required fields, no notice, Save label, level may stay unset', () => {
     sessionState.status = 'ready'
     sessionState.playerProfile = { ...READY_PROFILE, skill_level: null }
