@@ -61,7 +61,11 @@ describe('streamPortraits', () => {
   it('stop() starts no further downloads and drops the ones already in flight', async () => {
     const seen: string[] = []
     const started: string[] = []
-    let release: (() => void) | null = null
+    // `release!` rather than `| null`: a Promise executor runs SYNCHRONOUSLY, so `release`
+    // is assigned before any line below reads it. TypeScript cannot see an assignment made
+    // inside a callback, so the nullable version stayed narrowed to `null` and `release?.()`
+    // became a call on `never` — one error, but it failed `tsc -b` and so the whole build.
+    let release!: () => void
     const gate = new Promise<void>((r) => { release = r })
     const load = async (src: string): Promise<HTMLImageElement> => {
       started.push(src)
@@ -71,7 +75,7 @@ describe('streamPortraits', () => {
     const stream = streamPortraits(graph, null, (id) => seen.push(id), { load, concurrency: 1 })
     await Promise.resolve() // the first worker has picked up 'a' and is waiting on the gate
     stream.stop()
-    release?.()
+    release()
     await stream.done
     expect(started).toEqual(['/a.webp'])
     // 'a' finished loading after stop() — it is dropped, not swapped onto a disposed scene
