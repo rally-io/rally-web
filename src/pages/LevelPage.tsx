@@ -1,4 +1,20 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
+import {
+  BlockIcon,
+  describeLevel,
+  EXPLAINER_BLOCKS,
+  LevelChip,
+} from '@/components/players/level'
+
+/* The legend: one chip per state a player can meet, with the same values as the spec's
+   Appendix B mockups. Fixed on purpose — this is documentation, not data. */
+const LEGEND = [
+  { descriptor: describeLevel(4.25, true, 91), captionKey: 'level.sealLabel' },
+  { descriptor: describeLevel(3.5, false, 40), captionKey: 'level.notVerified' },
+  { descriptor: describeLevel(null, undefined, null), captionKey: 'level.none' },
+]
+
 
 export default function LevelPage() {
   const { t } = useTranslation()
@@ -12,13 +28,6 @@ export default function LevelPage() {
     { label: t('level_page.tier_b1'), range: t('level_page.tier_b1_range'), desc: t('level_page.tier_b1_desc'), emoji: '🟡' },
     { label: t('level_page.tier_a2'), range: t('level_page.tier_a2_range'), desc: t('level_page.tier_a2_desc'), emoji: '🟡' },
     { label: t('level_page.tier_a1'), range: t('level_page.tier_a1_range'), desc: t('level_page.tier_a1_desc'), emoji: '🟡' },
-  ]
-
-  const evolution = [
-    { matches: '0', influence: t('level_page.table_influence_0'), highlight: false, bold: false },
-    { matches: '5', influence: '~71%', highlight: true, bold: false },
-    { matches: '10', influence: '~92%', highlight: true, bold: false },
-    { matches: '20+', influence: '~99%', highlight: true, bold: true },
   ]
 
   const thClass = 'px-4 py-3 font-display font-semibold text-start'
@@ -101,39 +110,41 @@ export default function LevelPage() {
       {/* Evolution */}
       <section className="container mx-auto px-4 max-w-4xl mb-16 sm:mb-24">
         <h2 className="font-display text-3xl font-black mb-6">{t('level_page.evolves_title')}</h2>
-        <div className="space-y-6 text-lg text-rally-text-2 leading-relaxed mb-12">
+        <div className="space-y-6 text-lg text-rally-text-2 leading-relaxed">
           <p>{t('level_page.evolves_p1')}</p>
           <p>{t('level_page.evolves_p2')}</p>
           <p>{t('level_page.evolves_p3')}</p>
-          <p>{t('level_page.evolves_p4')}</p>
-        </div>
-        <div className={tableWrapClass}>
-          <table className="w-full">
-            <thead>
-              <tr className="bg-rally-surface-2/60 text-rally-text-2 border-b border-rally-border">
-                <th className={`${thClass} w-1/2`}>{t('level_page.table_matches')}</th>
-                <th className={`${thClass} w-1/2`}>{t('level_page.table_influence')}</th>
-              </tr>
-            </thead>
-            <tbody className="text-rally-text-2 divide-y divide-rally-border-subtle">
-              {evolution.map((row) => (
-                <tr key={row.matches} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 font-medium text-start" dir="ltr">
-                    {row.matches}
-                  </td>
-                  <td
-                    className={`p-4 text-start ${row.highlight ? 'text-rally-accent' : ''} ${row.bold ? 'font-bold' : ''}`}
-                  >
-                    {row.influence}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
         <p className="text-center text-rally-text-muted italic max-w-2xl mx-auto mt-8">
           {t('level_page.evolves_summary')}
         </p>
+      </section>
+
+      {/* Verified level — spec §10. The legend shows the three marks a player will meet in
+          the app; the blocks are the same six as the in-app explainer sheet. */}
+      <section className="container mx-auto px-4 max-w-4xl mb-16 sm:mb-24">
+        <h2 className="font-display text-3xl font-black mb-6">{t('level.sealLabel')}</h2>
+        <ul className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {LEGEND.map(({ descriptor, captionKey }) => (
+            <li key={captionKey} className="flex flex-col items-center gap-3 rounded-3xl border border-rally-border bg-rally-surface p-6">
+              <LevelChip descriptor={descriptor} size="lg" showLabel={false} />
+              <span className="text-sm text-rally-text-2">{t(captionKey)}</span>
+            </li>
+          ))}
+        </ul>
+        <ol className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {EXPLAINER_BLOCKS.map((block) => (
+            <li key={block.key} className="flex gap-4 rounded-3xl border border-rally-border bg-rally-surface p-6">
+              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rally-surface-2">
+                <BlockIcon icon={block.icon} />
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-display text-lg font-bold text-rally-text">{t(`level.explainer.${block.key}.title`)}</h3>
+                <p className="mt-1 text-rally-text-2 leading-relaxed">{t(`level.explainer.${block.key}.body`, block.values)}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* Accuracy */}
@@ -144,6 +155,18 @@ export default function LevelPage() {
           <p>{t('level_page.accuracy_p2')}</p>
           <p className="text-rally-accent font-medium">{t('level_page.accuracy_p3')}</p>
         </div>
+      </section>
+
+      {/* These tiers are the same bands the league ranking is scaled by, so the two
+          pages belong together. Cross-linked rather than duplicated: the tier content
+          is maintained here and here only. */}
+      <section className="container mx-auto px-4 max-w-4xl mt-12">
+        <Link
+          to="/ranking"
+          className="inline-flex items-center gap-2 text-rally-accent font-medium hover:underline"
+        >
+          {t('level_page.see_ranking')}
+        </Link>
       </section>
     </main>
   )

@@ -154,8 +154,23 @@ describe('ParticipantsSection', () => {
   it('guest gets no skill numeral, even when skill_level is set', () => {
     mockData.current = data(1)
     renderSection()
-    expect(screen.getByText('3.5')).toBeInTheDocument() // player_1's numeral
-    expect(screen.queryByText('4.0')).not.toBeInTheDocument() // guest player_2's, suppressed
+    expect(screen.getByText('3.50')).toBeInTheDocument() // player_1's chip
+    expect(screen.queryByText('4.00')).not.toBeInTheDocument() // guest player_2's, suppressed
+    expect(screen.queryByText('4.0')).not.toBeInTheDocument()
+  })
+
+  it('a verified participant gets the seal; an unverified one the dashed pill; an old payload a plain number', () => {
+    const d = data(3)
+    d.items[0].player_1 = { ...d.items[0].player_1, level_verified: true, level_reliability: 90 }
+    d.items[1].player_1 = { ...d.items[1].player_1, level_verified: false, level_reliability: 30 }
+    // items[2].player_1 has neither field → unknown
+    mockData.current = d
+    renderSection()
+    const chips = screen.getAllByTestId('level-chip')
+    expect(chips.map((c) => c.getAttribute('data-state'))).toEqual(['verified', 'unverified', 'unknown'])
+    expect(screen.getAllByRole('img', { name: 'Verified level' })).toHaveLength(1)
+    // sm chips never print the "Not verified" word — the row is too narrow (spec §5.3)
+    expect(screen.queryByText('Not verified')).not.toBeInTheDocument()
   })
 
   it('renders nothing when items is empty despite a positive confirmed_count (malformed payload)', () => {

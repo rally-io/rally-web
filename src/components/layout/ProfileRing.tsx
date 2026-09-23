@@ -15,20 +15,24 @@ function getInitials(displayName: string, email: string | null | undefined): str
 export function ProfileRing() {
   const { onboardingStatus, playerProfile } = useAppSession()
   const { user } = useAuth()
-  if (!onboardingStatus) return null
 
   const meta = (user?.user_metadata ?? {}) as Record<string, string>
   const profileName = `${playerProfile?.first_name ?? ''} ${playerProfile?.last_name ?? ''}`.trim()
   const metaName = (meta.full_name ?? meta.name ?? `${meta.first_name ?? ''} ${meta.last_name ?? ''}`).trim()
   const displayName = profileName || metaName || user?.email || ''
 
-  const percent = onboardingStatus.completion_percent
+  // A missing onboarding status (still loading, or its fetch failed) must not
+  // blank the avatar: the Navbar swaps the login link for this component the
+  // moment a session exists, so returning null here left a signed-in visitor
+  // with NO account entry point in the header at all — the "login button
+  // disappears" bug. Degrade to initials over an empty ring instead.
+  const percent = onboardingStatus?.completion_percent ?? 0
   const initials = getInitials(displayName, user?.email ?? null)
 
   return (
     <div
       className="relative w-10 h-10 flex items-center justify-center"
-      title={onboardingStatus.missing_steps.join(', ')}
+      title={onboardingStatus?.missing_steps.join(', ')}
     >
       <div className="absolute inset-0 flex items-center justify-center">
         <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">

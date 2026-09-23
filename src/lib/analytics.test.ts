@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { normalizeEmail, normalizePhone, trackLead, trackDownload, trackFunnel, META_PIXEL_ID } from './analytics'
+import { normalizeEmail, normalizePhone, trackLead, trackDownload, trackFunnel, trackGlobeOpen, META_PIXEL_ID } from './analytics'
 
 describe('normalisation for Meta advanced matching', () => {
   it('lower-cases and trims emails, drops non-addresses', () => {
@@ -97,4 +97,25 @@ it('never blocks a player when analytics fails', () => {
   window.gtag = () => { throw new Error('blocked') }
   expect(() => trackFunnel('registration_created')).not.toThrow()
   delete window.gtag
+})
+
+describe('trackGlobeOpen', () => {
+  const gtag = vi.fn()
+  beforeEach(() => {
+    window.gtag = gtag
+  })
+  afterEach(() => {
+    gtag.mockReset()
+    delete window.gtag
+  })
+
+  it('sends globe_open with the door it came from', () => {
+    trackGlobeOpen('ranking_row')
+    expect(gtag).toHaveBeenCalledWith('event', 'globe_open', { source: 'ranking_row' })
+  })
+
+  it('never throws when gtag is missing', () => {
+    delete window.gtag
+    expect(() => trackGlobeOpen('direct')).not.toThrow()
+  })
 })

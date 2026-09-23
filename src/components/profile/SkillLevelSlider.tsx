@@ -5,6 +5,7 @@ import {
   SKILL_MAX,
   SKILL_STEP,
   clampSkill,
+  formatSkill,
 } from '@/lib/skillLevel'
 import { useRtl } from '@/hooks/useRtl'
 
@@ -26,7 +27,7 @@ export function SkillLevelSlider({ value, onChange }: Props) {
   const { t } = useTranslation()
   const { dir } = useRtl()
   const isEmpty = value == null
-  const [text, setText] = useState(isEmpty ? '' : value.toFixed(1))
+  const [text, setText] = useState(isEmpty ? '' : formatSkill(value))
   // Read inside the resync effect without making it a dependency: the effect
   // must react to `value` only, but still needs the text of the same render.
   const textRef = useRef(text)
@@ -38,7 +39,7 @@ export function SkillLevelSlider({ value, onChange }: Props) {
   // is still in the middle of typing ("3" → "3." → "3.5").
   useEffect(() => {
     if (value != null && parseFloat(textRef.current) === value) return
-    setText(value == null ? '' : value.toFixed(1))
+    setText(value == null ? '' : formatSkill(value))
   }, [value])
 
   const handleRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,17 +65,16 @@ export function SkillLevelSlider({ value, onChange }: Props) {
   }
 
   const handleTextBlur = () => {
-    // Focus merely passing through must not rewrite an untouched off-step
-    // level: the rating engine stores 4.68, the box shows "4.7", and snapping
-    // that on blur would save 4.5 over a rated value nobody edited.
-    if (value != null && text === value.toFixed(1)) return
+    // Focus merely passing through must not rewrite the value: the box already
+    // spells exactly what is stored, so there is nothing to reformat.
+    if (value != null && text === formatSkill(value)) return
     const parsed = parseFloat(text)
     if (Number.isNaN(parsed)) {
-      setText(value == null ? '' : value.toFixed(1))
+      setText(value == null ? '' : formatSkill(value))
       return
     }
     const next = clampSkill(parsed)
-    setText(next.toFixed(1))
+    setText(formatSkill(next))
     if (next !== value) onChange(next)
   }
 
@@ -124,7 +124,7 @@ export function SkillLevelSlider({ value, onChange }: Props) {
         dir={dir}
         data-empty={isEmpty ? 'true' : 'false'}
         aria-controls="skill-level-value"
-        aria-valuetext={isEmpty ? t('edit_profile.skillEmpty') : shown.toFixed(1)}
+        aria-valuetext={isEmpty ? t('edit_profile.skillEmpty') : formatSkill(shown)}
         className="skill-slider data-[empty=true]:opacity-60"
         style={{ '--skill-fill-pct': fillPct } as CSSProperties}
         aria-label="skill level slider"

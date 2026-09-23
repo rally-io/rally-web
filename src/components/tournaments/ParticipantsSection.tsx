@@ -6,6 +6,7 @@ import { useAuthGate } from '@/hooks/useAuthGate'
 import { useTournamentParticipants } from '@/hooks/useTournamentParticipants'
 import type { TournamentParticipantPair, TournamentParticipantPlayer } from '@/types/api'
 import { Avatar } from './Avatar'
+import { describeLevel, LevelChip } from '@/components/players/level'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 
 const INITIAL_VISIBLE = 3
@@ -21,10 +22,14 @@ function PlayerLine({ player }: { player: TournamentParticipantPlayer }) {
           with slack to spare, and wrapping (not clipping) is the agreed
           fallback for a longer real-world name. */}
       <span className="flex-1 min-w-0 break-words text-sm text-rally-text">{name}</span>
+      {/* Guests have no rating; a member without a level gets nothing rather than an em dash
+          in a list. The chip itself decides seal / dashed pill / plain (spec §5.3, §7). */}
       {!player.is_guest && player.skill_level != null && (
-        <span dir="ltr" className="shrink-0 text-xs font-semibold text-rally-accent tabular-nums">
-          {player.skill_level.toFixed(1)}
-        </span>
+        <LevelChip
+          descriptor={describeLevel(player.skill_level, player.level_verified, player.level_reliability)}
+          size="sm"
+          className="shrink-0"
+        />
       )}
     </div>
   )

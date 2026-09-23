@@ -11,7 +11,9 @@ export async function getOnboardingStatus(): Promise<ApiResponse<OnboardingStatu
   return client.get('/rally/v1/me/onboarding-status')
 }
 
-export async function updateProfile(data: ProfileUpdateRequest): Promise<ApiResponse<unknown>> {
+/** Returns the updated profile — the reveal dialog on EditProfilePage reads the engine's
+    fresh `level_verified` / `level_reliability` from it instead of guessing. */
+export async function updateProfile(data: ProfileUpdateRequest): Promise<ApiResponse<PlayerMe>> {
   return client.patch('/rally/v1/players/', data)
 }
 

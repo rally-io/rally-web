@@ -26,6 +26,9 @@ import { editProfileSchema, type EditProfileFormValues } from '@/lib/editProfile
 import type { PlayerCreatePayload, PlayerMe, ProfileUpdateRequest } from '@/types/api'
 import { safeReturnTo } from '@/lib/authReturn'
 import { trackFunnel } from '@/lib/analytics'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { describeLevel, LevelChip, LevelExplainerSheet, LevelStatusLine, ReliabilityRing, type LevelDescriptor } from '@/components/players/level'
+import { ltrIsolate } from '@/lib/bidi'
 
 export default function EditProfilePage() {
   const { t } = useTranslation()
@@ -220,11 +223,36 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   // needs (re-)verifying. Mirrors mobile's EditProfileScreen/PhoneVerificationField.
   const [phoneVerified, setPhoneVerified] = useState(Boolean(profile?.contact_number))
 
+  /* Spec §9: what the player is about to replace. `none` (a member who never set a level) and
+     create mode show no level block — there is nothing to protect yet. */
+  const current = describeLevel(profile?.skill_level, profile?.level_verified, profile?.level_reliability)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [pendingValues, setPendingValues] = useState<EditProfileFormValues | null>(null)
+  const [reveal, setReveal] = useState<LevelDescriptor | null>(null)
+  const [explainerOpen, setExplainerOpen] = useState(false)
+  /* The level the player arrived with, captured once. It cannot be read back off the form when
+     it is needed: a successful save rebases RHF's defaults to whatever was last saved, so after
+     any save a bare `resetField` would revert to that instead of to the profile's level.
+     `normalizeSkillLevel` because "never chosen" is null now, not a default 3.0. */
+  const [originalSkill] = useState(() => normalizeSkillLevel(profile?.skill_level))
+
   const form = useForm<EditProfileFormValues>({
     resolver: zodResolver(editProfileSchema),
     defaultValues: defaults,
     mode: 'onChange',
   })
+
+  /* Declining the confirm must put the slider back, not just close the dialog. Leaving the form
+     dirty at the rejected value left the page showing the old verified chip above a slider
+     reading something else, with Save still armed — so the next Save re-opened the same dialog,
+     and a player who thought "Keep" had undone their edit was one click from giving up the seal
+     they had just chosen to protect. resetField clears the dirty flag too, which setValue does
+     not. Used by both dismiss paths: the button and Escape/overlay. */
+  const keepCurrentLevel = () => {
+    setConfirmOpen(false)
+    setPendingValues(null)
+    form.resetField('skill_level', { defaultValue: originalSkill })
+  }
 
   useEffect(() => {
     const subscription = form.watch((_, { name, type }) => {
@@ -242,7 +270,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const finishSave = async (applied?: Partial<EditProfileFormValues>) => {
+  const finishSave = async (applied?: Partial<EditProfileFormValues>, savedPlayer?: PlayerMe | null, levelWritten = false) => {
     if (!mounted.current) return
     saved.current = true
     try {
@@ -282,6 +310,27 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       // The details step is a gate, not a destination: never leave the player
       // parked on it once they are done. The permissive editor still stays put
       // and just shows "Profile updated".
+      /* A level change gets the reveal (spec §9.4): the new number in the ring, reliability as
+         the engine now reports it, read off the profile this function just refetched. Not on the
+         create path (`profile === null`) and not in details mode: both are the onboarding gate,
+         where the destination IS the moment — and a dialog there would sit in front of a
+         navigation the player is waiting on. */
+      /* `levelWritten`, not `applied.skill_level`: on the retry path `applied` is the whole
+         form, which always carries a level, so reading it there would reveal a "new" level to a
+         player who only fixed their name — and with no PATCH response behind it, as `unknown`.
+         Only a PATCH that actually carried skill_level counts. */
+      if (profile !== null && !detailsMode && levelWritten) {
+        /* The PATCH response, not the refetch beside it: `updateProfile` echoes the write the
+           server just performed, while `getMyPlayerProfile` is a second round trip that can
+           still be serving the pre-write row. An older backend that omits the level fields
+           yields `unknown`, and the dialog still shows the number. */
+        setReveal(describeLevel(
+          savedPlayer?.skill_level ?? applied?.skill_level,
+          savedPlayer?.level_verified,
+          savedPlayer?.level_reliability,
+        ))
+        return
+      }
       if (returnTo) navigate(returnTo)
       else if (detailsMode) navigate('/', { replace: true })
     } catch {
@@ -291,7 +340,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
 
   const mutation = useMutation({
     mutationFn: async (values: EditProfileFormValues) => {
-      if (saved.current) return values
+      if (saved.current) return { applied: values, savedPlayer: null, levelWritten: false }
       const phone = (values.contact_number || '').trim()
       if (isCreate) {
         if (!user?.email) throw new Error(t('profile.errorCannotCreate'))
@@ -312,7 +361,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
         }
         // The row exists from here on, whatever the refetch goes on to say.
         createdRef.current = true
-        return values
+        return { applied: values, savedPlayer: null, levelWritten: false }
       }
       // Edit mode: PATCH only the dirty fields. The players row exists; the
       // server happily accepts any subset.
@@ -349,14 +398,14 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       if ((dirty.skill_level || (detailsMode && normalizeSkillLevel(profile?.skill_level) == null)) && values.skill_level != null) {
         patch.skill_level = values.skill_level
       }
-      if (Object.keys(patch).length === 0) return
+      if (Object.keys(patch).length === 0) return { applied: patch, savedPlayer: null, levelWritten: false }
       const result = await updateProfile(patch)
       if (!result.success) {
         throw new Error(result.error.message ?? t('edit_profile.saveError'))
       }
-      return patch
+      return { applied: patch, savedPlayer: result.data ?? null, levelWritten: patch.skill_level !== undefined }
     },
-    onSuccess: finishSave,
+    onSuccess: ({ applied, savedPlayer, levelWritten }) => finishSave(applied, savedPlayer, levelWritten),
     onError: (err: unknown) => {
       const apiError = err as { code?: string; message?: string } | null
       const message = apiError?.code === 'MOBILE_ALREADY_EXISTS'
@@ -369,6 +418,15 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   const onSubmit = (values: EditProfileFormValues) => {
     setStatus({ kind: 'idle' })
     if (!canSubmit) return
+    if (!saved.current && form.formState.dirtyFields.skill_level && current.state === 'verified') {
+      // Spec §9.2: a verified level is earned; replacing it is a real loss — ask first.
+      // Not on a retry (`saved.current`): that write already landed, the form is only still
+      // dirty because the refresh beside it failed, and `current` is read from the stale
+      // profile prop that same failure left in place.
+      setPendingValues(values)
+      setConfirmOpen(true)
+      return
+    }
     mutation.mutate(values)
   }
 
@@ -423,6 +481,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   const MISSING_BORDER = detailsMode ? 'border-rally-warning/50' : 'border-rally-accent/60'
 
   return (
+    <>
     <form onSubmit={form.handleSubmit(onSubmit)} className={cn(detailsMode ? 'space-y-6' : 'space-y-3')} noValidate>
       <fieldset disabled={mutation.isPending} className="contents">
       {detailsMode && (
@@ -554,6 +613,19 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
           )}
         >
           <SectionLabel detailsMode={detailsMode}>{t('edit_profile.section_skill')}</SectionLabel>
+          {!isCreate && current.state !== 'none' && (
+            <div className="mb-4 flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <LevelChip descriptor={current} size="lg" />
+                <LevelStatusLine descriptor={current} />
+              </div>
+              {current.state !== 'unknown' && (
+                <p className="text-sm text-rally-text-2">
+                  {current.state === 'verified' ? t('level.warnVerified') : t('level.warnUnverified')}
+                </p>
+              )}
+            </div>
+          )}
           <Controller
             control={form.control}
             name="skill_level"
@@ -564,6 +636,15 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
           {detailsMode && !levelChosen && form.formState.isSubmitted && (
             <p className="text-sm text-rally-error mt-2">{t('edit_profile.validation.skillRequired')}</p>
           )}
+          {/* The explainer entry point. Rendered unconditionally — a player with no level yet is
+              the one most likely to want it, and `isCreate` hides the chip above but not this. */}
+          <button
+            type="button"
+            onClick={() => setExplainerOpen(true)}
+            className="mt-3 text-sm font-semibold text-rally-accent underline-offset-4 hover:underline"
+          >
+            {t('level.howCalculated')}
+          </button>
         </Card>
       </fieldset>
 
@@ -616,5 +697,98 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       )}
       </fieldset>
     </form>
+
+      <LevelExplainerSheet open={explainerOpen} onOpenChange={setExplainerOpen} />
+
+      {/* Spec §9.2 — the confirm gate. Keep is the primary action: the verified level is the
+          thing worth protecting, so it gets the lime. */}
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (open) setConfirmOpen(true)
+          else keepCurrentLevel()
+        }}
+      >
+        <DialogContent className="max-w-sm rounded-3xl bg-rally-surface border-rally-border">
+          <DialogHeader className="text-center sm:text-center">
+            <DialogTitle className="font-display text-xl font-black text-rally-text">{t('level.confirmTitle')}</DialogTitle>
+            <DialogDescription className="text-rally-text-2">
+              {/* Without a reliability figure the sentence drops that clause rather than
+                  substituting 0 %, which would tell a verified player their level is verified at
+                  no confidence at all — the opposite of what the seal means. `startPct` is the
+                  literal 0 % on purpose: the slider is a typed declaration and seeds σ₀ = 1.0
+                  (spec §5.7 keeps this constant off the web client). */}
+              {current.reliability == null
+                ? t('level.confirmBodyNoPct', {
+                    level: ltrIsolate(current.value ?? '—'),
+                    startPct: ltrIsolate('0%'),
+                  })
+                : t('level.confirmBody', {
+                    level: ltrIsolate(current.value ?? '—'),
+                    pct: ltrIsolate(`${current.reliability}%`),
+                    startPct: ltrIsolate('0%'),
+                  })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center gap-2">
+            <button
+              type="button"
+              onClick={keepCurrentLevel}
+              className="h-11 px-5 rounded-full bg-rally-accent text-rally-accent-text font-bold hover:bg-rally-accent-hover"
+            >
+              {t('level.confirmKeep')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const values = pendingValues
+                setConfirmOpen(false)
+                setPendingValues(null)
+                if (values) mutation.mutate(values)
+              }}
+              className="h-11 px-5 rounded-full border border-rally-border text-rally-text font-semibold"
+            >
+              {t('level.confirmProceed')}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Spec §9.4 — the reveal. One dismiss path (Done); it also finishes the returnTo hop. */}
+      <Dialog
+        open={reveal !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReveal(null)
+            if (returnTo) navigate(returnTo)
+          }
+        }}
+      >
+        {reveal && (
+          <DialogContent className="max-w-sm rounded-3xl bg-rally-surface border-rally-border">
+            <DialogHeader className="text-center sm:text-center">
+              <DialogTitle className="font-display text-xl font-black text-rally-text">{t('level.revealNew')}</DialogTitle>
+              <DialogDescription className="text-rally-text-2">{t('level.revealBody')}</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-3 py-2">
+              <ReliabilityRing value={reveal.value} reliability={reveal.reliability} verified={reveal.state === 'verified'} />
+              <LevelStatusLine descriptor={reveal} className="items-center" />
+            </div>
+            <DialogFooter className="sm:justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setReveal(null)
+                  if (returnTo) navigate(returnTo)
+                }}
+                className="h-11 px-6 rounded-full bg-rally-accent text-rally-accent-text font-bold hover:bg-rally-accent-hover"
+              >
+                {t('level.revealDone')}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
+    </>
   )
 }

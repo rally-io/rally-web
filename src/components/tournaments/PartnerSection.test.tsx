@@ -35,7 +35,7 @@ beforeEach(() => {
 describe('PartnerSection', () => {
   it('selects an existing player from search results', () => {
     mockUsePlayerSearch.mockReturnValue({
-      results: [{ id: 'p-1', first_name: 'Dana', last_name: 'Levi', avatar_url: null }],
+      results: [{ id: 'p-1', first_name: 'Dana', last_name: 'Levi', avatar_url: null, skill_level: 4.5, level_verified: true, level_reliability: 90 }],
       isLoading: false,
       isActive: true,
     })
@@ -47,6 +47,21 @@ describe('PartnerSection', () => {
       phase: 'selected',
       partner: { type: 'existing', id: 'p-1', displayName: 'Dana Levi', avatarUrl: null },
     })
+  })
+
+  it('shows a LevelChip on a search row when the result carries a level, nothing when it does not', () => {
+    mockUsePlayerSearch.mockReturnValue({
+      results: [
+        { id: 'p-1', first_name: 'Dana', last_name: 'Levi', avatar_url: null, skill_level: 4.5, level_verified: true, level_reliability: 90 },
+        { id: 'p-2', first_name: 'Noa', last_name: 'Cohen', avatar_url: null },
+      ],
+      isLoading: false,
+      isActive: true,
+    })
+    renderSection({ phase: 'idle' })
+    expect(screen.getByText('4.50')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Verified level' })).toBeInTheDocument()
+    expect(screen.getAllByTestId('level-chip')).toHaveLength(1)
   })
 
   it('shows the no-results message once a search returns empty', () => {

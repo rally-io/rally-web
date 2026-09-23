@@ -9,7 +9,9 @@
     "tournaments": "Tournaments",
     "myActivity": "My Activity",
     "signin": "Sign in",
-    "coaches": "Join as a Coach"
+    "coaches": "Join as a Coach",
+    "ball": "The Rally ball",
+    "ranking": "Ranking"
   },
   "common": {
     "loading": "Loading...",
@@ -39,7 +41,11 @@
     "forgot_password": "Forgot password?",
     "back_to_login": "Back to login",
     "or": "or",
-    "tabs": { "label": "Sign up or sign in", "signup": "Sign up", "signin": "Sign in" },
+    "tabs": {
+      "label": "Sign up or sign in",
+      "signup": "Sign up",
+      "signin": "Sign in"
+    },
     "signin_with_provider": "Sign in with {{provider}}",
     "signup_with_provider": "Sign up with {{provider}}",
     "continue_google": "Sign in with Google",
@@ -166,7 +172,11 @@
     "continueTournament": "Continue to tournament",
     "onboardingTitle": "Almost in",
     "onboardingSubtitle": "Your name, a verified phone and your level, and you're set.",
-    "checklist": { "title": "Before you start", "done": "Done", "todo": "Missing" },
+    "checklist": {
+      "title": "Before you start",
+      "done": "Done",
+      "todo": "Missing"
+    },
     "requiredNote": "A verified phone and a skill level are required: the number lets organisers and partners reach you, and the level decides who you play with.",
     "continue": "Continue",
     "skillEmpty": "Slide to choose your level",
@@ -174,7 +184,11 @@
     "notYou": "Not your account? Sign out",
     "missingNotice": "Before you continue we still need: {{fields}}",
     "stillMissing": "We still need: {{fields}}",
-    "missing": { "name": "full name", "phone": "a verified phone", "level": "your skill level" },
+    "missing": {
+      "name": "full name",
+      "phone": "a verified phone",
+      "level": "your skill level"
+    },
     "namesRequired": "Add your first and last name so other players can recognize you.",
     "phoneAccountHelp": "This number belongs to another Rally account. Sign in to that account using your usual provider or phone recovery.",
     "retry": "Try again",
@@ -690,7 +704,12 @@
     "clubsEyebrow": "For club owners",
     "clubsTitle": "Got a club? Rally fills your empty courts.",
     "clubsDesc": "A smart management platform that fills empty slots, streamlines operations and wins back players — automatically.",
-    "clubsCta": "See the club platform"
+    "clubsCta": "See the club platform",
+    "communityEyebrow": "The community",
+    "communityTitle": "Every player on one ball.",
+    "communityDesc": "See who plays with whom, find yourself on the ball, and see where you stand in the ranking.",
+    "communityBallCta": "Open the ball",
+    "communityRankingCta": "See the ranking"
   },
   "crm": {
     "eyebrow": "Smart management platform for padel clubs",
@@ -980,7 +999,6 @@
     "evolves_p1": "Your level from the questionnaire is your starting point — but it's not fixed. Every game completed in Rally feeds into your game rating, which updates after each game.",
     "evolves_p2": "After each game, the system compares the outcome to what was statistically expected, based on the ratings of both teams. A win against a stronger team raises your level more than a win against a weaker team. A loss to a stronger team barely affects you — this outcome was expected.",
     "evolves_p3": "In doubles, the system takes your partner into account. If you teamed up with a significantly stronger player, your personal contribution is weighted accordingly — so your rating reflects your own performance, not just whether your team won.",
-    "evolves_p4": "As you play more games, your game history gradually takes over from your initial assessment:",
     "table2_header_matches": "Games Played",
     "table2_header_influence": "Influence of Game Results",
     "table2_r1_c1": "0",
@@ -999,9 +1017,7 @@
     "table_tier": "Tier",
     "table_range": "Range",
     "table_meaning": "What it means",
-    "table_matches": "Matches played",
-    "table_influence": "Influence of match results",
-    "table_influence_0": "0% — pure questionnaire"
+    "see_ranking": "See the live ranking →"
   },
   "appDownload": {
     "cta_register": "Register in the App",
@@ -1260,6 +1276,356 @@
       "court_booking": "I accept the booking terms",
       "event_join": "I accept the class terms",
       "generic": "I accept the terms"
+    }
+  },
+  "level": {
+    "verified": "Verified",
+    "notVerified": "Not verified",
+    "notVerifiedYet": "Not verified yet",
+    "reliability": "{{pct}} level reliability",
+    "reliabilityTarget": "Verified at {{pct}}",
+    "none": "No level yet",
+    "rating": {
+      "first": "Your first rating arrives after your first tournament."
+    },
+    "howCalculated": "How is my level calculated?",
+    "sealLabel": "Verified level",
+    "verifiedTooltip": "Verified by Rally",
+    "verifiedLockup": "Verified by Rally",
+    "unverifiedTooltip": "Level not verified yet",
+    "warnVerified": "This replaces your current level and removes your verified seal until you've played rated matches again.",
+    "warnUnverified": "This replaces your current level and resets its reliability. You rebuild it through rated matches.",
+    "confirmTitle": "Give up your verified seal?",
+    "confirmBody": "Your level {{level}} is verified at {{pct}} level reliability. A new declaration starts at {{startPct}} and the seal returns only after enough rated matches.",
+    "confirmBodyNoPct": "Your level {{level}} is verified. A new declaration starts at {{startPct}} and the seal returns only after enough rated matches.",
+    "confirmKeep": "Keep my verified level",
+    "confirmProceed": "Reassess anyway",
+    "revealNew": "Your new level",
+    "revealStarting": "Your starting level",
+    "revealBody": "This is your declared level. Every rated match in a Rally tournament sharpens it — reach the notch and it becomes verified.",
+    "revealDone": "Done",
+    "explainer": {
+      "title": "How your level works",
+      "level": {
+        "title": "Your level",
+        "body": "A number from 1.00 to 7.00. You start by declaring it; from then on only your results move it."
+      },
+      "reliability": {
+        "title": "Level reliability",
+        "body": "How sure Rally is about that number. It grows with every rated match — faster when you play new partners and opponents, because repeat pairings tell us less."
+      },
+      "verified": {
+        "title": "Verified",
+        "body": "When reliability reaches the notch — {{threshold}} — your level earns the seal. Most players get there after about {{matches}} rated matches, roughly {{tournaments}} tournaments."
+      },
+      "counts": {
+        "title": "What counts",
+        "body": "Only matches recorded in Rally tournaments are rated. Friendly bookings and practice don't move your level."
+      },
+      "keeping": {
+        "title": "Keeping it",
+        "body": "{{months}} months without a rated match and reliability starts to fade, slowly. Declaring a new level replaces the number and resets reliability — the seal returns once you've played again."
+      },
+      "tier": {
+        "title": "Tier",
+        "body": "Bronze, Silver and Gold are just your level in bands: under 3.00, 3.00–3.99, 4.00 and up. Your tier never depends on verification."
+      },
+      "close": "Close",
+      "readMore": "Read more"
+    }
+  },
+  "network": {
+    "pageTitle": "The Rally ball · Rally",
+    "eyebrow": "The Rally ball",
+    "panelTitle": "Who plays with whom?",
+    "searchPlaceholder": "Search a player by name…",
+    "searchNoResults": "No players match that name",
+    "findMe": "Find me",
+    "youBadge": "You",
+    "findMeNotOnBall": "You're not on the ball yet — you'll appear here after your first match.",
+    "loading": "Loading the player network…",
+    "error": "The player network could not load.",
+    "retry": "Try again",
+    "empty": "Nobody on the ball yet — the first matches will put players here.",
+    "partnersCount_one": "{{count}} partner",
+    "partnersCount_other": "{{count}} partners",
+    "playerCard": "Selected player",
+    "close": "Close",
+    "levelChip": "Level {{level}}",
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold"
+    },
+    "partners": "Partners",
+    "rivals": "Rivals",
+    "noPeers": "None yet",
+    "games_one": "{{count}} match",
+    "games_other": "{{count}} matches",
+    "tooltipMeta": "{{partners}} partners · {{rivals}} rivals · {{city}}",
+    "tooltipMetaNoCity": "{{partners}} partners · {{rivals}} rivals",
+    "chart": {
+      "title": "Level over time",
+      "range": "Time range",
+      "1M": "1M",
+      "3M": "3M",
+      "1Y": "1Y",
+      "ALL": "All",
+      "empty": "No rated matches in this period"
+    },
+    "follow": {
+      "follow": "Follow",
+      "following": "Following",
+      "error": "Could not update. Try again."
+    },
+    "tabs": {
+      "stats": "Stats",
+      "connections": "Connections"
+    },
+    "stats": {
+      "error": "Could not load the stats.",
+      "topPartners": "Top partners",
+      "topClubs": "Top clubs",
+      "openFullProfile": "Open full profile"
+    }
+  },
+  "league": {
+    "rank_change": {
+      "up": "Moved up",
+      "down": "Moved down",
+      "same": "No change"
+    },
+    "frame": {
+      "legend": "Ranking view",
+      "global": "Global",
+      "band": "By level",
+      "circle": "Players I have faced"
+    },
+    "search": {
+      "placeholder": "Search player by name",
+      "clear": "Clear search",
+      "count_one": "1 player found",
+      "count_two": "{{count}} players found",
+      "count_many": "{{count}} players found",
+      "count_other": "{{count}} players found",
+      "empty": "No players match that name."
+    },
+    "circle": {
+      "ctaTitle": "Who have you played?",
+      "ctaBody": "Sign in to see how you rank against the players who have already faced you on court.",
+      "ctaButton": "Log in or sign up",
+      "emptyTitle": "You haven't faced anyone yet",
+      "emptyBody": "Play your first tournament — everyone who stands across the net will show up here.",
+      "emptyButton": "Find a tournament"
+    },
+    "band": {
+      "legend": "Choose a level"
+    },
+    "table": {
+      "caption": "League standings",
+      "rank": "Rank",
+      "player": "Player",
+      "band": "Level",
+      "points": "Points",
+      "empty": "No players are ranked yet."
+    },
+    "page": {
+      "title": "Rally Ranking",
+      "titleLead": "Rally",
+      "titleAccent": "Rankings",
+      "subtitle": "Every result from every Rally tournament, over a rolling four quarters, ranked level by level.",
+      "chooseBand": "Choose a level to see its ranking.",
+      "loading": "Loading the ranking…",
+      "noSeason": "The ranking hasn't started yet.",
+      "error": "We couldn't load the ranking. Please try again.",
+      "seasonLine": "{{season}} · {{total}} players",
+      "loadMore": "Show more players",
+      "howLevelsWork": "How the scoring works"
+    },
+    "credit": {
+      "line": "In collaboration with Tom Bakshi Padel Community",
+      "long": "The rating was built in collaboration with Tom Bakshi Padel Community, one of the largest and longest-running padel communities in Israel."
+    },
+    "shields": {
+      "aria": "Top ten"
+    },
+    "chase": {
+      "next": "Next spot — {{rank}}",
+      "gap": "{{points}} pts",
+      "leading": "The top is yours — defend it 👑"
+    },
+    "streak": {
+      "current": "{{n}} wins in a row",
+      "best": "best {{best}}"
+    },
+    "climber": "🚀 Climber of the week ▲{{places}}",
+    "unranked": "Not ranked yet",
+    "cta": {
+      "title": "Where do you stand?",
+      "body": "Every Rally tournament result counts. Play, win, and watch yourself climb.",
+      "button": "Get the app"
+    },
+    "bucket": {
+      "first": "Winner",
+      "second": "Final",
+      "top4": "Semi-final",
+      "top8": "Quarter-final",
+      "top16": "Round of 16",
+      "top32": "Round of 32",
+      "group": "Group stage"
+    },
+    "personal": {
+      "aria": "Your position",
+      "heading": "Your position {{frame}}",
+      "headingNamed": "{{name}} — your position {{frame}}",
+      "inGlobal": "in the global ranking",
+      "inBand": "in the level ranking",
+      "inCircle": "among players you have faced",
+      "empty": "Not ranked yet — play your first tournament and your spot appears here.",
+      "points_one": "{{points}} points from 1 tournament",
+      "points_two": "{{points}} points from {{count}} tournaments",
+      "points_many": "{{points}} points from {{count}} tournaments",
+      "points_other": "{{points}} points from {{count}} tournaments",
+      "levelRank": "#{{rank}} in level {{band}}",
+      "overallRank": "#{{rank}} overall",
+      "career": "{{points}} career points"
+    },
+    "player": {
+      "loading": "Loading this player…",
+      "notFound": "We could not find this player.",
+      "error": "We couldn't load this player. Please try again.",
+      "noResults": "No results yet.",
+      "untitledTournament": "Tournament",
+      "resultPoints": "{{points}} ranking pts",
+      "rankLabel": "Rank in level",
+      "levelLine": "Level {{band}} · of {{count}} players",
+      "levelOnly": "Level {{band}}",
+      "reasonPlayed": "since their last tournament",
+      "reasonLevelChanged": "their level changed",
+      "pointsLabel": "Ranking points",
+      "countedLabel": "Contributing tournaments",
+      "drawSize": "{{pairs}} pairs",
+      "modalTitle": "Player card",
+      "openFull": "Open the player's full page",
+      "back": "Back to rankings",
+      "results": "Tournaments & matches",
+      "career": "{{points}} career points",
+      "resultsScope": "Tournaments in the current ranking period.",
+      "gapAbove_one": "{{points}} point from the spot above",
+      "gapAbove_two": "{{points}} points from the spot above",
+      "gapAbove_many": "{{points}} points from the spot above",
+      "gapAbove_other": "{{points}} points from the spot above",
+      "quartersTitle": "The counting quarters",
+      "quartersScope": "Four rolling quarters. The oldest leaves the count on the day it names.",
+      "quartersEmpty": "no tournaments"
+    },
+    "how": {
+      "title": "How the scoring works",
+      "subtitle": "Every match you win pays points — by the stage you won it at, the event's level and its size — and every point counts toward your rolling four quarters.",
+      "formulaPoints": "Points",
+      "formulaUnits": "units won",
+      "formulaUnit": "band unit",
+      "formulaSize": "size multiplier",
+      "formulaNote": "Both players in a pair bank the full amount individually — changing partner never costs you anything — and every result counts for a rolling four quarters. A loss earns nothing.",
+      "rules1Title": "Points",
+      "rules1Body": "Every match you win earns points: a win in the groups or the round of 16 is one unit, a quarter-final two, a semi-final three, the final five. A stronger event and a bigger draw are worth more per unit. A loss earns nothing.",
+      "rules2Title": "What counts",
+      "rules2Body": "Every result you earn counts, for this quarter and the three before it. Nothing resets on a date. An old quarter leaves the count when a new one begins.",
+      "rules3Title": "Your level board",
+      "rules3Body": "On your level's board you are ranked against players at your level by those points. Every result adds to your total. A bad result never lowers you.",
+      "rules4Title": "The overall board",
+      "rules4Body": "Every A player is above every B player, and every B above every C. Inside your level the order is the same as your level board. To move past your level, your level has to change, and it changes with your match results.",
+      "rules5Title": "Provisional rank",
+      "rules5Body": "Until you have played 4 rated matches, your rank is provisional and you appear at the bottom of your level.",
+      "rules6Title": "Career points",
+      "rules6Body": "Every point you have ever earned is kept for good. Career points never expire and never affect the ranking.",
+      "s1Title": "What a win is worth — by stage",
+      "s1Lede": "The unit is a match you won. The later the stage, the more units the win is worth; a loss is worth nothing, and so is the plate.",
+      "colStage": "Stage",
+      "colUnits": "Units",
+      "stageFinal": "Final",
+      "stageSemi": "Semi-final",
+      "stageQuarter": "Quarter-final",
+      "stageEarly": "Round of 16 and earlier",
+      "stageGroup": "Group match",
+      "stageThird": "Third-place match",
+      "stageLeague": "League match",
+      "stagePlate": "Plate (consolation)",
+      "stageLoss": "A loss, at any stage",
+      "s2Title": "The band unit — what the event is worth",
+      "s2Lede": "Each level has a unit of its own. A sixteen-pair champion — three group wins, a quarter-final, a semi-final and the final, thirteen units — lands on 299 / 156 / 78 / 39.",
+      "colBand": "Band",
+      "colUnit": "Per unit",
+      "s2CapTitle": "The advertised level is a ceiling",
+      "s2CapBody": "The level an event is advertised at sets the highest unit it can pay. What it actually pays is decided by the players who turned up: their median level picks a unit of its own, and the lower of the two wins. An event billed as A whose players are C-level pays at C. An event rated honestly is unaffected, because both come out the same.",
+      "s3Title": "The size multiplier — how big the draw was",
+      "s3Lede": "Beating 31 pairs is worth more than beating 7. Each doubling of the draw adds a quarter.",
+      "colDraw": "Draw size",
+      "colMult": "Multiplier",
+      "colEffect": "A B-band final win, for example",
+      "pairsRange": "{{range}} pairs",
+      "s3Note": "Points round to the nearest whole number when awarded.",
+      "s4Title": "A worked example",
+      "s4Lede": "Noa plays seven events across four quarters. Every one of them counts. In Q4 2025 she took 156; on 1 October 2026 that quarter leaves the count and her total drops by 156 without her losing a match.",
+      "s4Q": "{{quarter}} · {{events}} · {{points}} points",
+      "windowTotal": "Four-quarter total",
+      "s5Title": "The table it produces",
+      "colPlayer": "Player",
+      "colBest": "Quarters",
+      "colPoints": "Points",
+      "s5Tie": "There are two first places — and that is not a bug. Noa and Dana played everything together, so their results are identical and they finish level on 441. Level players share a rank and the next number is skipped — which is why Yotam is 3rd, not 2nd. The FIP ranking works the same way: Coello and Tapia are both world number one. All four play at level B, so this is one level's board.",
+      "s5Bands": "One of Yotam's quarters holds a single result — an A-band final in a 32-pair draw, lost — worth 230 for the wins on the way there, more than Maya earned that quarter for winning a B-band event outright: a deeper field pays more per win, so it pays to play up.",
+      "footerNote": "Matchmaking is untouched — the existing level rating keeps doing that job — and this layer decides only the ranking over the rolling four quarters, by the points per win.",
+      "levelsLink": "How the levels (A–D) are set"
+    },
+    "match": {
+      "showMatches": "Show matches",
+      "hideMatches": "Hide matches",
+      "error": "We couldn't load the matches.",
+      "empty": "No recorded matches for this tournament.",
+      "walkover": "Technical / no result",
+      "win": "Win",
+      "loss": "Loss",
+      "retry": "Try again",
+      "unknownPlayer": "Unknown player"
+    },
+    "stats": {
+      "title": "Career statistics",
+      "matches": "Matches played",
+      "winRate": "Win rate",
+      "streak": "Current win streak",
+      "bestStreak": "best {{best}}",
+      "tournamentsWon": "Tournament wins",
+      "ofPlayed": "{{played}} tournaments played",
+      "wins": "{{wins}} wins",
+      "losses": "{{losses}} losses",
+      "scope": "Lifetime results across all tournaments."
+    },
+    "provisional": "Provisional rank",
+    "levelNote": {
+      "verified": "Your level is verified",
+      "unverified": "Your level is still firming up"
+    },
+    "provisionalNote": "Not enough rated matches to hold a rank yet",
+    "reason": {
+      "played": "since your last tournament",
+      "levelChanged": "your level changed",
+      "quarterEnded": "an old quarter left the count"
+    },
+    "quarters": {
+      "label": "Q{{n}} · {{year}}",
+      "until": "counts until {{date}}",
+      "dropsOn": "leaves the count on {{date}}",
+      "empty": "you did not play",
+      "events_one": "1 event",
+      "events_two": "{{count}} events",
+      "events_many": "{{count}} events",
+      "events_other": "{{count}} events",
+      "onOffer": "of {{available}} on offer"
+    },
+    "ball": {
+      "see": "See on the ball",
+      "findYourself": "Find yourself on the ball"
     }
   }
 }

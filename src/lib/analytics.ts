@@ -127,6 +127,28 @@ export function trackPageView() {
   }
 }
 
+/**
+ * Where a globe open came from. The app logs the same EVENT (`globe_open`, with a `source`) but
+ * its own doors (`home_carousel`, `community_card`, `profile_row`, `link`) — the two sets are
+ * disjoint on purpose, so a report joins them on the event name and splits by platform.
+ */
+export type GlobeOpenSource = 'nav' | 'home' | 'ranking_row' | 'player_page' | 'share_link' | 'direct'
+export const GLOBE_OPEN_SOURCES: readonly GlobeOpenSource[] = [
+  'nav', 'home', 'ranking_row', 'player_page', 'share_link', 'direct',
+]
+
+/**
+ * One per mount of the ball page. Kept OUT of `trackFunnel`: that union is the registration
+ * funnel with a restricted field set, and it would drop `source`.
+ */
+export function trackGlobeOpen(source: GlobeOpenSource) {
+  try {
+    window.gtag?.('event', 'globe_open', { source })
+  } catch {
+    /* analytics must not interrupt the page */
+  }
+}
+
 export interface LeadDetails {
   /** Sub-type of the lead, e.g. the contact-form segment ("club", "coach"). */
   segment?: string

@@ -1,0 +1,211 @@
+import type { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { usePlayerMatches } from '../hooks/usePlayerMatches';
+import { playerFullName } from './playerName';
+import type { PublicMatchPlayer, PublicPlayerMatch } from '../types';
+
+type ResultMatchListProps = {
+  /** The profiled player — every match arrives oriented to them. */
+  playerId: string;
+  /** Their display name/avatar, for the "my pair" line the API doesn't repeat. */
+  playerName: string;
+  playerAvatarUrl?: string | null;
+  tournamentId: string;
+};
+
+/**
+ * The matches behind one expanded tournament row.
+ *
+ * Mounted only while the row is expanded — mounting IS the fetch trigger, so a
+ * collapsed row costs nothing (and the query cache makes re-expanding free).
+ * Every state here is inline and row-scoped: a failed match fetch says so
+ * inside the row and leaves the rest of the season page standing.
+ */
+export function ResultMatchList({
+  playerId,
+  playerName,
+  playerAvatarUrl,
+  tournamentId,
+}: ResultMatchListProps): ReactElement {
+  const { t, i18n } = useTranslation();
+  const { matches, isLoading, error, refetch } = usePlayerMatches(playerId, tournamentId, true);
+
+  if (isLoading) {
+    return (
+      <div data-testid="result-matches-loading" className="mt-3 space-y-2">
+        {Array.from({ length: 2 }, (_, i) => (
+          <div key={i} className="h-16 animate-pulse rounded-lg bg-rally-surface-2/60" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div role="alert" data-testid="result-matches-error" className="mt-3 text-sm text-rally-text-2">
+        {t('league.match.error')}
+        <button type="button" onClick={refetch} className="ms-3 rounded px-2 py-1 font-bold text-rally-accent focus-visible:outline-2">{t('league.match.retry')}</button>
+      </div>
+    );
+  }
+
+  if (matches.length === 0) {
+    return (
+      <p data-testid="result-matches-empty" className="mt-3 text-sm text-rally-text-muted">
+        {t('league.match.empty')}
+      </p>
+    );
+  }
+
+  const dateFormat = new Intl.DateTimeFormat(i18n.language === 'he' ? 'he-IL' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+  });
+
+  return (
+    <ul data-testid="result-matches" className="mt-3 space-y-2">
+      {matches.map(match => (
+        <MatchCard
+          key={match.match_id}
+          match={match}
+          playerName={playerName}
+          playerAvatarUrl={playerAvatarUrl}
+          dateFormat={dateFormat}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function personName(person: PublicMatchPlayer, fallback: string): string {
+  return playerFullName(person) || fallback;
+}
+
+/**
+ * One match, matchpointer-style: a meta line, then my pair's line over the
+ * opponents' line. ONE colour per match, and it is the profiled player's
+ * outcome: their line and badges are lime for a win and red for a loss, and
+ * the opponents' line stays neutral either way, so the list reads as green
+ * cards and red cards at a glance (the same rule as the mobile card — tinting
+ * winners lime and losers red in every match put both colours in every card).
+ * A match with no recorded winner renders as a technical result with no tints.
+ */
+function MatchCard({
+  match,
+  playerName,
+  playerAvatarUrl,
+  dateFormat,
+}: {
+  match: PublicPlayerMatch;
+  playerName: string;
+  playerAvatarUrl?: string | null;
+  dateFormat: Intl.DateTimeFormat;
+}): ReactElement {
+  const { t } = useTranslation();
+
+  const myNames = [playerName, ...(match.partner ? [personName(match.partner, t('league.match.unknownPlayer'))] : [])].join(' / ');
+  const opponentNames = match.opponents.map(person => personName(person, t('league.match.unknownPlayer'))).join(' / ') || t('league.match.unknownPlayer');
+  const myAvatars = [
+    playerAvatarUrl ?? null,
+    ...(match.partner ? [match.partner.avatar_clean_url || match.partner.avatar_url || null] : []),
+  ];
+  const opponentAvatars = match.opponents.map(o => o.avatar_clean_url || o.avatar_url || null);
+
+  return (
+    <li
+      data-testid={`result-match-${match.match_id}`}
+      data-won={match.won == null ? 'unknown' : String(match.won)}
+      className="overflow-hidden rounded-lg border border-rally-border-subtle bg-rally-bg"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3 pt-2 text-xs text-rally-text-muted">
+        <span className="font-bold">{match.round_name ?? ''}</span>
+        <span className="flex items-center gap-2">
+          <span className="rounded-full bg-rally-surface-2 px-2 py-0.5 font-bold text-rally-text-2">
+            {match.won == null ? t('league.match.walkover') : match.won ? t('league.match.win') : t('league.match.loss')}
+          </span>
+          {match.completed_at ? dateFormat.format(new Date(match.completed_at)) : null}
+        </span>
+      </div>
+
+      <div className="space-y-1 p-2">
+        <TeamLine
+          names={myNames}
+          avatars={myAvatars}
+          scores={match.sets.map(s => s.my_score)}
+          tone={match.won == null ? 'neutral' : match.won ? 'win' : 'loss'}
+        />
+        <TeamLine
+          names={opponentNames}
+          avatars={opponentAvatars}
+          scores={match.sets.map(s => s.opponent_score)}
+          tone="neutral"
+        />
+      </div>
+    </li>
+  );
+}
+
+const LINE_TONE = {
+  win: 'bg-rally-accent/10',
+  loss: 'bg-rally-error/10',
+  neutral: 'bg-rally-surface',
+} as const;
+
+const BADGE_TONE = {
+  win: 'bg-rally-accent text-rally-accent-text',
+  loss: 'bg-rally-error text-white',
+  neutral: 'bg-rally-surface-2 text-rally-text-2',
+} as const;
+
+function TeamLine({
+  names,
+  avatars,
+  scores,
+  tone,
+}: {
+  names: string;
+  avatars: Array<string | null>;
+  scores: number[];
+  tone: keyof typeof LINE_TONE;
+}): ReactElement {
+  return (
+    <div className={cn('flex items-center gap-2 rounded-md px-2.5 py-1.5', LINE_TONE[tone])}>
+      <span className="flex shrink-0 -space-x-1.5">
+        {avatars.map((src, i) =>
+          src ? (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              loading="lazy"
+              className="h-5 w-5 rounded-full bg-rally-surface-2 object-cover ring-1 ring-rally-bg"
+            />
+          ) : (
+            <span
+              key={i}
+              aria-hidden
+              className="h-5 w-5 rounded-full bg-rally-surface-2 ring-1 ring-rally-bg"
+            />
+          ),
+        )}
+      </span>
+      <span className="min-w-0 flex-1 break-words text-sm font-semibold text-rally-text">
+        {names}
+      </span>
+      <span dir="ltr" className="flex shrink-0 gap-1">
+        {scores.map((score, i) => (
+          <span
+            key={i}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded-md text-xs font-black tabular-nums',
+              BADGE_TONE[tone],
+            )}
+          >
+            {score}
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+}
