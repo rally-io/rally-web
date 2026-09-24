@@ -33,10 +33,14 @@ describe('TournamentShareButton', () => {
     const share = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'share', { value: share, configurable: true })
     renderButton()
-    // prefetched with the page: the tap reuses that request rather than starting its own
+    // nothing is fetched just for viewing the page
+    expect(mockGetShareLink).not.toHaveBeenCalled()
+    const button = screen.getByTestId('tournament-share-button')
+    fireEvent.pointerEnter(button)
     expect(mockGetShareLink).toHaveBeenCalledWith('t-1')
 
-    fireEvent.click(screen.getByTestId('tournament-share-button'))
+    // the click reuses the intent fetch rather than starting its own
+    fireEvent.click(button)
 
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
     expect(share.mock.calls[0][0]).toMatchObject({ title: 'Summer Open', url: SHORT })
@@ -46,7 +50,6 @@ describe('TournamentShareButton', () => {
   it('copies the short link and confirms on the button when there is no share sheet', async () => {
     mockGetShareLink.mockResolvedValue({ success: true, data: { share_url: SHORT } })
     renderButton()
-    await waitFor(() => expect(mockGetShareLink).toHaveBeenCalled())
 
     fireEvent.click(screen.getByTestId('tournament-share-button'))
 
@@ -61,5 +64,28 @@ describe('TournamentShareButton', () => {
     fireEvent.click(screen.getByTestId('tournament-share-button'))
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href))
+  })
+
+  it('copies instead when Safari refuses the share sheet, so the tap is never a no-op', async () => {
+    mockGetShareLink.mockResolvedValue({ success: true, data: { share_url: SHORT } })
+    const share = vi.fn().mockRejectedValue({ name: 'NotAllowedError' })
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    renderButton()
+
+    fireEvent.click(screen.getByTestId('tournament-share-button'))
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(SHORT))
+  })
+
+  it('does not copy when the user just dismisses the share sheet', async () => {
+    mockGetShareLink.mockResolvedValue({ success: true, data: { share_url: SHORT } })
+    const share = vi.fn().mockRejectedValue({ name: 'AbortError' })
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+    renderButton()
+
+    fireEvent.click(screen.getByTestId('tournament-share-button'))
+
+    await waitFor(() => expect(share).toHaveBeenCalled())
+    expect(writeText).not.toHaveBeenCalled()
   })
 })

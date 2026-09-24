@@ -18,9 +18,11 @@ async function fetchShareUrl(tournamentId: string): Promise<string | null> {
  * Shares the same link the manager copies from the CRM. A failed fetch never blocks the
  * share: it falls back to this page's own URL.
  *
- * The link is prefetched with the page, not on tap: iOS Safari only allows
- * `navigator.share` inside the tap's user activation, and awaiting a network call first
- * can spend it, so the tap would silently do nothing on the phone most shares come from.
+ * The link is fetched on intent (hover, touch start, focus) rather than on click: iOS
+ * Safari only allows `navigator.share` inside the tap's user activation, and awaiting a
+ * network call first can spend it. Fetching on intent keeps the click synchronous in the
+ * common case without a Short.io call on every page view. If the activation is lost
+ * anyway, the share falls back to copying the link.
  */
 export function TournamentShareButton({
   tournamentId,
@@ -46,17 +48,23 @@ export function TournamentShareButton({
   const resolvedRef = useRef<string | null>(null)
 
   useEffect(() => {
+    pendingRef.current = null
     resolvedRef.current = null
-    const pending = fetchShareUrl(tournamentId)
-    pendingRef.current = pending
-    void pending.then((url) => {
-      if (pendingRef.current === pending) resolvedRef.current = url
-    })
   }, [tournamentId])
 
+  function prefetch(): Promise<string | null> {
+    if (!pendingRef.current) {
+      const pending = fetchShareUrl(tournamentId)
+      pendingRef.current = pending
+      void pending.then((url) => {
+        if (pendingRef.current === pending) resolvedRef.current = url
+      })
+    }
+    return pendingRef.current
+  }
+
   async function handleShare(): Promise<void> {
-    const url =
-      resolvedRef.current ?? (await pendingRef.current) ?? window.location.href
+    const url = resolvedRef.current ?? (await prefetch()) ?? window.location.href
     if (navigator.share) {
       try {
         await navigator.share({
@@ -64,10 +72,12 @@ export function TournamentShareButton({
           text: t('tournament.tournamentShareText', { name: tournamentName }),
           url,
         })
-      } catch {
-        // user dismissed the native share sheet — not an error
+        return
+      } catch (err) {
+        // Dismissing the sheet is not an error. Anything else (Safari's NotAllowedError
+        // after a lost activation) would otherwise be a silent no-op, so copy instead.
+        if ((err as { name?: string } | null)?.name === 'AbortError') return
       }
-      return
     }
     try {
       await navigator.clipboard.writeText(url)
@@ -85,6 +95,9 @@ export function TournamentShareButton({
     <button
       type="button"
       onClick={() => void handleShare()}
+      onPointerEnter={() => void prefetch()}
+      onTouchStart={() => void prefetch()}
+      onFocus={() => void prefetch()}
       aria-label={label}
       title={label}
       data-testid="tournament-share-button"
