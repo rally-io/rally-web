@@ -356,15 +356,15 @@ function TournamentRegistrationPage() {
       {/* The image stands alone: organisers upload posters with their own lettering, so no
           overlay gradient keeps text on top of them readable. The title block sits below, so the
           image is shorter than it was when it held the title — the name must stay above the fold. */}
-      <section className="relative h-[220px] sm:h-[300px] md:h-[360px]">
-        {tr.image_url ? (
+      {tr.image_url ? (
+        <section className="relative h-[220px] sm:h-[300px] md:h-[360px]">
           <img src={tr.image_url} alt={tr.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-rally-surface-2 flex items-center justify-center text-rally-text-muted">
-            {t('tournament.tournamentDetailNoImage')}
-          </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        // No poster: a short plain band instead of a tall "No image" box above the title. It
+        // still clears the floating back button, which would otherwise sit on the badge row.
+        <section aria-hidden="true" className="h-[88px] md:h-[120px] bg-gradient-to-b from-rally-surface-2 to-rally-bg" />
+      )}
 
       <header className="container mx-auto px-4 max-w-3xl mt-6 md:mt-8">
         <div className="flex items-center justify-between gap-3">
@@ -661,7 +661,7 @@ function TournamentRegistrationPage() {
                     }).toString()}`,
                   )
                 }
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
+                className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all"
               >
                 {t('tournament.tournamentPayNow')}
               </button>
@@ -700,7 +700,7 @@ function TournamentRegistrationPage() {
                 data-testid="tournament-join-waitlist-button"
                 onClick={handleJoinWaitlist}
                 disabled={isJoiningWaitlist || isCheckingProfile}
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full border-2 border-rally-accent text-rally-accent font-bold enabled:hover:bg-rally-accent/10 transition-all disabled:opacity-60"
+                className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full border-2 border-rally-accent text-rally-accent font-bold enabled:hover:bg-rally-accent/10 transition-all disabled:opacity-60"
               >
                 {isCheckingProfile ? t('common.loading') : isJoiningWaitlist
                   ? t('tournament.tournamentDetailRegistering')
@@ -724,7 +724,7 @@ function TournamentRegistrationPage() {
                 onClick={handleRegisterNow}
                 disabled={isRegistering || isCheckingProfile}
                 aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"
+                className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"
               >
                 {isCheckingProfile ? t('common.loading') : isRegistering
                   ? t('tournament.tournamentDetailRegistering')
