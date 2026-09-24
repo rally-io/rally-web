@@ -31,7 +31,7 @@ import { ctaFor } from '@/lib/tournamentCta'
 import type { TournamentWaitlistEntry } from '@/types/api'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
-  formatTournamentSkillRange, getSkillLevelName, formatTournamentDateRange,
+  formatTournamentSkillRange, getSkillLevelName,
   formatTournamentCardDate, formatCurrency,
 } from '@/lib/tournamentHelpers'
 import { PrizesGrid } from '@/components/tournaments/PrizesGrid'
@@ -352,9 +352,11 @@ function TournamentRegistrationPage() {
       >
         <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
       </button>
-      <TournamentShareButton tournamentId={tr.id} tournamentName={tr.name} />
 
-      <section className="relative h-[400px] md:h-[520px]">
+      {/* The image stands alone: organisers upload posters with their own lettering, so no
+          overlay gradient keeps text on top of them readable. The title block sits below, so the
+          image is shorter than it was when it held the title — the name must stay above the fold. */}
+      <section className="relative h-[220px] sm:h-[300px] md:h-[360px]">
         {tr.image_url ? (
           <img src={tr.image_url} alt={tr.name} className="w-full h-full object-cover" />
         ) : (
@@ -362,23 +364,23 @@ function TournamentRegistrationPage() {
             {t('tournament.tournamentDetailNoImage')}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-        <div className="absolute bottom-6 md:bottom-12 start-4 end-4 md:start-10 md:end-10 text-white">
-          <div className="flex flex-wrap items-center gap-2">
+      </section>
+
+      <header className="container mx-auto px-4 max-w-3xl mt-6 md:mt-8">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             {live && <LiveBadge size="md" />}
-            <span className="inline-block rounded-full bg-rally-accent/20 text-rally-accent px-4 py-1.5 md:px-5 md:py-2 text-sm md:text-base font-semibold">
+            <span className="inline-block rounded-full bg-rally-accent/15 text-rally-accent px-4 py-1.5 text-sm md:text-base font-semibold">
               {tr.club_name}
             </span>
           </div>
-          <h1 className="font-display mt-3 md:mt-5 text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05]">
-            {tr.name}
-          </h1>
-          <p className="mt-3 md:mt-4 flex items-center gap-2 md:gap-3 text-base md:text-xl text-white/85">
-            <Calendar className="w-5 h-5 md:w-6 md:h-6 shrink-0" />
-            <span>{formatTournamentDateRange(tr.start_date, tr.end_date, locale)}</span>
-          </p>
+          <TournamentShareButton tournamentId={tr.id} tournamentName={tr.name} />
         </div>
-      </section>
+        {/* No date line here: the date card right below shows the same date with the countdown. */}
+        <h1 className="font-display mt-4 text-3xl md:text-5xl font-black tracking-tight leading-[1.1] text-rally-text">
+          {tr.name}
+        </h1>
+      </header>
 
       <ScreenMessageList
         query={{ scope: 'tournament', id: tr.id }}
@@ -398,17 +400,7 @@ function TournamentRegistrationPage() {
         }}
       />
 
-      <div className="container mx-auto px-4 max-w-3xl space-y-10 mt-10">
-        {!myReg && (cta === 'register' || cta === 'join_waitlist') && (
-          <ol aria-label={t('tournament.registrationSteps')} className="grid grid-cols-3 gap-2 text-xs sm:text-sm">
-            {['accountStep', 'detailsStep', 'paymentStep'].map((step, index) => {
-              const activeStep = sessionStatus === 'signed_out' ? 0 : needsDetails ? 1 : 2
-              return <li key={step} aria-current={index === activeStep ? 'step' : undefined} className={`rounded-xl border p-3 ${index === activeStep ? 'border-rally-accent/50 bg-rally-accent/10 text-rally-text' : 'border-rally-border text-rally-text-muted'}`}>
-                <span className="me-2 font-bold text-rally-accent">{index + 1}</span>{t(`tournament.${step}`)}
-              </li>
-            })}
-          </ol>
-        )}
+      <div className="container mx-auto px-4 max-w-3xl space-y-10 mt-8">
         <section className="rounded-2xl bg-rally-surface border border-rally-border p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center gap-3 text-rally-text">
             <Calendar className="w-5 h-5 text-rally-accent shrink-0" />

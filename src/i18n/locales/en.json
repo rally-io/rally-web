@@ -405,10 +405,6 @@
     "your_match": "Your match"
   },
   "tournament": {
-    "registrationSteps": "Registration progress",
-    "accountStep": "Account",
-    "detailsStep": "Player details",
-    "paymentStep": "Entry & payment",
     "continueRegistration": "Continue registration",
     "completeDetails": "Add player details",
     "tabTournaments": "Tournaments on Rally",
@@ -440,6 +436,7 @@
     "tournamentDetailBack": "Back",
     "tournamentDetailShare": "Share tournament",
     "tournamentLinkCopied": "Link copied",
+    "tournamentShareShort": "Share",
     "tournamentShareText": "Join me at {{name}} on Rally",
     "tournamentDetailLoadErrorTitle": "Could not load tournament",
     "tournamentDetailRetry": "Retry",
@@ -462,7 +459,7 @@
     "prizeSecond": "2nd Place",
     "prizeThird": "3rd Place",
     "prizePlace": "Place {{position}}",
-    "ctaMissingPartner": "← Choose a partner first",
+    "ctaMissingPartner": "Choose a partner first",
     "partnerSelectedPrefix": "✓ Partner selected:",
     "daysRemainingToTournament": "{{count}} days to tournament",
     "tournamentToday": "Tournament today!",

@@ -90,6 +90,7 @@ export function TournamentShareButton({
   }
 
   const label = copied ? t('tournament.tournamentLinkCopied') : t('tournament.tournamentDetailShare')
+  const text = copied ? t('tournament.tournamentLinkCopied') : t('tournament.tournamentShareShort')
 
   return (
     <button
@@ -101,10 +102,10 @@ export function TournamentShareButton({
       aria-label={label}
       title={label}
       data-testid="tournament-share-button"
-      className="fixed top-24 end-4 z-20 h-[42px] rounded-full bg-black/50 backdrop-blur flex items-center justify-center gap-2 px-3 text-white"
+      className="shrink-0 inline-flex items-center gap-2 h-10 px-4 rounded-full border border-rally-border bg-rally-surface text-rally-text text-sm font-semibold transition-colors hover:border-rally-accent/60 hover:text-rally-accent"
     >
-      {copied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
-      {copied && <span className="text-sm font-semibold">{label}</span>}
+      {copied ? <Check className="w-4 h-4 text-rally-accent" /> : <Share2 className="w-4 h-4" />}
+      <span>{text}</span>
     </button>
   )
 }
