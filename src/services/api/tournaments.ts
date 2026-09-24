@@ -64,6 +64,16 @@ export async function getTournament(
   return client.get(`/rally/v1/tournaments/${tournamentId}`)
 }
 
+/**
+ * The same short link the manager copies from the CRM (opens the app on a phone that has it,
+ * this site everywhere else). Ungated, so a signed-out visitor can share too.
+ */
+export async function getTournamentShareLink(
+  tournamentId: string,
+): Promise<ApiResponse<{ share_url: string }>> {
+  return client.get(`/rally/v1/tournaments/${tournamentId}/share-link`)
+}
+
 export async function getTournamentParticipants(
   tournamentId: string,
 ): Promise<ApiResponse<TournamentParticipants>> {

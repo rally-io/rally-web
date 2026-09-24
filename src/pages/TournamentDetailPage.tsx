@@ -36,6 +36,7 @@ import {
 } from '@/lib/tournamentHelpers'
 import { PrizesGrid } from '@/components/tournaments/PrizesGrid'
 import { LiveBadge } from '@/components/tournaments/LiveBadge'
+import { TournamentShareButton } from '@/components/tournaments/TournamentShareButton'
 import { formatLabelKey, structureLabelKey } from '@/lib/tournamentTheme'
 
 // The only gate action web can ever reach — see SCREEN_MESSAGES_WEB_SPEC.md
@@ -351,6 +352,7 @@ function TournamentRegistrationPage() {
       >
         <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
       </button>
+      <TournamentShareButton tournamentId={tr.id} tournamentName={tr.name} />
 
       <section className="relative h-[400px] md:h-[520px]">
         {tr.image_url ? (
