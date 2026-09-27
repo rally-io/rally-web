@@ -1,6 +1,11 @@
 import type { CorporateFeeWaiver } from './corporateFeeWaiver'
 import type { TermsSection } from './eventTerms'
-import { ISRAEL_OPEN_TERMS } from './israelOpenTerms'
+// `.js`, because api/join-og.ts imports this module and Vercel functions run as
+// ESM, where Node's resolver throws ERR_MODULE_NOT_FOUND on an extensionless
+// relative specifier — at module load, before the handler runs, so every
+// /join/:slug page 500s. A type-only import is erased and needs no extension;
+// this one is a value import. See api/esm-imports.test.ts.
+import { ISRAEL_OPEN_TERMS } from './israelOpenTerms.js'
 
 /**
  * Closed corporate tournaments — one entry per event.
