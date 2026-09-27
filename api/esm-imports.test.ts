@@ -11,8 +11,8 @@
  * the Node runtime does. Hence this guard.
  */
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 const API_DIR = join(__dirname)
 const RELATIVE_IMPORT = /(?:^|\n)\s*import\s+(?!type\b)[^'"]*from\s+['"](\.[^'"]*)['"]/g
@@ -21,17 +21,64 @@ function functionFiles(): string[] {
   return readdirSync(API_DIR).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
 }
 
+/**
+ * Every module a function pulls in, transitively.
+ *
+ * Checking only the files in `api/` was not enough, and the same outage shipped
+ * a second time on 2026-09-27: `src/constants/corporateEvents.ts` grew an
+ * extensionless `import { ISRAEL_OPEN_TERMS } from './israelOpenTerms'`, and
+ * because that file lives under `src/` the guard never looked at it. All three
+ * /join pages 500'd. Node resolves the whole graph at load, so the whole graph
+ * is what has to be clean — not just the entry point.
+ */
+function reachableFrom(entry: string): string[] {
+  const seen = new Set<string>()
+  const queue = [entry]
+  while (queue.length) {
+    const file = queue.pop()!
+    if (seen.has(file)) continue
+    seen.add(file)
+    let source: string
+    try { source = readFileSync(file, 'utf8') } catch { continue }
+    for (const [, spec] of source.matchAll(RELATIVE_IMPORT)) {
+      const base = join(dirname(file), spec.replace(/\.(js|mjs|cjs)$/, ''))
+      // Vite resolves `./x` to x.ts, x.tsx or x/index.ts; try each.
+      for (const candidate of [`${base}.ts`, `${base}.tsx`, join(base, 'index.ts')]) {
+        if (existsSync(candidate)) { queue.push(candidate); break }
+      }
+    }
+  }
+  seen.delete(entry)
+  return [...seen]
+}
+
+function offendersIn(file: string): string[] {
+  const source = readFileSync(file, 'utf8')
+  return [...source.matchAll(RELATIVE_IMPORT)]
+    .map((m) => m[1])
+    .filter((specifier) => !/\.(js|mjs|cjs|json)$/.test(specifier))
+}
+
 describe('api/ serverless functions', () => {
   it('has function files to check', () => {
     expect(functionFiles().length).toBeGreaterThan(0)
   })
 
   it.each(functionFiles())('%s uses extension-qualified relative imports', (file) => {
-    const source = readFileSync(join(API_DIR, file), 'utf8')
-    const offenders = [...source.matchAll(RELATIVE_IMPORT)]
-      .map((m) => m[1])
-      .filter((specifier) => !/\.(js|mjs|cjs|json)$/.test(specifier))
-
+    const offenders = offendersIn(join(API_DIR, file))
     expect(offenders, `${file}: relative imports need an explicit extension under ESM`).toEqual([])
+  })
+
+  // The entry point being clean proves nothing: Node resolves the transitive
+  // graph at load, and one extensionless value import anywhere in it 500s the
+  // route. This is the check that would have caught the 2026-09-27 outage.
+  it.each(functionFiles())('%s: every module it reaches is extension-qualified too', (file) => {
+    const bad: string[] = []
+    for (const dep of reachableFrom(join(API_DIR, file))) {
+      for (const specifier of offendersIn(dep)) {
+        bad.push(`${dep.replace(/.*\/rally-web\//, '')} -> ${specifier}`)
+      }
+    }
+    expect(bad, `${file}: a module it imports has an extensionless relative import`).toEqual([])
   })
 })
