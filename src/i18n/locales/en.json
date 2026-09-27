@@ -1163,7 +1163,12 @@
       "registeredStatus_waiverPending": "Waiting for the club to confirm residency ({{residents}}/2)",
       "evidenceCount": "Files attached: {{n}}",
       "addEvidence": "Add proof of address",
-      "evidenceUploadFailed": "You're registered, but the upload failed. Attach the files here."
+      "evidenceUploadFailed": "You're registered, but the upload failed. Attach the files here.",
+      "waiverReviewTitle": "Approval isn't automatic",
+      "waiverReviewBody": "The tournament manager checks your documents before confirming the pair. If residency can't be verified the registration is cancelled and anything you paid is refunded in full — you can then register again at the regular fee. This can happen at any stage, including after the pair has been confirmed."
+    },
+    "terms": {
+      "title": "Tournament rules"
     }
   },
   "notFound": {

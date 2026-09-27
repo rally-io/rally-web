@@ -25,6 +25,8 @@ const REQUIRED_REG_KEYS = [
   'waiverNoChargeNote', 'submitCtaFree', 'freeNote',
   // Profile details modal
   'detailsTitle', 'detailsSubtitle', 'detailsSave', 'detailsSaving',
+  // The manager reviews a residency claim and may cancel the pair (תקנון §3.4-3.5)
+  'waiverReviewTitle', 'waiverReviewBody',
 ]
 
 describe('corporate copy parity', () => {
@@ -42,5 +44,9 @@ describe('corporate copy parity', () => {
     }
     expect((he as any).payment.backToEvent).toBeTruthy()
     expect((en as any).payment.backToEvent).toBeTruthy()
+    // The rulebook's own copy is UI chrome and IS translated; the clauses
+    // inside it are the organiser's Hebrew and deliberately are not.
+    expect((he as any).corporate.terms?.title).toBeTruthy()
+    expect((en as any).corporate.terms?.title).toBeTruthy()
   })
 })
