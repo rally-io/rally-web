@@ -1,4 +1,6 @@
 import type { CorporateFeeWaiver } from './corporateFeeWaiver'
+import type { TermsSection } from './eventTerms'
+import { ISRAEL_OPEN_TERMS } from './israelOpenTerms'
 
 /**
  * Closed corporate tournaments — one entry per event.
@@ -84,6 +86,12 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    *  matches this entry's `feeWaiver.type` — the page never trusts the
    *  constant alone. */
   feeWaiver?: CorporateFeeWaiver
+  /**
+   * The organiser's published rulebook (תקנון), rendered collapsed at the foot
+   * of the page. Omit it and the block does not render at all — a lead-mode
+   * event has no rulebook, and a tournament without one is not an error.
+   */
+  terms?: TermsSection[]
 }
 
 export type CorporateEvent = CorporateLeadEvent | CorporateTournamentEvent
@@ -134,6 +142,36 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     dateLabel: 'יום רביעי, 14 באוקטובר 2026',
     // Runs past midnight — the label is copy, so the range prints verbatim.
     timeLabel: '19:30–03:00',
+  },
+  // Israel Open at Padel Time Club, Holon (sponsored by the Holon municipality).
+  // Copy taken from the client's poster (public/israel-open-2026-hero.jpeg); the
+  // dates below come from the official תקנון, which supersedes it.
+  //
+  // The tournament is `is_unlisted` + `registration_open` on prod, created
+  // 2026-09-27: unlisted keeps it out of every public list, feed and
+  // announcement, while registration_open is what lets a pair actually register
+  // (`register_tournament` refuses any other status). The slug is the only way in.
+  'israel-open-2026': {
+    mode: 'tournament',
+    slug: 'israel-open-2026',
+    tournamentId: '7acb6027-33df-456a-8d3c-6ba4073b72ef',
+    company: 'Padel Time Club',
+    tournamentName: 'אליפות ישראל\nהפתוחה בפאדל',
+    clubName: 'Padel Time Club · בחסות עיריית חולון',
+    clubAddress: 'מתחם פאדל טיים, חולון',
+    feeWaiver: { type: 'holon_resident' },
+    // Open to anyone with the link — no "closed event" badge.
+    closedBadge: false,
+    // Portrait poster with type running to the edges — never crop it.
+    heroImage: '/israel-open-2026-hero.jpeg',
+    heroFit: 'contain',
+    // 21–23 October per the official תקנון (§1), which supersedes the 28–30 the
+    // poster carried. Both spans are Wed–Fri in 2026, so the hours below still
+    // map to the same weekdays and did not need changing.
+    dateLabel: '21–23 באוקטובר 2026',
+    // Per the club: Wed–Thu 16:00–00:00, Fri 07:30–13:00.
+    timeLabel: 'רביעי–חמישי\n16:00–00:00\nשישי\n07:30–13:00',
+    terms: ISRAEL_OPEN_TERMS,
   },
 }
 

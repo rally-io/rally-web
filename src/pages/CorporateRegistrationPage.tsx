@@ -20,6 +20,7 @@ import { ctaFor } from '@/lib/tournamentCta'
 import { isRegistrationOpen, formatCurrency } from '@/lib/tournamentHelpers'
 import { rememberAuthReturnTo } from '@/lib/authReturn'
 import { EventHero } from '@/components/corporate/EventHero'
+import { EventTerms } from '@/components/corporate/EventTerms'
 import { EvidencePicker } from '@/components/corporate/EvidencePicker'
 import { ProfileDetailsModal, type SavedProfileEssentials } from '@/components/corporate/ProfileDetailsModal'
 import { readProfileDetails } from '@/components/corporate/profileDetails'
@@ -256,6 +257,10 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
               {registration.registerError}
             </p>
           )}
+          {/* Last, and outside `body`, so the rulebook is reachable from every
+              state the page can be in — signed out, loading, mid-form and
+              already registered — without each branch having to remember it. */}
+          {event.terms && <EventTerms sections={event.terms} className="mt-4" />}
         </div>
       </section>
       <AppDownloadFooter />
@@ -776,6 +781,22 @@ function RegistrationForm({
               ))}
             </div>
             <p className="text-xs text-rally-text-muted mt-2 leading-relaxed">{t('corporate.reg.waiverHint')}</p>
+
+            {/* Appears the moment residency is claimed, directly above the upload
+                it is about. The rulebook (§3.4–3.5) lets the manager cancel the
+                pair at ANY stage if the claim does not hold, so a player needs
+                this before committing, not buried in the terms. The two facts
+                that make it fair rather than merely threatening: the money comes
+                back in full (§2.5), and registering again at the regular fee is
+                open to them. */}
+            {residents >= 1 && (
+              <div className="mt-3 rounded-xl border border-rally-warning/50 bg-rally-warning/10 px-3 py-3">
+                <p className="text-xs font-bold text-rally-warning">{t('corporate.reg.waiverReviewTitle')}</p>
+                <p className="text-xs text-rally-text-2 mt-1 leading-relaxed">
+                  {t('corporate.reg.waiverReviewBody')}
+                </p>
+              </div>
+            )}
 
             {residents >= 1 && (
               <div className="mt-4 space-y-4">

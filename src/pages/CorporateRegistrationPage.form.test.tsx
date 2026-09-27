@@ -405,6 +405,29 @@ describe('CorporateRegistrationPage — residency fee waiver', () => {
     expect(screen.queryByLabelText(i18n.t('corporate.reg.evidenceResident'))).not.toBeInTheDocument()
   })
 
+  /**
+   * תקנון §3.4-3.5: the manager may cancel the pair at any stage if a residency
+   * claim does not hold. The warning belongs to the ACT of claiming, so it must
+   * be absent before a pill is pressed and present the moment one is.
+   */
+  it('the review warning appears only once residency is actually claimed', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr(WAIVER_TOURNAMENT))
+    renderPage(WAIVER_EVENT)
+    expect(screen.queryByText(i18n.t('corporate.reg.waiverReviewTitle'))).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverOneOfUs') }))
+    expect(screen.getByText(i18n.t('corporate.reg.waiverReviewTitle'))).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverNone') }))
+    expect(screen.queryByText(i18n.t('corporate.reg.waiverReviewTitle'))).not.toBeInTheDocument()
+  })
+
+  it('a tournament with no waiver never shows the review warning', () => {
+    renderPage() // no feeWaiver on the event, no fee_waiver_type on the tournament
+    expect(screen.queryByText(i18n.t('corporate.reg.waiverReviewTitle'))).not.toBeInTheDocument()
+  })
+
   it('singles has one seat → the "both residents" option is hidden', () => {
     mockUseTournament.mockReturnValue(tr({ ...WAIVER_TOURNAMENT, format: 'singles' }))
     renderPage(WAIVER_EVENT)
