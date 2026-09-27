@@ -5,8 +5,8 @@ import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FitText } from './FitText';
 import { RatingChip } from './RatingChip';
-import { isLiveStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName } from '../utils';
-import type { PublicMatch, PublicPlayer, PublicTeam, SetScore } from '../types';
+import { isLiveStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName, slotPlaceholderLabel } from '../utils';
+import type { PublicMatch, PublicPlayer, PublicTeam, SetScore, SlotPlaceholder } from '../types';
 
 export type MatchCardVariant = 'default' | 'node' | 'hero';
 
@@ -39,7 +39,7 @@ function TeamNames({ team, maxPx }: { team: PublicTeam; maxPx: number }): React.
     );
 }
 
-function TeamRow({ team, sets, side, winner, status, small, large }: {
+function TeamRow({ team, sets, side, winner, status, small, large, placeholder }: {
     team: PublicTeam | null | undefined;
     sets: SetScore[];
     side: 'team_a' | 'team_b';
@@ -47,6 +47,7 @@ function TeamRow({ team, sets, side, winner, status, small, large }: {
     status: string;
     small: boolean;
     large: boolean;
+    placeholder?: SlotPlaceholder | null;
 }): React.ReactElement {
     const { t } = useTranslation();
     const isWinner = winner === side;
@@ -69,7 +70,7 @@ function TeamRow({ team, sets, side, winner, status, small, large }: {
                     // used to be an empty string here and now carries real text (Hebrew
                     // "טרם נקבע"), which on the fixed-width TV node cards has to clip
                     // rather than push the score column out of the card.
-                    <span className="min-w-0 truncate text-(--pb-text-faint)">{t('public_bracket.status.tbd', 'TBD')}</span>
+                    <span className="min-w-0 truncate text-(--pb-text-faint)">{slotPlaceholderLabel(placeholder, t) ?? t('public_bracket.status.tbd', 'TBD')}</span>
                 )}
                 {isWinner && <Trophy size={12} className="shrink-0 text-(--pb-highlight)" />}
             </div>
@@ -131,8 +132,8 @@ export function MatchCard({ match, variant = 'default', className }: MatchCardPr
                 ) : null}
             </div>
             <div className="divide-y divide-(--pb-border)">
-                <TeamRow team={match.team_a} sets={match.sets} side="team_a" winner={match.winner_team ?? null} status={match.status} small={small} large={large} />
-                <TeamRow team={match.team_b} sets={match.sets} side="team_b" winner={match.winner_team ?? null} status={match.status} small={small} large={large} />
+                <TeamRow team={match.team_a} sets={match.sets} side="team_a" winner={match.winner_team ?? null} status={match.status} small={small} large={large} placeholder={match.team_a_placeholder} />
+                <TeamRow team={match.team_b} sets={match.sets} side="team_b" winner={match.winner_team ?? null} status={match.status} small={small} large={large} placeholder={match.team_b_placeholder} />
             </div>
         </div>
     );

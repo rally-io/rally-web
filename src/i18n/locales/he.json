@@ -1210,6 +1210,12 @@
       "check_link": "בדוק את הקישור או פנה למארגן לקבלת קישור חדש"
     },
     "lucky_loser": "מפסיד בר מזל",
+    "slot": {
+      "winner": "מנצחת בית {{group}}",
+      "runner_up": "מקום שני בית {{group}}",
+      "position": "מקום {{position}} בית {{group}}",
+      "lucky_loser": "לאקי לוזר"
+    },
     "status": {
       "live": "בשידור חי",
       "scheduled": "מתוזמן",

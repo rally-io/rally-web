@@ -1197,6 +1197,12 @@
       "check_link": "Check the link or ask the organiser for a new one."
     },
     "lucky_loser": "Lucky loser",
+    "slot": {
+      "winner": "Winner Group {{group}}",
+      "runner_up": "Runner-up Group {{group}}",
+      "position": "#{{position}} Group {{group}}",
+      "lucky_loser": "Lucky loser"
+    },
     "status": {
       "live": "Live",
       "scheduled": "Scheduled",
