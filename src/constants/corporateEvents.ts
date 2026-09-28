@@ -64,6 +64,28 @@ export interface CorporateEventBase {
    * fronts a tournament anyone with the link may join.
    */
   closedBadge?: boolean
+  /**
+   * The "Hosted at <clubName>" line under the title. Omitted = shown; set `false`
+   * when the location chip's address already names the club and the line only
+   * repeats it. `clubName` stays required either way — the link preview, the
+   * hero's alt text and the leads sheet all still read it.
+   */
+  hostedAtLine?: boolean
+  /**
+   * The Rally wordmark pinned over the artwork's top corner (top-right in Hebrew,
+   * top-left in English). Omitted = pinned there; set `false` for artwork that
+   * runs logos or copy into both top corners — the mark then sits above the
+   * title instead, where the image-less header already puts it, and never
+   * covers the client's artwork.
+   */
+  wordmarkOverHero?: boolean
+  /**
+   * A short pitch under the title, as the client wrote it. A blank line starts
+   * a new paragraph; a single newline is only where the client's poster
+   * wrapped, so it reflows as a space. The first paragraph reads as the lead,
+   * the last as the call to action.
+   */
+  intro?: string
   /** Human-readable date, already in Hebrew. Not parsed — copy, not data. */
   dateLabel: string
   /** Human-readable time window, e.g. '17:00–21:00'. */
@@ -160,8 +182,8 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     timeLabel: '19:30–03:00',
   },
   // Israel Open at Padel Time Club, Holon (sponsored by the Holon municipality).
-  // Copy taken from the client's poster (public/israel-open-2026-hero.jpeg); the
-  // dates below come from the official תקנון, which supersedes it.
+  // Copy taken from the client's first poster; the dates below come from the
+  // official תקנון, which supersedes it.
   //
   // The tournament is `is_unlisted` + `registration_open` on prod, created
   // 2026-09-27: unlisted keeps it out of every public list, feed and
@@ -184,9 +206,26 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     feeWaiver: { type: 'holon_resident' },
     // Open to anyone with the link — no "closed event" badge.
     closedBadge: false,
-    // Portrait poster with type running to the edges — never crop it.
-    heroImage: '/israel-open-2026-hero.jpeg',
+    // The address chip already names the club; the owner dropped the line, 2026-09-28.
+    hostedAtLine: false,
+    // The club's 1200×630 banner (2026-09-28): the sponsor logos fill the top-right
+    // corner and the residents' line the top-left, so neither can carry the mark.
+    // 1.91:1 fills a phone edge to edge and is the size link previews expect.
+    heroImage: '/holon-israel-open-2026-hero.jpg',
     heroFit: 'contain',
+    wordmarkOverHero: false,
+    // The club's copy, 2026-09-28. Spelling fixed (ביניהם, מקומכם) and the
+    // punctuation tidied; the words are theirs.
+    intro: [
+      'בפאדל טיים קלאב חולון מתחילים במסורת חדשה!!',
+      'אליפות ישראל הפתוחה בפאדל עם פרסים בשווי 80,000 ₪.',
+      'ההרשמה יצאה לדרך, הזדמנות חד פעמית לכל הרמות להשתתפות באירוע ענק!',
+      '',
+      'הפרסים הכי שווים בענף, ביניהם הזוג הזוכה טס לשבוע אימונים באקדמיית M3 במדריד, מהטובות באירופה.',
+      'המקומות מוגבלים בהחלט.',
+      '',
+      'תושבי חולון בחינם - ההרשמה פתוחה עכשיו, מהרו לתפוס את מקומכם.',
+    ].join('\n'),
     // 21–23 October per the official תקנון (§1), which supersedes the 28–30 the
     // poster carried. 21–23 Oct 2026 is Wednesday to Friday.
     dateLabel: '21–23 באוקטובר 2026',
