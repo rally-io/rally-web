@@ -19,7 +19,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
 vi.mock('@/hooks/useAppSession', () => ({ useAppSession: vi.fn() }))
 vi.mock('@/hooks/useAuthGate', () => ({ useAuthGate: vi.fn() }))
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ session: null, user: null }) }))
+// Mutable, not a fixed return: the details modal reads `user` to say which
+// account it is filling in, and `signOut` is its way out of the wrong one.
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ session: null, user: authState.user, signOut: authState.signOut }),
+}))
+// The details modal verifies a NEW phone by OTP before saving it. Only the three
+// calls it makes are mocked; the rest of the module stays real.
+vi.mock('@/services/api/players', async () => {
+  const actual = await vi.importActual<typeof import('@/services/api/players')>('@/services/api/players')
+  return {
+    ...actual,
+    checkPhoneAvailable: vi.fn(),
+    requestPhoneVerificationOtp: vi.fn(),
+    verifyPhoneVerificationOtp: vi.fn(),
+  }
+})
 vi.mock('@/hooks/usePlayerSearch', () => ({
   usePlayerSearch: vi.fn(() => ({ results: [], isLoading: false, isActive: false })),
 }))
@@ -47,6 +62,9 @@ import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistra
 import { useTournamentRegistration } from '@/hooks/useTournamentRegistration'
 import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
+import {
+  checkPhoneAvailable, requestPhoneVerificationOtp, verifyPhoneVerificationOtp,
+} from '@/services/api/players'
 import type { CorporateTournamentEvent } from '@/constants/corporateEvents'
 
 export const EVENT: CorporateTournamentEvent = {
@@ -62,6 +80,15 @@ export const mockUseGate = vi.mocked(useRegistrationGate)
 export const mockUseRegistration = vi.mocked(useTournamentRegistration)
 export const mockUseEnsure = vi.mocked(useEnsureProfileEssentials)
 export const mockUploadEvidence = vi.mocked(uploadRegistrationEvidence)
+export const mockCheckPhone = vi.mocked(checkPhoneAvailable)
+export const mockRequestOtp = vi.mocked(requestPhoneVerificationOtp)
+export const mockVerifyOtp = vi.mocked(verifyPhoneVerificationOtp)
+/** What `useAuth()` hands the page. `user: null` by default, so the modal's
+ *  "signed in as" line stays out of every test that isn't about it. */
+export const authState: { user: { email?: string; phone?: string } | null; signOut: ReturnType<typeof vi.fn> } = {
+  user: null,
+  signOut: vi.fn(async () => {}),
+}
 export const requireSignIn = vi.fn()
 export const register = vi.fn(async () => {})
 export const ensure = vi.fn(async () => {})
@@ -96,9 +123,23 @@ export function expectDetailsModal() {
 }
 
 /**
+ * Prove a NEW number the way a player does: tap verify, type the code, confirm.
+ * The OTP mocks default to "available, sent, correct" in `resetPageMocks`.
+ */
+export async function verifyPhoneInModal(
+  user: { click: (el: Element) => Promise<void>; type: (el: Element, text: string) => Promise<void> },
+) {
+  await user.click(screen.getByRole('button', { name: /verify phone number/i }))
+  await user.type(await screen.findByPlaceholderText(/6-digit code/i), '123456')
+  await user.click(screen.getByRole('button', { name: /verify code/i }))
+  await screen.findByText(/phone verified/i)
+}
+
+/**
  * Fill what the details modal is missing and save. `ensure` is mocked, so the
  * write resolves immediately and the form's just-saved snapshot lands without
- * waiting for a profile refetch.
+ * waiting for a profile refetch. A number typed here is a NEW number, so it is
+ * verified first — Save refuses an unverified one, as it should.
  */
 export async function completeDetails(
   user: { click: (el: Element) => Promise<void>; type: (el: Element, text: string) => Promise<void> },
@@ -110,7 +151,10 @@ export async function completeDetails(
   const lastInput = screen.getByLabelText('Last name') as HTMLInputElement
   if (last && !lastInput.value) await user.type(lastInput, last)
   const phoneInput = screen.getByLabelText('Your mobile number') as HTMLInputElement
-  if (phone && !phoneInput.readOnly && !phoneInput.value) await user.type(phoneInput, phone)
+  if (phone && !phoneInput.readOnly && !phoneInput.value) {
+    await user.type(phoneInput, phone)
+    await verifyPhoneInModal(user)
+  }
   const slider = screen.queryByLabelText(/skill level slider/i)
   if (slider && level) fireEvent.change(slider, { target: { value: level } })
   await user.click(screen.getByRole('button', { name: 'Save details' }))
@@ -197,4 +241,10 @@ export function resetPageMocks() {
   mockUseEnsure.mockReturnValue({ ensure, status: 'ready', playerProfile: COMPLETE_PROFILE, phoneLocked: true, levelLocked: true } as any)
   mockUploadEvidence.mockResolvedValue([])
   refetchTournament.mockResolvedValue(undefined)
+  // The happy OTP path; a test about a taken number or a wrong code overrides one.
+  mockCheckPhone.mockResolvedValue({ success: true, data: { available: true }, meta: null, error: null } as any)
+  mockRequestOtp.mockResolvedValue({ success: true, data: { message: 'sent' }, meta: null, error: null } as any)
+  mockVerifyOtp.mockResolvedValue({ success: true, data: { verified: true }, meta: null, error: null } as any)
+  authState.user = null
+  authState.signOut = vi.fn(async () => {})
 }

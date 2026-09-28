@@ -23,6 +23,20 @@ export interface ProfileEssentialsInput {
   overwriteStoredLevel?: boolean
 }
 
+/** An Error a caller can switch on: `.code` is rally-api's `error_code`. */
+export type ProfileEssentialsError = Error & { code?: string }
+
+/**
+ * Keep the server's error CODE, not just its message. The message is English
+ * ("A player with this mobile number already exists."), and a bare Error carrying
+ * only that left the details modal nothing to translate — it showed one generic
+ * "check your phone and level" for every failure, including a number that simply
+ * belongs to another account, where neither field was wrong.
+ */
+function apiError(err: { code?: string; message?: string } | null | undefined, fallback: string): ProfileEssentialsError {
+  return Object.assign(new Error(err?.message ?? fallback), { code: err?.code })
+}
+
 /**
  * rally-api refuses `register` until the profile has `contact_number` and
  * `skill_level` (profile_service.REQUIRED_FOR). This writes what the corporate
@@ -53,7 +67,7 @@ export function useEnsureProfileEssentials() {
           country_code: DEFAULT_COUNTRY.dial,
           ...(input.skillLevel != null ? { skill_level: input.skillLevel } : {}),
         })
-        if (!res.success) throw new Error(res.error?.message ?? 'PROFILE_CREATE_FAILED')
+        if (!res.success) throw apiError(res.error, 'PROFILE_CREATE_FAILED')
       } else if (status === 'ready') {
         // `status` is derived from the ONBOARDING query alone; `playerProfile` is a
         // second query, enabled only once `has_player_profile` is true. So a `ready`
@@ -86,7 +100,7 @@ export function useEnsureProfileEssentials() {
         }
         if (Object.keys(patch).length > 0) {
           const res = await updateProfile(patch)
-          if (!res.success) throw new Error(res.error?.message ?? 'PROFILE_UPDATE_FAILED')
+          if (!res.success) throw apiError(res.error, 'PROFILE_UPDATE_FAILED')
         }
       } else {
         throw new Error('SESSION_NOT_READY')

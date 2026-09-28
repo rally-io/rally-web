@@ -3,8 +3,10 @@ import { Trans, useTranslation } from 'react-i18next'
 import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
+import { useEnsureProfileEssentials, type ProfileEssentialsError } from '@/hooks/useEnsureProfileEssentials'
+import { useAuth } from '@/hooks/useAuth'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
+import { PhoneOtpVerification } from '@/components/profile/PhoneOtpVerification'
 import { formatLevelWithTier } from '@/lib/skillTiers'
 import { normalizeSkillLevel } from '@/lib/skillLevel'
 import { DEFAULT_COUNTRY } from '@/constants/countryCodes'
@@ -58,6 +60,7 @@ export function ProfileDetailsModal({
 }: ProfileDetailsModalProps) {
   const { t, i18n } = useTranslation()
   const { ensure, playerProfile, phoneLocked, levelLocked } = useEnsureProfileEssentials()
+  const { user, signOut } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
@@ -68,6 +71,18 @@ export function ProfileDetailsModal({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [profileError, setProfileError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // A NEW number must be proven by OTP before it is written, exactly as Edit
+  // Profile and the app require (both gate their save on it; the server does
+  // not). This state means nothing when `phoneLocked`: a stored number was
+  // proven when it was stored, and the profile that says so arrives AFTER this
+  // modal auto-opens — seeding a flag from it once would leave every existing
+  // player stuck on "verify" beside a read-only field with no verify button.
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  // The number belongs to another Rally account (the OTP pre-check, or the save
+  // itself as a backstop). The fix is to sign in as that account, not to edit
+  // the field, so this is what puts the button to do it beside the message.
+  const [phoneConflict, setPhoneConflict] = useState(false)
+  const signedInAs = user?.email || user?.phone || null
 
   // Each opening starts from the caller's intent, not from the last one's
   // leftovers: reopening plain must not inherit an editor the player opened,
@@ -96,6 +111,8 @@ export function ProfileDetailsModal({
     if (!phoneLocked) {
       if (!phone) next.phone = t('corporate.reg.errorRequired')
       else if (!isValidIsraeliLocal(phone)) next.phone = t('corporate.reg.errorPhone')
+      // Same key Edit Profile uses for the same refusal.
+      else if (!phoneVerified) next.phone = t('edit_profile.validation.phoneNotVerified')
     }
     if (!levelLocked && level == null) next.level = t('corporate.reg.errorLevel')
     setErrors(next)
@@ -113,8 +130,19 @@ export function ProfileDetailsModal({
         firstName: firstName.trim(), lastName: lastName.trim(), phone, skillLevel: level,
         overwriteStoredLevel: levelEditing,
       })
-    } catch {
-      setProfileError(t('corporate.reg.profileSaveError'))
+    } catch (e) {
+      // Translate what we know; never print the server's own English message to
+      // a Hebrew page. The OTP pre-check normally catches a taken number before
+      // any SMS is sent, so this branch is the backstop for a race between it and
+      // the write — the same account-switch fix applies either way.
+      const err = e as ProfileEssentialsError
+      if (err?.code === 'MOBILE_ALREADY_EXISTS') {
+        setPhoneConflict(true)
+        setProfileError(t('edit_profile.phoneAccountHelp'))
+      } else {
+        console.debug('[ProfileDetailsModal]', err?.code ?? '', err?.message ?? e)
+        setProfileError(t('corporate.reg.profileSaveError'))
+      }
       setSaving(false)
       return
     }
@@ -126,6 +154,18 @@ export function ProfileDetailsModal({
       skill_level: level,
     })
     onOpenChange(false)
+  }
+
+  /**
+   * Sign out and let the page offer sign-in again, with every provider it has.
+   * Closing here matters: otherwise the modal stays up over a page that has
+   * just become signed-out. (If the player then signs back in WITHOUT a page
+   * load — email and password — the page will not auto-open this modal a
+   * second time; OAuth returns through a redirect, which remounts, so it does.)
+   */
+  const handleSwitchAccount = async () => {
+    onOpenChange(false)
+    await signOut()
   }
 
   return (
@@ -141,6 +181,28 @@ export function ProfileDetailsModal({
           <DialogDescription className="text-sm text-rally-text-2 leading-relaxed">
             {t('corporate.reg.detailsSubtitle')}
           </DialogDescription>
+          {/* Who this modal is filling in. A browser that kept an old session skips
+              sign-in entirely and lands here, so without this line a player has no
+              way to tell they are on a second account — which is exactly how a
+              taken phone number reads as "your details are wrong". */}
+          {signedInAs && (
+            <p className="text-xs text-rally-text-muted pt-1">
+              <Trans
+                i18nKey="corporate.reg.signedInAs"
+                values={{ account: signedInAs }}
+                components={{ account: <bdi dir="ltr" className="text-rally-text-2" /> }}
+              />
+              {' · '}
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void handleSwitchAccount()}
+                className="font-bold text-rally-accent hover:text-rally-accent-hover disabled:opacity-50"
+              >
+                {t('corporate.reg.switchAccount')}
+              </button>
+            </p>
+          )}
         </DialogHeader>
 
         {/* No `aria-label`: an unnamed <form> carries no `form` role, so this one
@@ -196,14 +258,44 @@ export function ProfileDetailsModal({
                   {DEFAULT_COUNTRY.dial}
                 </span>
                 <input id="cr-phone" type="tel" inputMode="numeric" autoComplete="tel-national" value={phone}
-                  onChange={(e) => setPhone(normalizeIsraeliLocal(e.target.value))}
+                  onChange={(e) => {
+                    setPhone(normalizeIsraeliLocal(e.target.value))
+                    // A different number is a different question.
+                    setPhoneConflict(false)
+                  }}
                   placeholder={t('corporate.phonePlaceholder')}
                   aria-invalid={!!errors.phone}
                   aria-describedby={errors.phone ? 'cr-phone-error' : undefined}
-                  className="flex-1 min-w-0 bg-transparent px-3 py-3 text-rally-text placeholder:text-rally-text-muted focus:outline-none" />
+                  // 16px on phones: iOS zooms the page into any input under 16px on
+                  // focus and leaves it zoomed (the 2026-09-17 Edit Profile fix).
+                  className="flex-1 min-w-0 bg-transparent px-3 py-3 text-base sm:text-sm text-rally-text placeholder:text-rally-text-muted focus:outline-none" />
               </div>
             )}
           </Field>
+
+          {/* Below the field and its hint, so the order reads "type it, then prove
+              it". Its buttons are type="button", so none of them submits this form. */}
+          {!phoneLocked && (
+            <div className="space-y-2">
+              <PhoneOtpVerification
+                countryCode={DEFAULT_COUNTRY.dial}
+                phone={phone}
+                verified={phoneVerified}
+                onVerifiedChange={setPhoneVerified}
+                onAccountConflict={() => setPhoneConflict(true)}
+              />
+              {phoneConflict && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void handleSwitchAccount()}
+                  className="h-11 w-full rounded-lg bg-rally-accent text-rally-accent-text text-sm font-bold hover:bg-rally-accent-hover disabled:opacity-50 transition-colors"
+                >
+                  {t('corporate.reg.useExistingAccount')}
+                </button>
+              )}
+            </div>
+          )}
 
           <fieldset>
             <legend className="block font-display font-bold text-sm text-rally-text mb-2">
