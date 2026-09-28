@@ -130,6 +130,14 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    * dropdown, no field sent — rally-api treats the value as optional.
    */
   competeLevels?: string[]
+  /**
+   * Send the tournament's regular web page (/tournaments/<id>) here instead. For a
+   * tournament listed publicly but registered ONLY on this page — rally-api's
+   * `EVENT_PAGE_ONLY_TOURNAMENTS` (app/services/tournaments/registration_channel.py)
+   * refuses any other registration for it, so the regular page would let a player
+   * fill in a partner only to be turned away. Omit it and the regular page stays.
+   */
+  redirectFromTournamentPage?: boolean
 }
 
 export type CorporateEvent = CorporateLeadEvent | CorporateTournamentEvent
@@ -239,10 +247,24 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // categories were a mock. Taken from the one tournament band list rather than
     // typed here, so it reads exactly like a tournament's level.
     competeLevels: tournamentLevelsBetween(2, 5),
+    // Listed publicly from 2026-09-28, registered only here (the residents' waiver
+    // and its documents exist nowhere else). rally-api refuses the app's register.
+    redirectFromTournamentPage: true,
   },
 }
 
 export function getCorporateEvent(slug: string | undefined): CorporateEvent | null {
   if (!slug) return null
   return CORPORATE_EVENTS[slug] ?? null
+}
+
+/** The event page a tournament's regular web page hands over to, when its entry opted in. */
+export function eventPagePathForTournament(tournamentId: string | undefined): string | null {
+  if (!tournamentId) return null
+  for (const event of Object.values(CORPORATE_EVENTS)) {
+    if (event.mode === 'tournament' && event.redirectFromTournamentPage && event.tournamentId === tournamentId) {
+      return `/join/${event.slug}`
+    }
+  }
+  return null
 }

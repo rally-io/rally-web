@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Calendar, Clock, ExternalLink, Trophy, TrendingUp, Users,
 } from 'lucide-react'
 import { useTournament } from '@/hooks/useTournament'
+import { eventPagePathForTournament } from '@/constants/corporateEvents'
 import { useRtl } from '@/hooks/useRtl'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAppSession } from '@/hooks/useAppSession'
@@ -53,6 +54,10 @@ const REGISTRATION_GATE_ACTION = 'tournament_registration' as const
 export default function TournamentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
+  // A tournament registered only on its event page: this page could not register
+  // it (rally-api would refuse), and could not offer the residents' waiver anyway.
+  const eventPage = eventPagePathForTournament(id)
+  if (eventPage) return <Navigate to={eventPage} replace />
   return <TournamentRegistrationPage key={`${id}:${user?.id ?? 'anonymous'}`} />
 }
 

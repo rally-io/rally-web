@@ -93,6 +93,14 @@ describe('buildRegisterPayload', () => {
     expect(buildRegisterPayload('singles', { phase: 'idle' }, [])).not.toHaveProperty('requested_level')
     expect(buildRegisterPayload('singles', { phase: 'idle' }, [], undefined, '')).not.toHaveProperty('requested_level')
   })
+  it('marks the payload as the event page\'s only when asked, on every partner variant', () => {
+    const invite = { phase: 'selected', partner: { type: 'invite', firstName: 'A', lastName: 'B', countryCode: '+972', phone: '501234567' } } as any
+    for (const [format, state] of [['singles', { phase: 'idle' }], ['doubles', PARTNER], ['doubles', invite], ['doubles', { phase: 'idle' }]] as const) {
+      expect(buildRegisterPayload(format, state as any, [], undefined, undefined, 'event_page'))
+        .toMatchObject({ registration_source: 'event_page' })
+      expect(buildRegisterPayload(format, state as any, [])).not.toHaveProperty('registration_source')
+    }
+  })
   it('carries the chosen level through every partner variant, alongside a waiver', () => {
     const invite = { phase: 'selected', partner: { type: 'invite', firstName: 'A', lastName: 'B', countryCode: '+972', phone: '501234567' } } as any
     const waiver = { type: 'holon_resident' as const, resident_count: 1 as const }

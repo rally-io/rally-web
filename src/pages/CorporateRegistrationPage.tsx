@@ -68,6 +68,9 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
   const registration = useTournamentRegistration(tr, gate, {
     returnTo,
     skipProfileRedirect: true,
+    // This page IS the event page. An event-page-only tournament (rally-api
+    // registration_channel.py) refuses any registration without this marker.
+    registrationSource: 'event_page',
     onRegistered: (reg) => pendingUploadRef.current?.(reg),
     onTournamentFull: () => {
       void queryClient.invalidateQueries({ queryKey: ['tournament', event.tournamentId] })

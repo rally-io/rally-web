@@ -26,6 +26,8 @@ export function buildRegisterPayload(
   feeWaiver?: FeeWaiverRequest,
   /** The level category the pair chose, for an event that offers categories. */
   requestedLevel?: string,
+  /** 'event_page' when the event page (/join/<slug>) is registering. */
+  registrationSource?: 'event_page',
 ): RegisterPayload {
   // The optional fields every partner shape carries, built ONCE. Each is only
   // present when there is one: a plain registration's payload stays exactly
@@ -33,6 +35,7 @@ export function buildRegisterPayload(
   const extras = {
     ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
     ...(requestedLevel ? { requested_level: requestedLevel } : {}),
+    ...(registrationSource ? { registration_source: registrationSource } : {}),
   }
   const needsPartner = format === 'doubles' || format === 'mixed'
   if (!needsPartner) {
@@ -89,6 +92,10 @@ export interface UseTournamentRegistrationOptions {
    *  logged and swallowed: an evidence upload failure must never strand an
    *  already-created registration, the page offers "add evidence" later. */
   onRegistered?: (reg: TournamentRegistrationResult) => void | Promise<void>
+  /** Marks every registration this hook sends as coming from the event page. Only
+   *  CorporateRegistrationPage sets it; rally-api requires it for an event-page-only
+   *  tournament and ignores it for every other one. */
+  registrationSource?: 'event_page'
 }
 
 /**
@@ -107,7 +114,7 @@ export function useTournamentRegistration(
 ) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { returnTo, onTournamentFull, skipProfileRedirect, onRegistered } = options
+  const { returnTo, onTournamentFull, skipProfileRedirect, onRegistered, registrationSource } = options
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
   // Separate from registerError on purpose: this is the ONE state a tick can
@@ -147,7 +154,9 @@ export function useTournamentRegistration(
       setRegisterError(null)
       setGateError(null)
       try {
-        const payload = buildRegisterPayload(tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel)
+        const payload = buildRegisterPayload(
+          tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel, registrationSource,
+        )
         const result = skipProfileRedirect
           ? await registerTournament(tournament.id, payload, { skipProfileRedirect: true })
           : await registerTournament(tournament.id, payload)
@@ -246,7 +255,7 @@ export function useTournamentRegistration(
         if (mounted.current) setIsRegistering(false)
       }
     },
-    [tournament, t, navigate, returnTo, onTournamentFull, skipProfileRedirect, onRegistered],
+    [tournament, t, navigate, returnTo, onTournamentFull, skipProfileRedirect, onRegistered, registrationSource],
   )
 
   return { register, isRegistering, registerError, gateError, setRegisterError, setGateError }

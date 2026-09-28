@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { CORPORATE_EVENTS, getCorporateEvent, type CorporateEvent } from './corporateEvents'
+import { CORPORATE_EVENTS, eventPagePathForTournament, getCorporateEvent, type CorporateEvent } from './corporateEvents'
 
 describe('corporateEvents', () => {
   it('every entry declares a mode, and the two legacy entries are lead-mode', () => {
@@ -45,6 +45,21 @@ describe('corporateEvents', () => {
       if (!ev.heroImage || /^https?:/.test(ev.heroImage)) continue
       expect(publicFiles, `${ev.slug}: ${ev.heroImage}`).toContain(ev.heroImage)
     }
+  })
+
+  // The owner asked for this ONE tournament (2026-09-28). A second one is a deliberate
+  // change here, alongside rally-api's EVENT_PAGE_ONLY_TOURNAMENTS.
+  it('only the Holon Israel Open sends its tournament page to its event page', () => {
+    const redirecting = Object.values(CORPORATE_EVENTS)
+      .filter((ev) => ev.mode === 'tournament' && ev.redirectFromTournamentPage)
+      .map((ev) => ev.slug)
+    expect(redirecting).toEqual(['holon-israel-open-2026'])
+  })
+
+  it('maps that tournament id to its event page, and nothing else to anything', () => {
+    expect(eventPagePathForTournament('7acb6027-33df-456a-8d3c-6ba4073b72ef')).toBe('/join/holon-israel-open-2026')
+    expect(eventPagePathForTournament('00000000-0000-0000-0000-000000000000')).toBeNull()
+    expect(eventPagePathForTournament(undefined)).toBeNull()
   })
 
   it('returns null for an unknown or missing slug', () => {

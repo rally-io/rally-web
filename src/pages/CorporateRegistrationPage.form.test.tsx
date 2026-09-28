@@ -37,6 +37,13 @@ const pickLevel = (value: string) =>
   fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value } })
 
 describe('CorporateRegistrationPage — form', () => {
+  it('registers as the event page — the marker an event-page-only tournament requires', () => {
+    renderPage()
+    expect(mockUseRegistration).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.objectContaining({ registrationSource: 'event_page' }),
+    )
+  })
+
   it('a complete profile is never asked again — it is shown back, not re-collected', () => {
     setReadyProfile({ first_name: 'Dana', last_name: 'Cohen', contact_number: '0501234567', skill_level: 4.6 })
     // Singles: on doubles the CTA correctly reads "Choose a partner first".
