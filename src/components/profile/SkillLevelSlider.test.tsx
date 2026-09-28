@@ -166,4 +166,41 @@ describe('SkillLevelSlider', () => {
     expect(screen.queryByText(/slide to choose your level/i)).not.toBeInTheDocument()
     expect(screen.getByRole('slider')).toHaveAttribute('data-empty', 'false')
   })
+
+  // Dragging moves in quarter points, the same jumps as the app's level slider
+  // (rally-mobile KnowSkillLevelScreen, SLIDER_STEP = 0.25), so a level feels the
+  // same everywhere. This is the ONE slider on the web: Edit Profile and the
+  // corporate details modal both mount it, so this assertion covers both.
+  it('the track moves in quarter points, like the app', () => {
+    render(<SkillLevelSlider value={3.5} onChange={() => {}} />)
+    expect(screen.getByRole('slider')).toHaveAttribute('step', '0.25')
+  })
+
+  it('dragging lands on the quarter grid', () => {
+    const onChange = vi.fn()
+    render(<SkillLevelSlider value={3.5} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '4.25' } })
+    expect(onChange).toHaveBeenLastCalledWith(4.25)
+  })
+
+  // The precision the rating engine stores is NOT the drag step. A rated 4.17 that
+  // nobody touches must survive exactly — snapping it to 4.25 on render would
+  // re-seed sigma and cost the verified seal (see SKILL_SLIDER_STEP).
+  it('an untouched off-grid rated level is kept exactly, not snapped to the grid', () => {
+    const onChange = vi.fn()
+    render(<SkillLevelSlider value={4.17} onChange={onChange} />)
+    expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('4.17')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('the number above the track still takes any 0.01 value, so an exact level can be typed back', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+    const box = screen.getByRole('spinbutton')
+    expect(box).toHaveAttribute('step', '0.01')
+    await user.clear(box)
+    await user.type(box, '4.17')
+    await user.tab()
+    expect(screen.getByTestId('controlled')).toHaveTextContent('4.17')
+  })
 })

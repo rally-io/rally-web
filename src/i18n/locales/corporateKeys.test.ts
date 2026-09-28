@@ -10,7 +10,7 @@ function flat(obj: unknown, prefix = ''): string[] {
 }
 
 const REQUIRED_REG_KEYS = [
-  'signInCta', 'signInWaiverHint', 'formTitle', 'firstName', 'lastName', 'phone', 'level', 'levelHint',
+  'signInCta', 'signInWaiverHint', 'formTitle', 'firstName', 'lastName', 'phone', 'level',
   'phoneLocked', 'levelLocked', 'levelEdit', 'levelEditNote', 'levelTournament',
   'partnerTitle', 'partnerRequiredHint', 'priceLabel', 'holdNote', 'submitCta', 'submitting',
   'registeredTitle', 'registeredPartner', 'registeredStatus_pending', 'registeredStatus_held',
@@ -28,7 +28,7 @@ const REQUIRED_REG_KEYS = [
   // The manager reviews a residency claim and may cancel the pair (תקנון §3.4-3.5)
   'waiverReviewTitle', 'waiverReviewBody',
   // Which account the details modal is filling in, and the way out of the wrong one
-  'signedInAs', 'switchAccount', 'useExistingAccount', 'profileSaveError',
+  'signedInAs', 'switchAccount', 'useExistingAccount',
 ]
 
 describe('corporate copy parity', () => {

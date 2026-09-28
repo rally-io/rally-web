@@ -126,7 +126,9 @@ describe('CorporateRegistrationPage — states', () => {
   it('signed out → one CTA that stashes the return path and opens the sign-in gate', async () => {
     mockUseAppSession.mockReturnValue(session('signed_out'))
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: /register for the tournament/i }))
+    // By key, not by wording: the button's copy is product copy and changes (it said
+    // "Register for the tournament" until it was made to say it signs you in).
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('corporate.reg.signInCta') }))
     expect(sessionStorage.getItem('rally:auth-return')).toBe('/join/acme')
     expect(requireSignIn).toHaveBeenCalled()
     await waitFor(() => expect(refetchOnboarding).toHaveBeenCalled())

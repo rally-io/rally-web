@@ -1095,8 +1095,8 @@
     "appBody": "The Rally app shows every available padel court in Israel — book courts, find tournaments and coaches.",
     "managedBy": "Tournament managed and run by Rally",
     "reg": {
-      "signInCta": "Register for the tournament",
-      "signInHint": "Sign in with Google or email — it takes half a minute.",
+      "signInCta": "Sign in to register",
+      "signInHint": "With Google, Apple, Facebook or email — it takes half a minute.",
       "signInWaiverHint": "Holon residents play for free — sign in to attach proof of address.",
       "formTitle": "Registration details",
       "detailsTitle": "Your details",
@@ -1107,7 +1107,6 @@
       "lastName": "Last name",
       "phone": "Your mobile number",
       "level": "Your level",
-      "levelHint": "Same scale as the tournaments: 1.0–7.0, D2–A1.",
       "phoneLocked": "From your profile. To change it, use the profile page in the app.",
       "levelLocked": "Your level on Rally.",
       "levelEdit": "Change",

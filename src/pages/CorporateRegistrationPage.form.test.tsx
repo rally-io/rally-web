@@ -176,7 +176,8 @@ describe('CorporateRegistrationPage — form', () => {
     await user.click(screen.getByRole('button', { name: 'Change' }))
     expect(screen.getByLabelText(/skill level slider/i)).toBeInTheDocument()
     pickLevel('5.5')
-    expect(screen.getByTestId('cr-level-readout')).toHaveTextContent('5.5 (A2)')
+    // The slider's own number — the modal no longer prints a second readout under it.
+    expect(screen.getByLabelText('skill level')).toHaveValue(5.5)
 
     await user.click(screen.getByRole('button', { name: 'Save details' }))
     // `overwriteStoredLevel` is the guard that stops a prefilled form from
@@ -775,5 +776,19 @@ describe('CorporateRegistrationPage — details modal: phone verification and th
     mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
     renderPage()
     expect(screen.queryByRole('button', { name: i18n.t('corporate.reg.switchAccount') })).not.toBeInTheDocument()
+  })
+
+  // The modal mounts the web's one level slider exactly as Edit Profile does. It
+  // used to add a second readout under it ("2.0 (D1)" beneath a "2.00") — the same
+  // number twice, in two formats. The tier text only ever came from that copy.
+  it('shows the chosen level once, through the shared slider — no second readout', () => {
+    setNewAccountProfile()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    const dialog = expectDetailsModal()
+    expect(screen.getByLabelText('skill level')).toHaveValue(5.5)
+    expect(dialog).not.toHaveTextContent('(A2)')
   })
 })
