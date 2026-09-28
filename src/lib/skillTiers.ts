@@ -56,3 +56,46 @@ export function formatLevelWithTier(level: number): string {
   const shown = Math.floor(level * 10) / 10
   return `${shown.toFixed(1)} (${tierForLevel(level)})`
 }
+
+export interface TournamentLevelBand {
+  code: SkillTierCode
+  /** Exactly the string a tournament carries as its level, e.g. "2.5 - 3.0 (D1 - C2)". */
+  label: string
+  min: number
+  max: number
+}
+
+/**
+ * The level bands TOURNAMENTS are created in, written the way a tournament shows
+ * its level — with the letter range: "2.5 - 3.0 (D1 - C2)". Mirror of rally-crm's
+ * `SKILL_LEVEL_OPTIONS` (`src/utils/skillLevels.ts`, the `value` of each option),
+ * which is where managers create tournaments; production tournaments carry exactly
+ * these strings (checked 2026-09-28: the top five are these, 4–15 tournaments each).
+ *
+ * NOT the same table as `SKILL_TIERS` above, and the two disagree on purpose-less
+ * points: here B1 ends at 4.5 and there is no band between 4.5 and 5.0 (nor 1.5–2.0,
+ * 5.5–6.0); `SKILL_TIERS` has B1 run to 5.0 with no gaps. That split predates this
+ * list and is the level-scale project's to resolve. Kept here verbatim rather than
+ * derived from `SKILL_TIERS`, because derivation would print "(D2 - D1)" and
+ * "4.0 - 5.0" — strings no tournament carries.
+ */
+export const TOURNAMENT_LEVEL_BANDS: readonly TournamentLevelBand[] = [
+  { code: 'D2', label: '1.0 - 1.5 (D2)', min: 1.0, max: 1.5 },
+  { code: 'D1', label: '2.0 - 2.5 (D1)', min: 2.0, max: 2.5 },
+  { code: 'C2', label: '2.5 - 3.0 (D1 - C2)', min: 2.5, max: 3.0 },
+  { code: 'C1', label: '3.0 - 3.5 (C2 - C1)', min: 3.0, max: 3.5 },
+  { code: 'B2', label: '3.5 - 4.0 (C1 - B2)', min: 3.5, max: 4.0 },
+  { code: 'B1', label: '4.0 - 4.5 (B2 - B1)', min: 4.0, max: 4.5 },
+  { code: 'A2', label: '5.0 - 5.5 (A2)', min: 5.0, max: 5.5 },
+  { code: 'A1', label: '6.0 - 7.0 (A1)', min: 6.0, max: 7.0 },
+]
+
+/**
+ * Every tournament band wholly inside [min, max], lowest first, as the labels a
+ * tournament shows — the list an event offers a pair to choose its category from.
+ */
+export function tournamentLevelsBetween(min: number, max: number): string[] {
+  return TOURNAMENT_LEVEL_BANDS
+    .filter((band) => band.min >= min && band.max <= max)
+    .map((band) => band.label)
+}

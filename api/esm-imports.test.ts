@@ -16,6 +16,10 @@ import { dirname, join } from 'node:path'
 
 const API_DIR = join(__dirname)
 const RELATIVE_IMPORT = /(?:^|\n)\s*import\s+(?!type\b)[^'"]*from\s+['"](\.[^'"]*)['"]/g
+// The `@/` path alias is a Vite/TypeScript convenience; Node's ESM resolver knows
+// nothing about it, so a VALUE import through it 500s the function exactly like an
+// extensionless one. Type-only imports are erased and stay allowed.
+const ALIAS_IMPORT = /(?:^|\n)\s*import\s+(?!type\b)[^'"]*from\s+['"](@\/[^'"]*)['"]/g
 
 function functionFiles(): string[] {
   return readdirSync(API_DIR).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
@@ -54,9 +58,11 @@ function reachableFrom(entry: string): string[] {
 
 function offendersIn(file: string): string[] {
   const source = readFileSync(file, 'utf8')
-  return [...source.matchAll(RELATIVE_IMPORT)]
+  const extensionless = [...source.matchAll(RELATIVE_IMPORT)]
     .map((m) => m[1])
     .filter((specifier) => !/\.(js|mjs|cjs|json)$/.test(specifier))
+  const aliased = [...source.matchAll(ALIAS_IMPORT)].map((m) => m[1])
+  return [...extensionless, ...aliased]
 }
 
 describe('api/ serverless functions', () => {

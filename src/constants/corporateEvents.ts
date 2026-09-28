@@ -6,6 +6,9 @@ import type { TermsSection } from './eventTerms'
 // /join/:slug page 500s. A type-only import is erased and needs no extension;
 // this one is a value import. See api/esm-imports.test.ts.
 import { ISRAEL_OPEN_TERMS } from './israelOpenTerms.js'
+// Relative with `.js`, never the `@/` alias: api/join-og.ts imports this module and
+// runs as native ESM, where Node resolves neither an alias nor a bare specifier.
+import { tournamentLevelsBetween } from '../lib/skillTiers.js'
 
 /**
  * Closed corporate tournaments — one entry per event.
@@ -192,10 +195,11 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // The club's working hours were Wed–Thu 16:00–00:00 and Fri 07:30–13:00.
     timeLabel: 'רביעי–חמישי אחר הצהריים\nשישי בבוקר',
     terms: ISRAEL_OPEN_TERMS,
-    // The three categories on the club's poster (caps 32 / 16 / 16 pairs), chosen
-    // by the owner 2026-09-28. "רמה 4 נשים" is self-declared — the dropdown cannot
-    // know a player's gender, so the manager validates it.
-    competeLevels: ['רמה 3.5–4', 'רמה 4.5–5', 'רמה 4 נשים'],
+    // Every tournament band from 2 to 5, written the way tournaments show their level
+    // ("2.5 - 3.0 (D1 - C2)") — the owner's call, 2026-09-28. The poster's three
+    // categories were a mock. Taken from the one tournament band list rather than
+    // typed here, so it reads exactly like a tournament's level.
+    competeLevels: tournamentLevelsBetween(2, 5),
   },
 }
 
