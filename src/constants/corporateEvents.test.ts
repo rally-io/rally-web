@@ -32,6 +32,21 @@ describe('corporateEvents', () => {
     expect(tournament.mode).toBe('tournament')
   })
 
+  // A local heroImage is served from public/ AND is the link preview's og:image
+  // (api/join-og.ts), so a renamed or deleted file ships as a broken hero and an
+  // imageless WhatsApp card — `heroImage` is just a string, nothing else notices.
+  // Listed with `import.meta.glob`, not `fs`: this file lives under src/, which has
+  // no Node types. NOT an api/ test: every file in api/, tests included, counts
+  // toward Vercel's 12-function Hobby limit, and main sits exactly at it.
+  it('every local hero image exists in public/', () => {
+    const publicFiles = Object.keys(import.meta.glob('/public/**/*.{jpg,jpeg,png,webp}'))
+      .map((path) => path.replace(/^\/public/, ''))
+    for (const ev of Object.values(CORPORATE_EVENTS)) {
+      if (!ev.heroImage || /^https?:/.test(ev.heroImage)) continue
+      expect(publicFiles, `${ev.slug}: ${ev.heroImage}`).toContain(ev.heroImage)
+    }
+  })
+
   it('returns null for an unknown or missing slug', () => {
     expect(getCorporateEvent('nope')).toBeNull()
     expect(getCorporateEvent(undefined)).toBeNull()
