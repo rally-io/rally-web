@@ -1097,7 +1097,7 @@
     "reg": {
       "signInCta": "Sign in to register",
       "signInHint": "With Google, Apple, Facebook or email — it takes half a minute.",
-      "signInWaiverHint": "Holon residents play for free — sign in to attach proof of address.",
+      "signInWaiverHint": "Holon residents compete for free — sign in to attach proof of address.",
       "formTitle": "Registration details",
       "detailsTitle": "Your details",
       "detailsSubtitle": "Rally keeps these on your player profile. Your partner and the organiser reach you with them, and your level decides who you play.",
@@ -1148,7 +1148,7 @@
       "waiverOne": "I'm a Holon resident",
       "waiverOneOfUs": "One of us is a Holon resident",
       "waiverBoth": "We're both Holon residents",
-      "waiverHint": "Holon residents play for free. Attach proof of address for each resident: ID card with the address slip, or a municipal bill. Up to 2 files each, JPG/PNG/PDF up to 10 MB.",
+      "waiverHint": "Holon residents compete for free. Attach proof of address for each resident: ID card with the address slip, or a municipal bill. Up to 2 files each, JPG/PNG/PDF up to 10 MB.",
       "evidenceMine": "My proof",
       "evidenceResident": "The resident's proof of address",
       "evidencePartner": "My partner's proof",

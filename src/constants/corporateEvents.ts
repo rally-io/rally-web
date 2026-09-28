@@ -167,7 +167,9 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     company: 'Padel Time Club',
     tournamentName: 'אליפות ישראל\nהפתוחה בפאדל',
     clubName: 'Padel Time Club · בחסות עיריית חולון',
-    clubAddress: 'מתחם פאדל טיים, חולון',
+    // As the club gave it, 2026-09-28 — the street address players navigate to,
+    // with the country club it sits in.
+    clubAddress: 'הלוחמים 30, פאדל טיים קלאב חולון (קאנטרי חולון)',
     feeWaiver: { type: 'holon_resident' },
     // Open to anyone with the link — no "closed event" badge.
     closedBadge: false,
@@ -175,11 +177,12 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     heroImage: '/israel-open-2026-hero.jpeg',
     heroFit: 'contain',
     // 21–23 October per the official תקנון (§1), which supersedes the 28–30 the
-    // poster carried. Both spans are Wed–Fri in 2026, so the hours below still
-    // map to the same weekdays and did not need changing.
+    // poster carried. 21–23 Oct 2026 is Wednesday to Friday.
     dateLabel: '21–23 באוקטובר 2026',
-    // Per the club: Wed–Thu 16:00–00:00, Fri 07:30–13:00.
-    timeLabel: 'רביעי–חמישי\n16:00–00:00\nשישי\n07:30–13:00',
+    // Parts of the day, not clock times (owner's call, 2026-09-28): the exact
+    // slots depend on the draw, and §5.2 has each pair play two of the three days.
+    // The club's working hours were Wed–Thu 16:00–00:00 and Fri 07:30–13:00.
+    timeLabel: 'רביעי–חמישי אחר הצהריים\nשישי בבוקר',
     terms: ISRAEL_OPEN_TERMS,
   },
 }
