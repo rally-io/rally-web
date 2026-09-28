@@ -355,6 +355,9 @@ export type RegisterPayload = {
   fee_waiver?: FeeWaiverRequest
   /** The level category the pair asks to compete in (rally-api: optional, ≤64). */
   requested_level?: string
+  /** Sent only by the event page (/join/<slug>). rally-api refuses a registration
+   *  without it for an event-page-only tournament (registration_channel.py). */
+  registration_source?: 'event_page'
 } & (
   | { partner_type: 'none' }
   | { partner_type: 'existing'; partner_player_id: string }

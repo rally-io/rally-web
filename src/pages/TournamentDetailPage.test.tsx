@@ -962,3 +962,31 @@ describe('TournamentDetailPage participants roster', () => {
     expect(screen.queryByText('Dana Cohen')).not.toBeInTheDocument()
   })
 })
+
+describe('TournamentDetailPage — event-page-only tournament', () => {
+  function renderAt(path: string) {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
+          <Route path="/join/:slug" element={<div data-testid="event-page" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  it('hands the Holon Israel Open over to its event page — the only place it registers', () => {
+    renderAt('/tournaments/7acb6027-33df-456a-8d3c-6ba4073b72ef')
+    expect(screen.getByTestId('event-page')).toBeInTheDocument()
+    // Never rendered its own page, so never fetched the tournament for it.
+    expect(vi.mocked(useTournament)).not.toHaveBeenCalled()
+  })
+
+  it('leaves every other tournament on its own page', () => {
+    vi.mocked(useTournament).mockReturnValue({ data: undefined, isLoading: true, isError: false } as any)
+    renderAt('/tournaments/t-1')
+    expect(screen.queryByTestId('event-page')).not.toBeInTheDocument()
+    expect(vi.mocked(useTournament)).toHaveBeenCalledWith('t-1')
+  })
+})
+
