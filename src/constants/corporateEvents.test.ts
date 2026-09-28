@@ -48,7 +48,7 @@ describe('corporateEvents', () => {
   })
 
   // The owner asked for this ONE tournament (2026-09-28). A second one is a deliberate
-  // change here, alongside rally-api's EVENT_PAGE_ONLY_TOURNAMENTS.
+  // change here.
   it('only the Holon Israel Open sends its tournament page to its event page', () => {
     const redirecting = Object.values(CORPORATE_EVENTS)
       .filter((ev) => ev.mode === 'tournament' && ev.redirectFromTournamentPage)

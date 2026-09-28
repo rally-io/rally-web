@@ -131,11 +131,12 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    */
   competeLevels?: string[]
   /**
-   * Send the tournament's regular web page (/tournaments/<id>) here instead. For a
-   * tournament listed publicly but registered ONLY on this page — rally-api's
-   * `EVENT_PAGE_ONLY_TOURNAMENTS` (app/services/tournaments/registration_channel.py)
-   * refuses any other registration for it, so the regular page would let a player
-   * fill in a partner only to be turned away. Omit it and the regular page stays.
+   * Send the tournament's regular web page (/tournaments/<id>) here instead — for a
+   * tournament listed publicly whose event page is the full way in (the residents'
+   * waiver, its documents and the level choice exist only here; the regular page can
+   * register only a plain entry). If rally-api also lists the tournament in
+   * `EVENT_PAGE_ONLY_TOURNAMENTS` (app/services/tournaments/registration_channel.py),
+   * every other registration is refused outright. Omit it and the regular page stays.
    */
   redirectFromTournamentPage?: boolean
 }
@@ -247,8 +248,9 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // categories were a mock. Taken from the one tournament band list rather than
     // typed here, so it reads exactly like a tournament's level.
     competeLevels: tournamentLevelsBetween(2, 5),
-    // Listed publicly from 2026-09-28, registered only here (the residents' waiver
-    // and its documents exist nowhere else). rally-api refuses the app's register.
+    // Listed publicly from 2026-09-28. Web visitors land here for the full flow; the
+    // app registers plain entries (no waiver, no level) and its banner and the
+    // tournament description point residents to rallypadel.app/holon (vercel.json).
     redirectFromTournamentPage: true,
   },
 }
