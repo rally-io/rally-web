@@ -7,6 +7,7 @@ import {
   renderPage, tr, session, gate, mockUseTournament, mockUseAppSession, mockUseGate, mockUseEnsure,
   mockUseRegistration, mockUploadEvidence, ensure, register, refetchTournament, resetPageMocks,
   completeDetails, expectDetailsModal, COMPLETE_PROFILE,
+  verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState,
 } from './CorporateRegistrationPage.fixtures'
 import type { TournamentRegistrationResult } from '@/types/api'
 
@@ -170,6 +171,8 @@ describe('CorporateRegistrationPage — form', () => {
 
     expectDetailsModal()
     await user.type(screen.getByLabelText('Your mobile number'), '0501234567')
+    // A new number must be proven before Save accepts it.
+    await verifyPhoneInModal(user)
     await user.click(screen.getByRole('button', { name: 'Change' }))
     expect(screen.getByLabelText(/skill level slider/i)).toBeInTheDocument()
     pickLevel('5.5')
@@ -622,5 +625,155 @@ describe('CorporateRegistrationPage — residency fee waiver', () => {
     await runOnRegistered()
     expect(mockUploadEvidence).not.toHaveBeenCalled()
     expect(refetchTournament).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * A NEW phone is proven by OTP before it is written — as Edit Profile and the
+ * app both require; the server does not enforce it, so this modal was the one
+ * path that saved an unverified number. And a number that belongs to ANOTHER
+ * Rally account is not a typo: the way out is signing in as that account, which
+ * the modal now offers instead of "check your phone and level".
+ */
+describe('CorporateRegistrationPage — details modal: phone verification and the wrong account', () => {
+  beforeEach(resetPageMocks)
+
+  /** Profile missing its level only (so the modal opens) but its phone stored. */
+  function setStoredPhoneProfile() {
+    const profile = { first_name: 'Dana', last_name: 'Cohen', contact_number: '0501234567', skill_level: null }
+    mockUseAppSession.mockReturnValue(session('ready', profile))
+    mockUseEnsure.mockReturnValue({
+      ensure, status: 'ready', playerProfile: profile, phoneLocked: true, levelLocked: false,
+    } as any)
+  }
+  function setNewAccountProfile() {
+    const profile = { first_name: 'Dana', last_name: 'Cohen', contact_number: null, skill_level: null }
+    mockUseAppSession.mockReturnValue(session('ready', profile))
+    mockUseEnsure.mockReturnValue({
+      ensure, status: 'ready', playerProfile: profile, phoneLocked: false, levelLocked: false,
+    } as any)
+  }
+
+  // The regression that would hit most registrants silently: an EXISTING Rally
+  // player's number was proven when it was stored, arrives read-only, and has no
+  // verify button — gating Save on a fresh OTP there would strand them.
+  it('an existing player with a stored phone saves without any verification step', async () => {
+    const user = userEvent.setup()
+    setStoredPhoneProfile()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+
+    expectDetailsModal()
+    expect(screen.queryByRole('button', { name: /verify phone number/i })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '4.5' } })
+    await user.click(screen.getByRole('button', { name: 'Save details' }))
+
+    expect(ensure).toHaveBeenCalledTimes(1)
+    expect(mockCheckPhone).not.toHaveBeenCalled()
+    expect(mockRequestOtp).not.toHaveBeenCalled()
+  })
+
+  it('refuses to save a new number that has not been verified', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+
+    await user.type(screen.getByLabelText('Your mobile number'), '0501234567')
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '4.5' } })
+    await user.click(screen.getByRole('button', { name: 'Save details' }))
+
+    expect(await screen.findByText(i18n.t('edit_profile.validation.phoneNotVerified'))).toBeInTheDocument()
+    expect(ensure).not.toHaveBeenCalled()
+  })
+
+  it('a number on another account is caught before any SMS, and offers to sign in to it', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    mockCheckPhone.mockResolvedValue({ success: true, data: { available: false }, meta: null, error: null } as any)
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+
+    await user.type(screen.getByLabelText('Your mobile number'), '0505942752')
+    await user.click(screen.getByRole('button', { name: /verify phone number/i }))
+
+    expect(await screen.findByText(i18n.t('edit_profile.phoneAccountHelp'))).toBeInTheDocument()
+    // No SMS to a number that belongs to someone else's account.
+    expect(mockRequestOtp).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.useExistingAccount') }))
+    expect(authState.signOut).toHaveBeenCalledTimes(1)
+    // Closed, not left hanging over a page that just became signed-out.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('editing the number clears the conflict — a different number is a different question', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    mockCheckPhone.mockResolvedValue({ success: true, data: { available: false }, meta: null, error: null } as any)
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+
+    const phone = screen.getByLabelText('Your mobile number')
+    await user.type(phone, '0505942752')
+    await user.click(screen.getByRole('button', { name: /verify phone number/i }))
+    await screen.findByRole('button', { name: i18n.t('corporate.reg.useExistingAccount') })
+
+    await user.type(phone, '{backspace}')
+    expect(screen.queryByRole('button', { name: i18n.t('corporate.reg.useExistingAccount') })).not.toBeInTheDocument()
+  })
+
+  // The backstop: the pre-check passed, but by the time of the write the number
+  // was taken. The server's English message must not reach a Hebrew page, and
+  // the answer is still "sign in to that account", not "check your details".
+  it('a number taken between the check and the save gets the account message, not the generic one', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    ensure.mockRejectedValueOnce(
+      Object.assign(new Error('A player with this mobile number already exists.'), { code: 'MOBILE_ALREADY_EXISTS' }),
+    )
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await completeDetails(user)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(i18n.t('edit_profile.phoneAccountHelp'))
+    expect(screen.queryByText(/already exists/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: i18n.t('corporate.reg.useExistingAccount') })).toBeInTheDocument()
+    expect(register).not.toHaveBeenCalled()
+  })
+
+  it('an unknown failure no longer blames fields that passed validation', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    ensure.mockRejectedValueOnce(Object.assign(new Error('boom'), { code: 'SOMETHING_ELSE' }))
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await completeDetails(user)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(i18n.t('corporate.reg.profileSaveError'))
+    expect(alert).not.toHaveTextContent(/phone number and level/i)
+  })
+
+  it('says which account it is filling in, and "not you?" signs out', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    authState.user = { email: 'shahafp2+8@gmail.com' }
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+
+    const dialog = expectDetailsModal()
+    expect(dialog).toHaveTextContent('shahafp2+8@gmail.com')
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.switchAccount') }))
+    expect(authState.signOut).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows no account line when there is no signed-in identity to name', () => {
+    setNewAccountProfile()
+    authState.user = null
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    expect(screen.queryByRole('button', { name: i18n.t('corporate.reg.switchAccount') })).not.toBeInTheDocument()
   })
 })

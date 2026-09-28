@@ -27,6 +27,8 @@ const REQUIRED_REG_KEYS = [
   'detailsTitle', 'detailsSubtitle', 'detailsSave', 'detailsSaving',
   // The manager reviews a residency claim and may cancel the pair (תקנון §3.4-3.5)
   'waiverReviewTitle', 'waiverReviewBody',
+  // Which account the details modal is filling in, and the way out of the wrong one
+  'signedInAs', 'switchAccount', 'useExistingAccount', 'profileSaveError',
 ]
 
 describe('corporate copy parity', () => {

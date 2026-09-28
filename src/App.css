@@ -83,6 +83,27 @@ textarea:-webkit-autofill {
   transition: background-color 9999s ease-in-out 0s;
 }
 
+/* The standard spelling, in its OWN rule: comma-joined with the -webkit- list
+   above, a browser that doesn't know `:autofill` would drop that whole rule. */
+input:autofill,
+select:autofill,
+textarea:autofill {
+  -webkit-text-fill-color: var(--color-rally-text);
+  box-shadow: 0 0 0 1000px var(--color-rally-surface-2) inset;
+  caret-color: var(--color-rally-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* The site is dark-only, but nothing told the browser so — and a document that
+   doesn't declare a colour scheme is treated as LIGHT. iOS then paints its native
+   form states light: the autofill highlight on a phone field showed up as a
+   white pill in the details modal on 2026-09-28 despite the overrides above.
+   Declaring it lets the platform draw autofill, selects, date pickers and
+   scrollbars for a dark page. */
+:root {
+  color-scheme: dark;
+}
+
 html,
 body {
   font-family: var(--font-body);

@@ -1138,7 +1138,7 @@
       "terminalBody": "For questions about your registration, ask your tournament organiser.",
       "fullTitle": "All spots are taken",
       "fullBody": "The tournament is full. Ask your tournament organiser — a spot may free up.",
-      "profileSaveError": "We couldn't save your details. Check the phone number and level and try again.",
+      "profileSaveError": "We couldn't save your details. Try again in a moment.",
       "sessionError": "Something went wrong loading your profile.",
       "retry": "Try again",
       "errorRequired": "Required",
@@ -1165,7 +1165,10 @@
       "addEvidence": "Add proof of address",
       "evidenceUploadFailed": "You're registered, but the upload failed. Attach the files here.",
       "waiverReviewTitle": "Approval isn't automatic",
-      "waiverReviewBody": "The tournament manager checks your documents before confirming the pair. If residency can't be verified the registration is cancelled and anything you paid is refunded in full — you can then register again at the regular fee. This can happen at any stage, including after the pair has been confirmed."
+      "waiverReviewBody": "The tournament manager checks your documents before confirming the pair. If residency can't be verified the registration is cancelled and anything you paid is refunded in full — you can then register again at the regular fee. This can happen at any stage, including after the pair has been confirmed.",
+      "signedInAs": "Signed in as <account>{{account}}</account>",
+      "switchAccount": "Not you? Switch account",
+      "useExistingAccount": "Sign in to that account"
     },
     "terms": {
       "title": "Tournament rules"

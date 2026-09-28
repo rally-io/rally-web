@@ -21,6 +21,13 @@ interface Props {
    * (e.g. unchanged in Edit Profile) — skips requiring a fresh OTP until the
    * user actually edits the field to something else. */
   initiallyVerified?: boolean
+  /**
+   * Called when the number turns out to belong to another Rally account. The
+   * banner already tells the player to sign in to that account; a caller that
+   * can sign them out puts the button to do it next to the message. Optional:
+   * Edit Profile shows the banner alone.
+   */
+  onAccountConflict?: () => void
 }
 
 /**
@@ -47,6 +54,7 @@ export function PhoneOtpVerification({
   verified,
   onVerifiedChange,
   initiallyVerified = false,
+  onAccountConflict,
 }: Props) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<Status>('idle')
@@ -101,6 +109,7 @@ export function PhoneOtpVerification({
       if (currentNumber.current !== requestedNumber) return
       setBanner(errorMessage(e, t, OTP_SEND_FAILED))
       setStatus('idle')
+      if ((e as { code?: string } | null)?.code === 'MOBILE_ALREADY_EXISTS') onAccountConflict?.()
     }
   }
 
@@ -173,7 +182,7 @@ export function PhoneOtpVerification({
           dir="ltr"
           className="text-center tracking-[0.5em] font-bold"
         />
-        {banner && <p className="text-sm text-red-400">{banner}</p>}
+        {banner && <p className="text-sm text-rally-error">{banner}</p>}
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -203,7 +212,7 @@ export function PhoneOtpVerification({
   // to verify from it for minutes and not one request reached the API.
   return (
     <div className="space-y-2">
-      {banner && <p className="text-sm text-red-400">{banner}</p>}
+      {banner && <p className="text-sm text-rally-error">{banner}</p>}
       <button
         type="button"
         onClick={() => void handleSendCode()}
