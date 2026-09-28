@@ -37,3 +37,17 @@ describe('corporateEvents', () => {
     expect(getCorporateEvent(undefined)).toBeNull()
   })
 })
+
+describe('the Holon Israel Open level categories', () => {
+  it('offers every tournament band from 2 to 5, as tournaments write them', () => {
+    const event = getCorporateEvent('holon-israel-open-2026')
+    expect(event?.mode).toBe('tournament')
+    expect(event && event.mode === 'tournament' ? event.competeLevels : undefined).toEqual([
+      '2.0 - 2.5 (D1)',
+      '2.5 - 3.0 (D1 - C2)',
+      '3.0 - 3.5 (C2 - C1)',
+      '3.5 - 4.0 (C1 - B2)',
+      '4.0 - 4.5 (B2 - B1)',
+    ])
+  })
+})
