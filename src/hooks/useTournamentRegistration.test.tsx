@@ -89,6 +89,18 @@ describe('buildRegisterPayload', () => {
       acknowledged_messages: [], fee_waiver: waiver,
     })
   })
+  it('does not add requested_level when there is no level category', () => {
+    expect(buildRegisterPayload('singles', { phase: 'idle' }, [])).not.toHaveProperty('requested_level')
+    expect(buildRegisterPayload('singles', { phase: 'idle' }, [], undefined, '')).not.toHaveProperty('requested_level')
+  })
+  it('carries the chosen level through every partner variant, alongside a waiver', () => {
+    const invite = { phase: 'selected', partner: { type: 'invite', firstName: 'A', lastName: 'B', countryCode: '+972', phone: '501234567' } } as any
+    const waiver = { type: 'holon_resident' as const, resident_count: 1 as const }
+    for (const [format, state] of [['singles', { phase: 'idle' }], ['doubles', PARTNER], ['doubles', invite], ['doubles', { phase: 'idle' }]] as const) {
+      const payload = buildRegisterPayload(format, state as any, [], waiver, 'רמה 3.5–4')
+      expect(payload).toMatchObject({ requested_level: 'רמה 3.5–4', fee_waiver: waiver })
+    }
+  })
 })
 
 describe('useTournamentRegistration', () => {

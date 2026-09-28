@@ -97,6 +97,14 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    * event has no rulebook, and a tournament without one is not an error.
    */
   terms?: TermsSection[]
+  /**
+   * The level categories a pair chooses between at registration (the rulebook's
+   * "each pair marks its level"), e.g. "רמה 3.5–4". When set, the page shows a
+   * REQUIRED dropdown and sends the label as `requested_level`; the manager places
+   * pairs from it once registration closes. Omit it and nothing changes: no
+   * dropdown, no field sent — rally-api treats the value as optional.
+   */
+  competeLevels?: string[]
 }
 
 export type CorporateEvent = CorporateLeadEvent | CorporateTournamentEvent
@@ -184,6 +192,10 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // The club's working hours were Wed–Thu 16:00–00:00 and Fri 07:30–13:00.
     timeLabel: 'רביעי–חמישי אחר הצהריים\nשישי בבוקר',
     terms: ISRAEL_OPEN_TERMS,
+    // The three categories on the club's poster (caps 32 / 16 / 16 pairs), chosen
+    // by the owner 2026-09-28. "רמה 4 נשים" is self-declared — the dropdown cannot
+    // know a player's gender, so the manager validates it.
+    competeLevels: ['רמה 3.5–4', 'רמה 4.5–5', 'רמה 4 נשים'],
   },
 }
 

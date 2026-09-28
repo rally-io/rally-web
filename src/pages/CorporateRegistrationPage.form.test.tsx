@@ -46,34 +46,15 @@ describe('CorporateRegistrationPage — form', () => {
     // Values, so the player can see Rally has them right...
     expect(screen.getByText('Dana Cohen')).toBeInTheDocument()
     expect(screen.getByText('+972 0501234567')).toBeInTheDocument()
-    expect(screen.getByText('4.6 (B1)')).toBeInTheDocument()
+    // ...and NOT the rating: the card is personal info only. What this tournament
+    // asks about level is which category the pair enters — its own section.
+    expect(screen.queryByText('4.6 (B1)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument()
     // ...and not one input: the fields live in the modal.
     expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Your mobile number')).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/skill level slider/i)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /register & pay/i })).toBeInTheDocument()
-  })
-
-  it('the level row opens the modal past the pencil, and the new level is written', async () => {
-    const user = userEvent.setup()
-    setReadyProfile({ first_name: 'Dana', last_name: 'Cohen', contact_number: '0501234567', skill_level: 4.6 })
-    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
-    renderPage()
-
-    await user.click(screen.getByRole('button', { name: 'Change' }))
-    // Straight to the slider: the button the player pressed already said
-    // "change my level", so a second pencil click would be a dead step.
-    expect(screen.getByLabelText(/skill level slider/i)).toBeInTheDocument()
-    pickLevel('5.5')
-    await user.click(screen.getByRole('button', { name: 'Save details' }))
-
-    // `overwriteStoredLevel` is the guard that stops a prefilled form from
-    // destroying a rated level; pressing this button is the deliberate act.
-    expect(ensure).toHaveBeenCalledWith({
-      firstName: 'Dana', lastName: 'Cohen', phone: '501234567', skillLevel: 5.5, overwriteStoredLevel: true,
-    })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByText('5.5 (A2)')).toBeInTheDocument()
   })
 
   it('reopening plain does not inherit the level editor the last opening unlocked', async () => {
@@ -790,5 +771,69 @@ describe('CorporateRegistrationPage — details modal: phone verification and th
     const dialog = expectDetailsModal()
     expect(screen.getByLabelText('skill level')).toHaveValue(5.5)
     expect(dialog).not.toHaveTextContent('(A2)')
+  })
+})
+
+/**
+ * The level category a pair enters — the rulebook's "each pair marks its level at
+ * registration". Offered only by an event that declares `competeLevels`; for every
+ * other event (the fixture's default) nothing about registration may change.
+ */
+describe('CorporateRegistrationPage — the level category the pair enters', () => {
+  beforeEach(resetPageMocks)
+
+  const LEVELS = ['רמה 3.5–4', 'רמה 4.5–5', 'רמה 4 נשים']
+  const LEVEL_EVENT = { competeLevels: LEVELS }
+  const levelSelect = () => screen.getByLabelText(i18n.t('corporate.reg.competeLevelTitle'), { exact: false })
+
+  it('an event with categories shows a required dropdown of exactly those levels', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(LEVEL_EVENT)
+    const select = levelSelect() as HTMLSelectElement
+    expect(select).toBeRequired()
+    const options = Array.from(select.options)
+    // The placeholder first, empty and unselectable — then the event's levels, in order.
+    expect(options[0].value).toBe('')
+    expect(options[0].disabled).toBe(true)
+    expect(options.slice(1).map((o) => o.value)).toEqual(LEVELS)
+    expect(select.value).toBe('')
+  })
+
+  it('will not register until a level is chosen, and says why', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(LEVEL_EVENT)
+
+    const cta = screen.getByRole('button', { name: i18n.t('corporate.reg.ctaMissingLevel') })
+    await user.click(cta)
+
+    expect(register).not.toHaveBeenCalled()
+    expect(await screen.findByText(i18n.t('corporate.reg.competeLevelRequired'))).toBeInTheDocument()
+    expect(levelSelect()).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('sends the chosen level with the registration', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(LEVEL_EVENT)
+
+    await user.selectOptions(levelSelect(), 'רמה 4.5–5')
+    // Choosing clears the gate: the CTA is the ordinary one again.
+    await user.click(screen.getByRole('button', { name: /register & pay/i }))
+
+    expect(register).toHaveBeenCalledWith({ phase: 'idle' }, undefined, 'רמה 4.5–5')
+  })
+
+  // The guard that keeps every OTHER corporate event exactly as it was.
+  it('an event without categories shows no dropdown and registers exactly as before', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage() // the fixture's default event declares no competeLevels
+
+    expect(screen.queryByLabelText(i18n.t('corporate.reg.competeLevelTitle'), { exact: false })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /register & pay/i }))
+    // Called with the partner state ALONE — no trailing undefined argument.
+    expect(register).toHaveBeenCalledWith({ phase: 'idle' })
+    expect(register.mock.calls[0]).toHaveLength(1)
   })
 })

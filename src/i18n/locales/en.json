@@ -1167,7 +1167,12 @@
       "waiverReviewBody": "The tournament manager checks your documents before confirming the pair. If residency can't be verified the registration is cancelled and anything you paid is refunded in full — you can then register again at the regular fee. This can happen at any stage, including after the pair has been confirmed.",
       "signedInAs": "Signed in as <account>{{account}}</account>",
       "switchAccount": "Not you? Switch account",
-      "useExistingAccount": "Sign in to that account"
+      "useExistingAccount": "Sign in to that account",
+      "competeLevelTitle": "Which level do you want to compete in?",
+      "competeLevelPlaceholder": "Choose a level",
+      "competeLevelHint": "The level your pair asks to compete in. The tournament manager makes the final placement.",
+      "competeLevelRequired": "Choose the level you want to compete in",
+      "ctaMissingLevel": "Choose a level to continue"
     },
     "terms": {
       "title": "Tournament rules"

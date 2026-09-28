@@ -239,6 +239,8 @@ export interface MyRegistration {
   payment_status?: string | null
   fee_waiver_type?: string | null
   fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
+  /** The level category the pair chose at registration, or null. */
+  requested_level?: string | null
   fee_waiver_resident_count?: number | null
   /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
    *  absent from the object — never assume both keys are present. */
@@ -323,6 +325,8 @@ export interface RegistrationDetail {
    *  from rally-api's TournamentRegistrationResponse. */
   fee_waiver_type?: string | null
   fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
+  /** The level category the pair chose at registration, or null. */
+  requested_level?: string | null
   fee_waiver_resident_count?: number | null
 }
 
@@ -349,6 +353,8 @@ export interface FeeWaiverRequest {
 export type RegisterPayload = {
   acknowledged_messages: AcknowledgedMessageRef[]
   fee_waiver?: FeeWaiverRequest
+  /** The level category the pair asks to compete in (rally-api: optional, ≤64). */
+  requested_level?: string
 } & (
   | { partner_type: 'none' }
   | { partner_type: 'existing'; partner_player_id: string }
@@ -372,6 +378,8 @@ export interface TournamentRegistrationResult {
   entry_fee: number | null
   fee_waiver_type?: string | null
   fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
+  /** The level category the pair chose at registration, or null. */
+  requested_level?: string | null
   fee_waiver_resident_count?: number | null
   /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
    *  absent from the object — never assume both keys are present. */

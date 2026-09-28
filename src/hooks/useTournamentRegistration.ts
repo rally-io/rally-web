@@ -24,13 +24,22 @@ export function buildRegisterPayload(
   state: PartnerSelectionState,
   acknowledgedMessages: AcknowledgedMessageRef[],
   feeWaiver?: FeeWaiverRequest,
+  /** The level category the pair chose, for an event that offers categories. */
+  requestedLevel?: string,
 ): RegisterPayload {
+  // The optional fields every partner shape carries, built ONCE. Each is only
+  // present when there is one: a plain registration's payload stays exactly
+  // what it was, with no `fee_waiver: undefined` or `requested_level: ''` keys.
+  const extras = {
+    ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
+    ...(requestedLevel ? { requested_level: requestedLevel } : {}),
+  }
   const needsPartner = format === 'doubles' || format === 'mixed'
   if (!needsPartner) {
     return {
       partner_type: 'none',
       acknowledged_messages: acknowledgedMessages,
-      ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
+      ...extras,
     }
   }
 
@@ -40,7 +49,7 @@ export function buildRegisterPayload(
         partner_type: 'existing',
         partner_player_id: state.partner.id,
         acknowledged_messages: acknowledgedMessages,
-        ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
+        ...extras,
       }
     }
     return {
@@ -50,14 +59,14 @@ export function buildRegisterPayload(
       invite_country_code: state.partner.countryCode,
       invite_phone: state.partner.phone,
       acknowledged_messages: acknowledgedMessages,
-      ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
+      ...extras,
     }
   }
   // Guard — unreachable when the partner-required gate is enforced by the caller.
   return {
     partner_type: 'none',
     acknowledged_messages: acknowledgedMessages,
-    ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
+    ...extras,
   }
 }
 
@@ -131,14 +140,14 @@ export function useTournamentRegistration(
   }, [gate.isSatisfied])
 
   const register = useCallback(
-    async (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest): Promise<void> => {
+    async (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest, requestedLevel?: string): Promise<void> => {
       if (!tournament) return
       const gate = gateRef.current
       setIsRegistering(true)
       setRegisterError(null)
       setGateError(null)
       try {
-        const payload = buildRegisterPayload(tournament.format, partnerState, gate.payload, feeWaiver)
+        const payload = buildRegisterPayload(tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel)
         const result = skipProfileRedirect
           ? await registerTournament(tournament.id, payload, { skipProfileRedirect: true })
           : await registerTournament(tournament.id, payload)

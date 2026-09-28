@@ -5,7 +5,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, CreditCard, Info, Pencil, Users } from 'lucide-react'
+import { CheckCircle2, CreditCard, Info, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTournament } from '@/hooks/useTournament'
 import { useAuthGate } from '@/hooks/useAuthGate'
@@ -19,6 +19,7 @@ import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
 import { ctaFor } from '@/lib/tournamentCta'
 import { isRegistrationOpen, formatCurrency } from '@/lib/tournamentHelpers'
 import { rememberAuthReturnTo } from '@/lib/authReturn'
+import { Select } from '@/components/ui/select'
 import { EventHero } from '@/components/corporate/EventHero'
 import { EventTerms } from '@/components/corporate/EventTerms'
 import { EvidencePicker } from '@/components/corporate/EvidencePicker'
@@ -227,6 +228,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         tr={tr}
         gate={gate}
         feeWaiver={event.feeWaiver}
+        competeLevels={event.competeLevels}
         pendingUpload={pendingUploadRef}
         refetchTournament={refetch}
         register={registration.register}
@@ -550,10 +552,12 @@ interface RegistrationFormProps {
   /** The event entry's fee-waiver flag, if it declares one. Offering the block
    *  also requires the loaded tournament to carry the same `fee_waiver_type`. */
   feeWaiver?: CorporateFeeWaiver
+  /** The event's level categories, if it offers any. Set ⇒ a REQUIRED dropdown. */
+  competeLevels?: string[]
   /** Where the form parks the evidence upload for the page's `onRegistered`. */
   pendingUpload: MutableRefObject<((reg: TournamentRegistrationResult) => Promise<void>) | null>
   refetchTournament: () => Promise<unknown>
-  register: (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest) => Promise<void>
+  register: (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest, requestedLevel?: string) => Promise<void>
   isRegistering: boolean
   registerError: string | null
   gateError: string | null
@@ -567,16 +571,18 @@ const WAIVER_OPTIONS: { value: 0 | 1 | 2; key: string }[] = [
 ]
 
 function RegistrationForm({
-  tr, gate, feeWaiver, pendingUpload, refetchTournament, register, isRegistering, registerError, gateError,
+  tr, gate, feeWaiver, competeLevels, pendingUpload, refetchTournament, register, isRegistering, registerError, gateError,
 }: RegistrationFormProps) {
   const { t } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
   const [partnerState, setPartnerState] = useState<PartnerSelectionState>({ phase: 'idle' })
   const [detailsOpen, setDetailsOpen] = useState(false)
-  /** Set by the level row's own button, so the modal opens past the pencil. */
-  const [detailsEditLevel, setDetailsEditLevel] = useState(false)
   const [savedDetails, setSavedDetails] = useState<SavedProfileEssentials | null>(null)
   const [residentCount, setResidentCount] = useState<0 | 1 | 2>(0)
+  // The level category the pair is entering — '' until one is picked. Only
+  // meaningful when the event offers categories; see `levelMissing`.
+  const [competeLevel, setCompeteLevel] = useState('')
+  const [competeLevelError, setCompeteLevelError] = useState(false)
   const [myFiles, setMyFiles] = useState<File[]>([])
   const [partnerFiles, setPartnerFiles] = useState<File[]>([])
   const [myEvidenceError, setMyEvidenceError] = useState<string | null>(null)
@@ -586,10 +592,7 @@ function RegistrationForm({
   // and the write, so this can only ever report what actually landed.
   const details = readProfileDetails(playerProfile, savedDetails)
 
-  const openDetails = (level: boolean) => {
-    setDetailsEditLevel(level)
-    setDetailsOpen(true)
-  }
+  const openDetails = () => setDetailsOpen(true)
 
   /**
    * A player who has just created an account stays inside a modal until Rally
@@ -620,6 +623,10 @@ function RegistrationForm({
   // `residents === 2` implies a two-seat format, so this second clause is a
   // no-op today — it keeps the rule ("two residents need a partner") local.
   const partnerRequired = (needsPartner || residents === 2) && partnerState.phase === 'idle'
+  // An event that offers level categories must get one before it registers the
+  // pair; every other event has none to ask about and is never held here.
+  const offersLevels = (competeLevels?.length ?? 0) > 0
+  const levelMissing = offersLevels && !competeLevel
   const busy = isRegistering
   // `waivedAmount(fee, seats, 0)` is the same number, but it would round a fee
   // that today is rendered verbatim — a no-waiver price stays untouched.
@@ -658,10 +665,15 @@ function RegistrationForm({
     // when it saves — so an incomplete profile reopens it rather than trying to
     // collect the fields here. rally-api would refuse the register call anyway.
     if (!details.complete) {
-      openDetails(false)
+      openDetails()
       return
     }
     if (!evidenceOk) return
+    if (levelMissing) {
+      setCompeteLevelError(true)
+      document.getElementById('compete-level-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (partnerRequired) {
       document.getElementById('partner-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
@@ -702,7 +714,10 @@ function RegistrationForm({
     // Only ever passed when there is one. An explicit `undefined` reads the same
     // to the hook, but it would make a plain registration a different call at
     // every seam that records one — this path stays byte-for-byte what it was.
-    if (waiverRequest) await register(partnerState, waiverRequest)
+    // Each extra is passed only when there is one, so an event without level
+    // categories makes exactly the call it made before this feature existed.
+    if (offersLevels) await register(partnerState, waiverRequest, competeLevel)
+    else if (waiverRequest) await register(partnerState, waiverRequest)
     else await register(partnerState)
   }
 
@@ -720,11 +735,11 @@ function RegistrationForm({
 
       <div className="space-y-5">
         {details.complete && (
-          /* Not a form section — nothing here is an input. It answers "does
-             Rally have me right?", and carries the one control that belongs on
-             a tournament page: a level, which is what an entry range is
-             written in. Name and phone are confirmation only; they change on
-             the profile, where a phone re-verification lives. */
+          /* Not a form section — nothing here is an input. It answers "does Rally
+             have me right?": who is registering and how to reach them. Name and
+             phone change on the profile, where phone re-verification lives. The
+             player's RATING is deliberately not here — what this tournament asks
+             is which category the pair enters, and that is its own section below. */
           <section
             aria-labelledby="cr-details-heading"
             className="rounded-xl border border-rally-border bg-rally-surface-2 px-4 py-3.5"
@@ -735,21 +750,50 @@ function RegistrationForm({
             {/* Latin digits inside Hebrew copy — isolate them or bidi reorders. */}
             <p className="text-sm font-semibold text-rally-text">{details.name}</p>
             <p className="text-sm text-rally-text-2"><bdi dir="ltr">{details.phone}</bdi></p>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-rally-border pt-3">
-              <span className="text-sm text-rally-text-2">{t('corporate.reg.level')}</span>
-              <span className="flex items-center gap-3">
-                <span className="text-sm font-bold text-rally-text"><bdi dir="ltr">{details.level}</bdi></span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => openDetails(true)}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-rally-accent hover:text-rally-accent-hover disabled:opacity-50"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  {t('corporate.reg.levelEdit')}
-                </button>
-              </span>
-            </div>
+          </section>
+        )}
+
+        {offersLevels && (
+          /* Which category the PAIR enters — the rulebook's "each pair marks its
+             level at registration". Not the player's rating: a pair of 3.9s may
+             rightly enter 3.5–4, and the manager places pairs from this answer once
+             registration closes. Required, and it looks it: the asterisk, the muted
+             placeholder, and a submit that stops here until one is chosen. */
+          <section id="compete-level-section">
+            <label
+              htmlFor="cr-compete-level"
+              className="block font-display font-bold text-sm text-rally-text mb-2"
+            >
+              {t('corporate.reg.competeLevelTitle')}
+              <span aria-hidden className="text-rally-accent ms-0.5">*</span>
+            </label>
+            <Select
+              id="cr-compete-level"
+              required
+              value={competeLevel}
+              disabled={busy}
+              aria-invalid={competeLevelError && !competeLevel}
+              aria-describedby={competeLevelError && !competeLevel ? 'cr-compete-level-error' : 'cr-compete-level-hint'}
+              onChange={(e) => {
+                setCompeteLevel(e.target.value)
+                setCompeteLevelError(false)
+              }}
+              className={competeLevelError && !competeLevel ? 'border-rally-error' : undefined}
+            >
+              <option value="" disabled>{t('corporate.reg.competeLevelPlaceholder')}</option>
+              {competeLevels!.map((level) => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </Select>
+            {competeLevelError && !competeLevel ? (
+              <p id="cr-compete-level-error" role="alert" className="text-xs text-rally-error mt-1.5">
+                {t('corporate.reg.competeLevelRequired')}
+              </p>
+            ) : (
+              <p id="cr-compete-level-hint" className="text-xs text-rally-text-muted mt-1.5 leading-relaxed">
+                {t('corporate.reg.competeLevelHint')}
+              </p>
+            )}
           </section>
         )}
 
@@ -888,6 +932,7 @@ function RegistrationForm({
         className="mt-5 w-full h-12 rounded-full bg-rally-accent text-rally-accent-text font-display font-bold text-base shadow-glow-electric hover:bg-rally-accent-hover disabled:opacity-50 transition-colors"
       >
         {busy ? t('corporate.reg.submitting')
+          : levelMissing ? t('corporate.reg.ctaMissingLevel')
           : partnerRequired ? t('tournament.ctaMissingPartner')
           : amountDue < 0.01 ? t('corporate.reg.submitCtaFree')
           : t('corporate.reg.submitCta')}
@@ -906,7 +951,6 @@ function RegistrationForm({
       open={detailsOpen}
       onOpenChange={setDetailsOpen}
       tournamentLevel={tournamentLevel}
-      editLevel={detailsEditLevel}
       onSaved={setSavedDetails}
     />
     </>
