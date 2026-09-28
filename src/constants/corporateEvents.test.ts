@@ -48,6 +48,7 @@ describe('the Holon Israel Open level categories', () => {
       '3.0 - 3.5 (C2 - C1)',
       '3.5 - 4.0 (C1 - B2)',
       '4.0 - 4.5 (B2 - B1)',
+      '4.5 - 5.0 (B1 - A)',
     ])
   })
 })
