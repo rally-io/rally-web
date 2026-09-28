@@ -1107,7 +1107,6 @@
       "lastName": "Last name",
       "phone": "Your mobile number",
       "level": "Your level",
-      "levelHint": "Same scale as the tournaments: 1.0–7.0, D2–A1.",
       "phoneLocked": "From your profile. To change it, use the profile page in the app.",
       "levelLocked": "Your level on Rally.",
       "levelEdit": "Change",

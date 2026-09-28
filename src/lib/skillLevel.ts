@@ -8,6 +8,15 @@ export const SKILL_MAX = 7.0
    `SKILL_DECIMALS` is the shared source for both the step and every readout. */
 export const SKILL_DECIMALS = 2
 export const SKILL_STEP = 0.01
+/* The DRAG step, kept apart from the precision above. Dragging moves in quarter points, the
+   same jumps as the app's level slider (rally-mobile KnowSkillLevelScreen, SLIDER_STEP = 0.25),
+   so a level feels the same on every Rally surface.
+
+   The precision stays 0.01, which is what keeps the reasoning above intact: a rated 4.17 that
+   nobody touches is saved as 4.17 (a controlled range input keeps its off-grid value until it is
+   moved), and the number above the track still takes any 0.01 value — so a player who drags and
+   regrets it can type their exact level back. Only `SkillLevelSlider`'s track uses this. */
+export const SKILL_SLIDER_STEP = 0.25
 export const SKILL_DEFAULT = 3.0
 
 /** Round to the scale's precision. Note this is a plain round, not a division-by-step: at 0.01,

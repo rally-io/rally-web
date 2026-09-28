@@ -317,26 +317,23 @@ export function ProfileDetailsModal({
                 </button>
               </div>
             ) : (
-              // The same 1.0–7.0 slider the profile editor uses — tournaments are
-              // defined on this scale ("3.5 - 4.5 (B2 - B1)"), so a self-assessed
-              // level has to be a number on it, not a coarse band.
-              <div className="rounded-md bg-rally-surface-2 border border-rally-border px-3 py-3">
-                <SkillLevelSlider value={level} onChange={setLevel} />
-                {level != null && (
-                  <p data-testid="cr-level-readout" className="mt-2 text-sm font-bold text-rally-accent">
-                    <bdi dir="ltr">{formatLevelWithTier(level)}</bdi>
-                  </p>
-                )}
-              </div>
+              // The web's level slider, mounted exactly as Edit Profile mounts it. Its
+              // number, track, ticks and note ARE the control. This used to sit in an
+              // extra box with a second readout ("2.0 (D1)" under a "2.00") and a
+              // second hint, which made the modal a variant of the slider rather than
+              // the slider — one number shown two ways, side by side.
+              <SkillLevelSlider value={level} onChange={setLevel} />
             )}
-            {/* role only when this <p> is carrying the error — an always-on alert
-                would announce (and match `getByRole('alert')` as) the hint. */}
-            <p role={errors.level ? 'alert' : undefined} className="text-xs mt-1.5 leading-relaxed text-rally-text-muted">
-              {errors.level ? <span className="text-rally-error">{errors.level}</span>
-                : levelLocked && !levelEditing ? t('corporate.reg.levelLocked')
-                : levelLocked ? t('corporate.reg.levelEditNote')
-                : t('corporate.reg.levelHint')}
-            </p>
+            {/* Only what the slider cannot say for itself: a validation error, or the
+                note about a level this account already has. `role` only while it
+                carries the error — an always-on alert would announce the note. */}
+            {(errors.level || levelLocked) && (
+              <p role={errors.level ? 'alert' : undefined} className="text-xs mt-1.5 leading-relaxed text-rally-text-muted">
+                {errors.level ? <span className="text-rally-error">{errors.level}</span>
+                  : !levelEditing ? t('corporate.reg.levelLocked')
+                  : t('corporate.reg.levelEditNote')}
+              </p>
+            )}
             {tournamentLevel && (
               <p className="text-xs mt-1 text-rally-text-2">
                 {/* The range is Latin + digits ("2.5 - 3.8 (C2)") inside Hebrew copy —

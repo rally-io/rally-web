@@ -4,6 +4,7 @@ import {
   SKILL_MIN,
   SKILL_MAX,
   SKILL_STEP,
+  SKILL_SLIDER_STEP,
   clampSkill,
   formatSkill,
 } from '@/lib/skillLevel'
@@ -117,7 +118,9 @@ export function SkillLevelSlider({ value, onChange }: Props) {
         type="range"
         min={SKILL_MIN}
         max={SKILL_MAX}
-        step={SKILL_STEP}
+        // Quarter-point jumps, like the app. The number above keeps SKILL_STEP (0.01)
+        // so an exact rated level can still be typed — see SKILL_SLIDER_STEP.
+        step={SKILL_SLIDER_STEP}
         value={shown}
         onChange={handleRangeChange}
         onPointerUp={handleRangePointerUp}
