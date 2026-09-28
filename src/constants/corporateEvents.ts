@@ -156,9 +156,13 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
   // 2026-09-27: unlisted keeps it out of every public list, feed and
   // announcement, while registration_open is what lets a pair actually register
   // (`register_tournament` refuses any other status). The slug is the only way in.
-  'israel-open-2026': {
+  //
+  // Renamed from `israel-open-2026` on 2026-09-28, after the link had already gone
+  // out for feedback. vercel.json redirects the old path here permanently, so
+  // those copies still land — keep that redirect for as long as the event runs.
+  'holon-israel-open-2026': {
     mode: 'tournament',
-    slug: 'israel-open-2026',
+    slug: 'holon-israel-open-2026',
     tournamentId: '7acb6027-33df-456a-8d3c-6ba4073b72ef',
     company: 'Padel Time Club',
     tournamentName: 'אליפות ישראל\nהפתוחה בפאדל',

@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/join/israel-open-2026",
+      "destination": "/join/holon-israel-open-2026",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/clubs/:id",
