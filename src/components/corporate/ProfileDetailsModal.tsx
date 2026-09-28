@@ -21,9 +21,6 @@ interface ProfileDetailsModalProps {
    *  for an all-levels tournament. Shown beside the slider, where the choice is
    *  actually made. */
   tournamentLevel: string | null
-  /** Open with the level editor already unlocked — the caller's control said
-   *  "change my level", so making them click the pencil again is a dead step. */
-  editLevel?: boolean
   /**
    * The essentials as written, handed straight back to the caller. The profile
    * query needs a refetch round-trip to catch up, and the summary card must not
@@ -56,7 +53,7 @@ export interface SavedProfileEssentials {
  * partner search (`PartnerSection` needs a `players` row to search from).
  */
 export function ProfileDetailsModal({
-  open, onOpenChange, tournamentLevel, editLevel = false, onSaved,
+  open, onOpenChange, tournamentLevel, onSaved,
 }: ProfileDetailsModalProps) {
   const { t, i18n } = useTranslation()
   const { ensure, playerProfile, phoneLocked, levelLocked } = useEnsureProfileEssentials()
@@ -84,12 +81,12 @@ export function ProfileDetailsModal({
   const [phoneConflict, setPhoneConflict] = useState(false)
   const signedInAs = user?.email || user?.phone || null
 
-  // Each opening starts from the caller's intent, not from the last one's
-  // leftovers: reopening plain must not inherit an editor the player opened,
-  // and reopening from "change my level" must not need the pencil again.
+  // Each opening starts with a stored level LOCKED: reopening must not inherit
+  // an editor the player opened last time, or a prefilled slider could quietly
+  // overwrite a rated level. Only this modal's own ✏️ unlocks it.
   useEffect(() => {
-    if (open) setLevelEditing(editLevel)
-  }, [open, editLevel])
+    if (open) setLevelEditing(false)
+  }, [open])
 
   // Prefill once the profile lands; a stored phone/level is shown, never edited.
   useEffect(() => {

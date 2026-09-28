@@ -29,6 +29,8 @@ const REQUIRED_REG_KEYS = [
   'waiverReviewTitle', 'waiverReviewBody',
   // Which account the details modal is filling in, and the way out of the wrong one
   'signedInAs', 'switchAccount', 'useExistingAccount',
+  // The level category a pair enters (תקנון §4.1)
+  'competeLevelTitle', 'competeLevelPlaceholder', 'competeLevelHint', 'competeLevelRequired', 'ctaMissingLevel',
 ]
 
 describe('corporate copy parity', () => {

@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
@@ -574,17 +575,13 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
               <Label htmlFor="country_code" className="mb-1 block text-sm">
                 {t('edit_profile.countryCode')}
               </Label>
-              <select
-                id="country_code"
-                {...form.register('country_code')}
-                className="h-11 w-full rounded-lg border border-rally-border bg-rally-surface-2 px-3 text-base sm:text-sm text-rally-text"
-              >
+              <Select id="country_code" {...form.register('country_code')}>
                 {COUNTRY_CODES.map((c) => (
                   <option key={c.iso} value={c.dial}>
                     {c.flag} {c.dial}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </div>
 
