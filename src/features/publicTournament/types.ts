@@ -28,6 +28,14 @@ export const SetScoreSchema = z.object({
 });
 export type SetScore = z.infer<typeof SetScoreSchema>;
 
+/** An empty first-round knockout side, named by what will fill it (API `SlotPlaceholder`). */
+export const SlotPlaceholderSchema = z.object({
+    kind: z.enum(['group_position', 'lucky_loser']),
+    group: z.string().nullish().catch(null),
+    position: z.number().nullish().catch(null),
+});
+export type SlotPlaceholder = z.infer<typeof SlotPlaceholderSchema>;
+
 export const PublicMatchSchema = z.object({
     id: z.string(),
     match_label: z.union([z.string(), z.number()]).nullish().catch(null),
@@ -35,6 +43,8 @@ export const PublicMatchSchema = z.object({
     round_number: z.number().nullish().catch(null),
     team_a: PublicTeamSchema.nullish().catch(null),
     team_b: PublicTeamSchema.nullish().catch(null),
+    team_a_placeholder: SlotPlaceholderSchema.nullish().catch(null),
+    team_b_placeholder: SlotPlaceholderSchema.nullish().catch(null),
     sets: z.array(SetScoreSchema).catch([]),
     winner_team: z.enum(['team_a', 'team_b']).nullish().catch(null),
     next_match_id: z.string().nullish().catch(null),

@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { PublicBracketData, PublicMatch, PublicPlayer, PublicRound, PublicTeam } from './types';
+import type { PublicBracketData, PublicMatch, PublicPlayer, PublicRound, PublicTeam, SlotPlaceholder } from './types';
 
 export function playerFullName(p: Pick<PublicPlayer, 'first_name' | 'last_name'> | null | undefined): string {
     return [p?.first_name, p?.last_name].filter(Boolean).join(' ');
@@ -38,6 +38,16 @@ export function localizeTeamPlaceholder(name: string, t: TFunction): string {
     return matched[1].toLowerCase() === 'winner'
         ? t('public_bracket.winner_of_match', { num, defaultValue: `Winner of Match #${num}` })
         : t('public_bracket.loser_of_match', { num, defaultValue: `Loser of Match #${num}` });
+}
+
+/** "Runner-up Group C" / "Lucky loser" for an empty knockout side, or null. */
+export function slotPlaceholderLabel(placeholder: SlotPlaceholder | null | undefined, t: TFunction): string | null {
+    if (!placeholder) return null;
+    if (placeholder.kind === 'lucky_loser') return t('public_bracket.slot.lucky_loser', { defaultValue: 'Lucky loser' });
+    const group = placeholder.group ?? '';
+    if (placeholder.position === 1) return t('public_bracket.slot.winner', { group, defaultValue: `Winner Group ${group}` });
+    if (placeholder.position === 2) return t('public_bracket.slot.runner_up', { group, defaultValue: `Runner-up Group ${group}` });
+    return t('public_bracket.slot.position', { group, position: placeholder.position, defaultValue: `#${placeholder.position} Group ${group}` });
 }
 
 /**
