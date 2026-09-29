@@ -1,97 +1,68 @@
 import { describe, expect, it } from 'vitest'
-import { SKILL_TIERS, TOURNAMENT_LEVEL_BANDS, formatLevelWithTier, tierForLevel, tournamentLevelsBetween } from './skillTiers'
+import { FALLBACK_LADDERS } from './skillLadder'
+import { formatLevelWithTier, tierForLevel } from './skillTiers'
 
-describe('SKILL_TIERS', () => {
-  it('is the rally-api SKILL_LEVEL_RANGES table, contiguous and ascending', () => {
-    expect(SKILL_TIERS.map((t) => t.code)).toEqual(['D2', 'D1', 'C2', 'C1', 'B2', 'B1', 'A2', 'A1'])
-    for (let i = 1; i < SKILL_TIERS.length; i++) {
-      expect(SKILL_TIERS[i].min).toBe(SKILL_TIERS[i - 1].max)
-    }
-    expect(SKILL_TIERS[0].min).toBe(1.0)
-    expect(SKILL_TIERS[SKILL_TIERS.length - 1].max).toBe(7.0)
-  })
-})
+const L7 = FALLBACK_LADDERS[7]
+const L5 = FALLBACK_LADDERS[5]
 
 describe('tierForLevel', () => {
-  it('resolves each boundary half-open, the way the API displays a rating', () => {
-    expect(tierForLevel(1.0)).toBe('D2')
-    expect(tierForLevel(1.9)).toBe('D2')
-    expect(tierForLevel(2.0)).toBe('D1')
-    expect(tierForLevel(2.5)).toBe('C2')
-    expect(tierForLevel(3.0)).toBe('C1')
-    expect(tierForLevel(3.5)).toBe('B2')
-    expect(tierForLevel(3.9)).toBe('B2')
-    expect(tierForLevel(4.0)).toBe('B1')
-    expect(tierForLevel(4.68)).toBe('B1')
-    expect(tierForLevel(5.0)).toBe('A2')
-    expect(tierForLevel(6.0)).toBe('A1')
+  it('resolves each boundary half-open, the way the API displays a rating (1–7 ladder)', () => {
+    expect(tierForLevel(1.0, L7)).toBe('D2')
+    expect(tierForLevel(1.9, L7)).toBe('D2')
+    expect(tierForLevel(2.0, L7)).toBe('D1')
+    expect(tierForLevel(2.5, L7)).toBe('C2')
+    expect(tierForLevel(3.0, L7)).toBe('C1')
+    expect(tierForLevel(3.5, L7)).toBe('B2')
+    expect(tierForLevel(3.9, L7)).toBe('B2')
+    expect(tierForLevel(4.0, L7)).toBe('B1')
+    expect(tierForLevel(4.68, L7)).toBe('B1')
+    expect(tierForLevel(5.0, L7)).toBe('A2')
+    expect(tierForLevel(6.0, L7)).toBe('A1')
+  })
+
+  it('on the 1–5 ladder B1 ends at 4.5 and everything above it is A', () => {
+    expect(tierForLevel(3.9, L5)).toBe('B2')
+    expect(tierForLevel(4.0, L5)).toBe('B1')
+    expect(tierForLevel(4.35, L5)).toBe('B1')
+    expect(tierForLevel(4.49, L5)).toBe('B1')
+    expect(tierForLevel(4.5, L5)).toBe('A')
+    expect(tierForLevel(4.7, L5)).toBe('A')
   })
 
   it('clamps the ends instead of throwing', () => {
-    expect(tierForLevel(7.0)).toBe('A1')
-    expect(tierForLevel(9)).toBe('A1')
-    expect(tierForLevel(0)).toBe('D2')
+    expect(tierForLevel(7.0, L7)).toBe('A1')
+    expect(tierForLevel(9, L7)).toBe('A1')
+    expect(tierForLevel(0, L7)).toBe('D2')
+    expect(tierForLevel(5.0, L5)).toBe('A')
+    expect(tierForLevel(0, L5)).toBe('D2')
   })
 })
 
 describe('formatLevelWithTier', () => {
-  it('prints the stored number to one decimal with its tier', () => {
-    expect(formatLevelWithTier(4.0)).toBe('4.0 (B1)')
-    expect(formatLevelWithTier(4.68)).toBe('4.6 (B1)')
-    expect(formatLevelWithTier(5.0)).toBe('5.0 (A2)')
-    expect(formatLevelWithTier(7.0)).toBe('7.0 (A1)')
+  it('prints the stored number to one decimal with its band', () => {
+    expect(formatLevelWithTier(4.0, L7)).toBe('4.0 (B1)')
+    expect(formatLevelWithTier(4.68, L7)).toBe('4.6 (B1)')
+    expect(formatLevelWithTier(5.0, L7)).toBe('5.0 (A2)')
+    expect(formatLevelWithTier(7.0, L7)).toBe('7.0 (A1)')
+    expect(formatLevelWithTier(4.35, L5)).toBe('4.3 (B1)')
+    expect(formatLevelWithTier(4.7, L5)).toBe('4.7 (A)')
+    expect(formatLevelWithTier(5.0, L5)).toBe('5.0 (A)')
   })
 
-  it('never prints a number from one tier beside the name of another', () => {
-    // Rounding would make each of these read "N.0" while the tier stays the one
-    // BELOW N.0 — a label contradicting itself. Truncation cannot cross a bound.
-    for (const level of [2.95, 3.95, 4.95, 5.95]) {
-      const label = formatLevelWithTier(level)
-      const [shown, tier] = label.replace(')', '').split(' (')
-      expect(tierForLevel(Number(shown))).toBe(tier)
+  it('never prints a number from one band beside the name of another, on either ladder', () => {
+    // Rounding would make each of these read "N.0"/"N.5" while the band stays the one BELOW
+    // that edge — a label contradicting itself. Truncation cannot cross a bound.
+    const cases: Array<[typeof L7, number[]]> = [
+      [L7, [2.95, 3.95, 4.95, 5.95]],
+      [L5, [2.95, 3.95, 4.49, 4.99]],
+    ]
+    for (const [ladder, levels] of cases) {
+      for (const level of levels) {
+        const [shown, tier] = formatLevelWithTier(level, ladder).replace(')', '').split(' (')
+        expect(tierForLevel(Number(shown), ladder)).toBe(tier)
+      }
     }
-    expect(formatLevelWithTier(4.95)).toBe('4.9 (B1)')
-  })
-})
-
-describe('TOURNAMENT_LEVEL_BANDS / tournamentLevelsBetween', () => {
-  // The strings production tournaments actually carry as their level (checked
-  // 2026-09-28). A pair choosing its category must read the same text a tournament
-  // shows, so these are pinned verbatim.
-  it('writes each band the way a tournament shows its level, letter range included', () => {
-    const labels = TOURNAMENT_LEVEL_BANDS.map((b) => b.label)
-    expect(labels).toContain('2.5 - 3.0 (D1 - C2)')
-    expect(labels).toContain('3.0 - 3.5 (C2 - C1)')
-    expect(labels).toContain('3.5 - 4.0 (C1 - B2)')
-    expect(labels).toContain('4.0 - 4.5 (B2 - B1)')
-  })
-
-  it('from 2 to 5: every band inside the range, lowest first, and nothing outside it', () => {
-    expect(tournamentLevelsBetween(2, 5)).toEqual([
-      '2.0 - 2.5 (D1)',
-      '2.5 - 3.0 (D1 - C2)',
-      '3.0 - 3.5 (C2 - C1)',
-      '3.5 - 4.0 (C1 - B2)',
-      '4.0 - 4.5 (B2 - B1)',
-      '4.5 - 5.0 (B1 - A)',
-    ])
-  })
-
-  it('keeps a band only when it lies wholly inside the range', () => {
-    // D2 (1.0–1.5) starts below 2; A2 (5.0–5.5) ends above 5 — both out.
-    expect(tournamentLevelsBetween(2, 5)).not.toContain('1.0 - 1.5 (D2)')
-    expect(tournamentLevelsBetween(2, 5)).not.toContain('5.0 - 5.5 (A2)')
-  })
-
-  // The gap the owner found: the tournament table had nothing between 4.5 and 5.0, so a
-  // pair at 4.7 had no category. Whatever the bands become, 2 to 5 must be covered
-  // end to end — each band starting exactly where the one before it ended.
-  it('covers 2 to 5 end to end, with no hole a pair could fall into', () => {
-    const bands = TOURNAMENT_LEVEL_BANDS.filter((b) => b.min >= 2 && b.max <= 5)
-    expect(bands[0].min).toBe(2)
-    expect(bands[bands.length - 1].max).toBe(5)
-    for (let i = 1; i < bands.length; i++) {
-      expect(bands[i].min, `hole between ${bands[i - 1].label} and ${bands[i].label}`).toBe(bands[i - 1].max)
-    }
+    expect(formatLevelWithTier(4.95, L7)).toBe('4.9 (B1)')
+    expect(formatLevelWithTier(4.49, L5)).toBe('4.4 (B1)')
   })
 })

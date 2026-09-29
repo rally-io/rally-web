@@ -10,6 +10,7 @@ import {
   verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState,
 } from './CorporateRegistrationPage.fixtures'
 import type { TournamentRegistrationResult } from '@/types/api'
+import { LevelWriteRefusedError } from '@/lib/levelWrite'
 
 beforeEach(resetPageMocks)
 
@@ -742,6 +743,22 @@ describe('CorporateRegistrationPage — details modal: phone verification and th
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(i18n.t('corporate.reg.profileSaveError'))
     expect(alert).not.toHaveTextContent(/phone number and level/i)
+  })
+
+  it('a level the API refused (contract §7) is explained in the page\'s language, not the API\'s', async () => {
+    const user = userEvent.setup()
+    setNewAccountProfile()
+    ensure.mockRejectedValueOnce(
+      new LevelWriteRefusedError('scaleMismatch', 'The level scale changed. Reload and try again.'),
+    )
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await completeDetails(user)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(i18n.t('level.writeRefused.scaleMismatch'))
+    expect(alert).not.toHaveTextContent('Reload and try again')
+    expect(register).not.toHaveBeenCalled()
   })
 
   it('says which account it is filling in, and "not you?" signs out', async () => {

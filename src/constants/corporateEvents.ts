@@ -8,7 +8,7 @@ import type { TermsSection } from './eventTerms'
 import { ISRAEL_OPEN_TERMS } from './israelOpenTerms.js'
 // Relative with `.js`, never the `@/` alias: api/join-og.ts imports this module and
 // runs as native ESM, where Node resolves neither an alias nor a bare specifier.
-import { tournamentLevelsBetween } from '../lib/skillTiers.js'
+import { tournamentLevelsBetween } from '../lib/tournamentLevelBands.js'
 
 /**
  * Closed corporate tournaments — one entry per event.

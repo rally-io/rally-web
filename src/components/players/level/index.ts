@@ -9,7 +9,7 @@ export { ReliabilityRing } from './ReliabilityRing'
 export { LevelStatusLine } from './LevelStatusLine'
 export { LevelExplainerSheet } from './LevelExplainerSheet'
 export { BlockIcon } from './BlockIcon'
-export { EXPLAINER_BLOCKS } from './explainerBlocks'
+export { explainerBlocksFor } from './explainerBlocks'
 export type { ExplainerBlock } from './explainerBlocks'
 export {
   INACTIVITY_GRACE_MONTHS,

@@ -418,6 +418,11 @@ export interface ProfileUpdateRequest {
   contact_number?: string
   country_code?: string
   skill_level?: number
+  /** Contract §7: the scale `skill_level` (and `skill_level_base`) is on. Sent with every level write. */
+  level_scale?: number
+  /** Contract §7: the level this page loaded (null if none). Without it rally-api ignores a change
+      to an already-chosen level; with a stale one it refuses the save. See lib/levelWrite.ts. */
+  skill_level_base?: number | null
 }
 
 // PROFILE_FIELDS_REQUIRED error
@@ -457,6 +462,8 @@ export interface PlayerCreatePayload {
   gender?: Gender
   date_of_birth?: string           // 'YYYY-MM-DD'
   skill_level?: number
+  /** Contract §7: the scale `skill_level` is on. Sent with every level write. */
+  level_scale?: number
   membership?: string
   best_hand?: BestHand
   court_side?: CourtSide
@@ -477,6 +484,9 @@ export interface PlayerMe {
   email?: string | null
   skill_level: number | null
   skill_tier?: 'bronze' | 'silver' | 'gold' | null
+  /** rally-api step 0: the scale `skill_level` is on (7, then 5 after the flip). Absent on older
+      builds. Read by SkillLadderProvider (contract §3) and never written back. */
+  level_scale?: number | null
   avatar_url?: string | null
   /** Absent on a backend that predates the verified-level fields, or explicitly `null` when the
       backend has the field but declines to make a claim (e.g. a guest, who has no player row and

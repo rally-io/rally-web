@@ -8,6 +8,7 @@ import { useAutoDrainPages } from '@/hooks/useAutoDrainPages'
 import { useLoadMoreOnScroll } from '@/hooks/useLoadMoreOnScroll'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useRtl } from '@/hooks/useRtl'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
 import { TournamentFilterBar } from '@/components/tournaments/TournamentFilterBar'
 import { TournamentCard } from '@/components/tournaments/TournamentCard'
 import { MonthArchive } from '@/components/archive/MonthArchive'
@@ -48,6 +49,7 @@ export default function TournamentsPage() {
   const { t } = useTranslation()
   const { locale } = useRtl()
   const { status } = useAppSession()
+  const ladder = useSkillLadder()
   const signedOut = status === 'signed_out'
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -155,13 +157,16 @@ export default function TournamentsPage() {
   const historySentinelRef = useLoadMoreOnScroll(history)
 
   const visibleList = useMemo(
-    () => (clientFiltering ? loadedList.filter((tr) => matchesFilters(tr, filters)) : loadedList),
-    [clientFiltering, loadedList, filters],
+    () =>
+      clientFiltering ? loadedList.filter((tr) => matchesFilters(tr, filters, ladder)) : loadedList,
+    [clientFiltering, loadedList, filters, ladder],
   )
   const visibleHistory = useMemo(
     () =>
-      clientFiltering ? loadedHistory.filter((tr) => matchesFilters(tr, filters)) : loadedHistory,
-    [clientFiltering, loadedHistory, filters],
+      clientFiltering
+        ? loadedHistory.filter((tr) => matchesFilters(tr, filters, ladder))
+        : loadedHistory,
+    [clientFiltering, loadedHistory, filters, ladder],
   )
 
   // Promoted slots are only meaningful over the API's own served order —

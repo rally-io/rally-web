@@ -1,11 +1,13 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuth } from '@/hooks/useAuth'
 import { createPlayerProfile } from '@/services/api/auth'
 import { updateProfile } from '@/services/api/profile'
 import { DEFAULT_COUNTRY } from '@/constants/countryCodes'
-import { normalizeSkillLevel } from '@/lib/skillLevel'
+import { normalizeSkillLevel, typedBounds } from '@/lib/skillLevel'
+import { useRefreshSkillLadder, useSkillLadder } from '@/hooks/useSkillLadder'
+import { LevelWriteRefusedError, apiFailureMessage, levelBase, levelWriteFields, levelWriteRefusal } from '@/lib/levelWrite'
 import type { ProfileUpdateRequest } from '@/types/api'
 
 export interface ProfileEssentialsInput {
@@ -52,12 +54,25 @@ export function useEnsureProfileEssentials() {
   const { status, playerProfile, refetchOnboarding } = useAppSession()
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const ladder = useSkillLadder()
+  const refreshLadder = useRefreshSkillLadder()
+  const skillBounds = useMemo(() => typedBounds(ladder), [ladder])
 
   const phoneLocked = !!playerProfile?.contact_number
-  const levelLocked = normalizeSkillLevel(playerProfile?.skill_level) != null
+  const levelLocked = normalizeSkillLevel(playerProfile?.skill_level, skillBounds) != null
 
   const ensure = useCallback(
     async (input: ProfileEssentialsInput): Promise<void> => {
+      // Contract §7: a refused level means this page's copy of the level or of the scale is
+      // stale — reload both before telling the player, so their next try starts from the truth.
+      const throwIfLevelRefused = async (res: unknown) => {
+        const refusal = levelWriteRefusal(res)
+        if (!refusal) return
+        refreshLadder()
+        await refetchOnboarding()
+        await queryClient.invalidateQueries({ queryKey: ['player-profile-me'] })
+        throw new LevelWriteRefusedError(refusal, apiFailureMessage(res) ?? refusal)
+      }
       if (status === 'profile_incomplete') {
         const res = await createPlayerProfile({
           first_name: input.firstName,
@@ -65,9 +80,12 @@ export function useEnsureProfileEssentials() {
           email: user?.email ?? '',
           contact_number: input.phone,
           country_code: DEFAULT_COUNTRY.dial,
-          ...(input.skillLevel != null ? { skill_level: input.skillLevel } : {}),
+          ...(input.skillLevel != null ? levelWriteFields(input.skillLevel, ladder) : {}),
         })
-        if (!res.success) throw apiError(res.error, 'PROFILE_CREATE_FAILED')
+        if (!res.success) {
+          await throwIfLevelRefused(res)
+          throw apiError(res.error, 'PROFILE_CREATE_FAILED')
+        }
       } else if (status === 'ready') {
         // `status` is derived from the ONBOARDING query alone; `playerProfile` is a
         // second query, enabled only once `has_player_profile` is true. So a `ready`
@@ -88,7 +106,7 @@ export function useEnsureProfileEssentials() {
           patch.contact_number = input.phone
           patch.country_code = DEFAULT_COUNTRY.dial
         }
-        const storedLevel = normalizeSkillLevel(playerProfile?.skill_level)
+        const storedLevel = normalizeSkillLevel(playerProfile?.skill_level, skillBounds)
         if (
           input.skillLevel != null &&
           (storedLevel == null ||
@@ -96,11 +114,18 @@ export function useEnsureProfileEssentials() {
             // here means "opened it" never costs a write.
             (input.overwriteStoredLevel && input.skillLevel !== storedLevel))
         ) {
-          patch.skill_level = input.skillLevel
+          // Contract §7: tag the scale, and name the level being replaced — without the base
+          // rally-api ignores a change to an already-chosen level on this general update.
+          Object.assign(patch, levelWriteFields(input.skillLevel, ladder), {
+            skill_level_base: levelBase(playerProfile.skill_level, ladder),
+          })
         }
         if (Object.keys(patch).length > 0) {
           const res = await updateProfile(patch)
-          if (!res.success) throw apiError(res.error, 'PROFILE_UPDATE_FAILED')
+          if (!res.success) {
+            await throwIfLevelRefused(res)
+            throw apiError(res.error, 'PROFILE_UPDATE_FAILED')
+          }
         }
       } else {
         throw new Error('SESSION_NOT_READY')
@@ -108,7 +133,7 @@ export function useEnsureProfileEssentials() {
       await refetchOnboarding()
       await queryClient.invalidateQueries({ queryKey: ['player-profile-me'] })
     },
-    [status, playerProfile, user?.email, refetchOnboarding, queryClient],
+    [status, playerProfile, user?.email, refetchOnboarding, queryClient, skillBounds, ladder, refreshLadder],
   )
 
   return { ensure, status, playerProfile, phoneLocked, levelLocked }

@@ -1,6 +1,8 @@
 // src/lib/tournamentHelpers.ts — ported 1:1 from mobile (spec §7)
 
 import type { Placement } from '@/types/api'
+import type { SkillLadder } from '@/lib/skillLadder'
+import { bucketForLevel, skillBucketLabelKey } from '@/lib/skillBuckets'
 
 export function isRegistrationOpen(deadline: string | null | undefined): boolean {
   if (!deadline) return true
@@ -217,16 +219,15 @@ export function formatTournamentSkillRange(
   return `‎${hi} - ${lo}‎`
 }
 
+/**
+ * The skill bucket a tournament's range names, from the band its midpoint falls in on the
+ * ladder in force (skillBuckets.ts) — the same buckets the filter chips use.
+ */
 export function getSkillLevelName(
-  min: number, max: number, t?: (key: string) => string,
+  min: number, max: number, ladder: SkillLadder, t?: (key: string) => string,
 ): string {
   if (!min && !max) return t ? t('tournament.skillLevelAll') : 'All Levels'
-  const avg = (min + max) / 2
-  const key =
-    avg < 2.5 ? 'tournament.skillLevelBeginner'
-    : avg < 4.0 ? 'tournament.skillLevelIntermediate'
-    : avg < 5.5 ? 'tournament.skillLevelAdvanced'
-    : 'tournament.skillLevelPro'
+  const key = skillBucketLabelKey(bucketForLevel((min + max) / 2, ladder))
   return t ? t(key) : key
 }
 
