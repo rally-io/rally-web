@@ -6,7 +6,6 @@ import type { ScreenMessage } from '@/features/screenMessages/types'
 function makeMessage(overrides: Partial<ScreenMessage> = {}): ScreenMessage {
   return {
     id: 'msg-1',
-    scope: 'tournament',
     version: 1,
     title: 'Official Tournament Rules',
     body: 'Rule 1: All participants must arrive 15 minutes before the match.\nRule 2: Fair play applies.',
@@ -16,10 +15,7 @@ function makeMessage(overrides: Partial<ScreenMessage> = {}): ScreenMessage {
     gate_actions: [],
     requires_acknowledgment: false,
     is_acknowledged: false,
-    starts_at: null,
-    ends_at: null,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
+    acknowledged_at: null,
     ...overrides,
   }
 }
