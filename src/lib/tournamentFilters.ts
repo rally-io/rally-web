@@ -1,7 +1,8 @@
 import type { TournamentListParams } from '@/services/api/tournaments'
 import type { Tournament } from '@/types/api'
 import { monthKey } from '@/lib/monthGroups'
-import { SKILL_MAX } from '@/lib/skillLevel'
+import { SKILL_BUCKETS, bucketRange, type SkillBucket } from '@/lib/skillBuckets'
+import type { SkillLadder } from '@/lib/skillLadder'
 
 /**
  * The tournament list filters, in one place.
@@ -19,29 +20,9 @@ import { SKILL_MAX } from '@/lib/skillLevel'
  * needs to know: `toServerParams` and `matchesFilters` both read the table.
  */
 
-export type SkillBucket = 'beginner' | 'intermediate' | 'advanced' | 'pro'
-
-export interface SkillBucketDef {
-  id: SkillBucket
-  /** Inclusive lower bound. */
-  min: number
-  /** Exclusive upper bound (inclusive for the top bucket). */
-  max: number
-  labelKey: string
-}
-
-/**
- * Four buckets over the 1.0–7.0 rating scale. The thresholds are the ones
- * `getSkillLevelName` already uses to name a tournament's range, and the
- * labels reuse its `tournament.skillLevel*` keys, so a filter chip and a
- * tournament's own "Intermediate" label can never disagree.
- */
-export const SKILL_BUCKETS: SkillBucketDef[] = [
-  { id: 'beginner', min: 1.0, max: 2.5, labelKey: 'tournament.skillLevelBeginner' },
-  { id: 'intermediate', min: 2.5, max: 4.0, labelKey: 'tournament.skillLevelIntermediate' },
-  { id: 'advanced', min: 4.0, max: 5.5, labelKey: 'tournament.skillLevelAdvanced' },
-  { id: 'pro', min: 5.5, max: SKILL_MAX, labelKey: 'tournament.skillLevelPro' },
-]
+// The skill buckets are defined once, by band, in skillBuckets.ts — shared with
+// getSkillLevelName so a filter chip and a tournament's own label never disagree.
+export { SKILL_BUCKETS, type SkillBucket } from '@/lib/skillBuckets'
 
 export interface TournamentFilters {
   clubIds: string[]
@@ -81,8 +62,9 @@ interface ServerDimension extends BaseDimension {
 
 interface ClientDimension extends BaseDimension {
   serverParam: null
-  /** True when the tournament satisfies *any* of the selected values. */
-  matches: (tr: Tournament, values: string[]) => boolean
+  /** True when the tournament satisfies *any* of the selected values. The
+   *  ladder in force decides what number range a skill bucket covers. */
+  matches: (tr: Tournament, values: string[], ladder: SkillLadder) => boolean
 }
 
 type FilterDimension = ServerDimension | ClientDimension
@@ -113,11 +95,8 @@ export const FILTER_DIMENSIONS: Record<keyof TournamentFilters, FilterDimension>
     param: 'skill',
     isValid: (v) => SKILL_BUCKETS.some((b) => b.id === v),
     serverParam: null,
-    matches: (tr, values) =>
-      values.some((id) => {
-        const bucket = SKILL_BUCKETS.find((b) => b.id === id)
-        return bucket ? skillRangeTouches(tr, bucket) : false
-      }),
+    matches: (tr, values, ladder) =>
+      values.some((id) => skillRangeTouches(tr, id as SkillBucket, ladder)),
   },
   months: {
     param: 'month',
@@ -137,21 +116,25 @@ export const FILTER_DIMENSIONS: Record<keyof TournamentFilters, FilterDimension>
  * touching the endpoint of the bucket next door does not put it in two lists.
  * A range of 0 (or an unreadable one) means the tournament is open to every
  * level, and an open tournament belongs in every bucket rather than none.
+ * The bucket's numbers come from the ladder: Pro is 5.0–7.0 on the 1–7 ladder
+ * and 4.5–5.0 on the 1–5 one.
  */
-function skillRangeTouches(tr: Tournament, bucket: SkillBucketDef): boolean {
+function skillRangeTouches(tr: Tournament, bucket: SkillBucket, ladder: SkillLadder): boolean {
   const rawMin = Number(tr.skill_level_min)
   const rawMax = Number(tr.skill_level_max)
   if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax)) return true
   if (rawMin <= 0 && rawMax <= 0) return true
+  const range = bucketRange(bucket, ladder)
+  if (!range) return false
   const min = Math.min(rawMin, rawMax)
   const max = Math.max(rawMin, rawMax)
   if (min === max) {
     return (
-      (min >= bucket.min && min < bucket.max) ||
-      (bucket.max >= SKILL_MAX && min === bucket.max)
+      (min >= range.min && min < range.max) ||
+      (range.max >= ladder.scale_max && min === range.max)
     )
   }
-  return min < bucket.max && max > bucket.min
+  return min < range.max && max > range.min
 }
 
 /** Local-time `YYYY-MM` of a start date — the same derivation `groupByMonth`
@@ -219,12 +202,16 @@ export function hasClientFilters(filters: TournamentFilters): boolean {
   )
 }
 
-export function matchesFilters(tr: Tournament, filters: TournamentFilters): boolean {
+export function matchesFilters(
+  tr: Tournament,
+  filters: TournamentFilters,
+  ladder: SkillLadder,
+): boolean {
   for (const key of FILTER_KEYS) {
     const dim = FILTER_DIMENSIONS[key]
     if (dim.serverParam !== null) continue // already applied by the API
     const values = filters[key] as string[]
-    if (values.length > 0 && !dim.matches(tr, values)) return false
+    if (values.length > 0 && !dim.matches(tr, values, ladder)) return false
   }
   return true
 }

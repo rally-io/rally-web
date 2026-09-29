@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  SKILL_MIN,
-  SKILL_MAX,
   SKILL_STEP,
   SKILL_SLIDER_STEP,
   clampSkill,
   formatSkill,
+  typedBounds,
 } from '@/lib/skillLevel'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
 import { useRtl } from '@/hooks/useRtl'
 
 interface Props {
@@ -16,10 +16,12 @@ interface Props {
   onChange: (next: number) => void
 }
 
-const TICKS = Array.from(
-  { length: SKILL_MAX - SKILL_MIN + 1 },
-  (_, i) => SKILL_MIN + i
-)
+/** One tick per whole level across the bounds: 1.0…7.0 before the scale flip, 1.0…5.0 after. */
+function wholeLevels(min: number, max: number): number[] {
+  const first = Math.ceil(min)
+  return Array.from({ length: Math.floor(max) - first + 1 }, (_, i) => first + i)
+}
+
 // Where the thumb sits before a player has chosen. The start of the scale, not
 // the middle: a thumb parked mid-track looks like a value someone already set,
 // and 4.0 is a real level a player could be mistaken for having picked.
@@ -27,6 +29,11 @@ const TICKS = Array.from(
 export function SkillLevelSlider({ value, onChange }: Props) {
   const { t } = useTranslation()
   const { dir } = useRtl()
+  // The served ladder's [scale_min, typed_max]. rally-api refuses a typed level above
+  // typed_max, so neither input may ever emit one.
+  const ladder = useSkillLadder()
+  const bounds = useMemo(() => typedBounds(ladder), [ladder])
+  const ticks = useMemo(() => wholeLevels(bounds.min, bounds.max), [bounds])
   const isEmpty = value == null
   const [text, setText] = useState(isEmpty ? '' : formatSkill(value))
   // Read inside the resync effect without making it a dependency: the effect
@@ -44,25 +51,25 @@ export function SkillLevelSlider({ value, onChange }: Props) {
   }, [value])
 
   const handleRangeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const next = clampSkill(parseFloat(e.target.value))
+    const next = clampSkill(parseFloat(e.target.value), bounds)
     onChange(next)
   }
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setText(e.target.value)
     const parsed = parseFloat(e.target.value)
-    if (!Number.isNaN(parsed) && parsed >= SKILL_MIN && parsed <= SKILL_MAX) {
-      onChange(clampSkill(parsed))
+    if (!Number.isNaN(parsed) && parsed >= bounds.min && parsed <= bounds.max) {
+      onChange(clampSkill(parsed, bounds))
     }
   }
 
   // Releasing the thumb commits a value even when it never moved. Without this
-  // the parking spot is a dead zone: an empty slider sits on SKILL_MIN, so
+  // the parking spot is a dead zone: an empty slider sits on the scale's floor, so
   // grabbing it and letting go there — or clicking the track there — fires no
   // change event and the level stays unchosen. Only while empty, and only from
   // the input's own value, so a deliberate release is never a silent default.
   const handleRangePointerUp = (e: React.PointerEvent<HTMLInputElement>) => {
-    if (isEmpty) onChange(clampSkill(parseFloat(e.currentTarget.value)))
+    if (isEmpty) onChange(clampSkill(parseFloat(e.currentTarget.value), bounds))
   }
 
   const handleTextBlur = () => {
@@ -74,15 +81,15 @@ export function SkillLevelSlider({ value, onChange }: Props) {
       setText(value == null ? '' : formatSkill(value))
       return
     }
-    const next = clampSkill(parsed)
+    const next = clampSkill(parsed, bounds)
     setText(formatSkill(next))
     if (next !== value) onChange(next)
   }
 
-  const shown = value ?? SKILL_MIN
+  const shown = value ?? bounds.min
   const fillPct = isEmpty
     ? '0%'
-    : `${((shown - SKILL_MIN) / (SKILL_MAX - SKILL_MIN)) * 100}%`
+    : `${((shown - bounds.min) / (bounds.max - bounds.min)) * 100}%`
 
   return (
     <div className="w-full">
@@ -90,8 +97,8 @@ export function SkillLevelSlider({ value, onChange }: Props) {
         <input
           type="number"
           inputMode="decimal"
-          min={SKILL_MIN}
-          max={SKILL_MAX}
+          min={bounds.min}
+          max={bounds.max}
           step={SKILL_STEP}
           value={text}
           onChange={handleTextChange}
@@ -116,8 +123,8 @@ export function SkillLevelSlider({ value, onChange }: Props) {
 
       <input
         type="range"
-        min={SKILL_MIN}
-        max={SKILL_MAX}
+        min={bounds.min}
+        max={bounds.max}
         // Quarter-point jumps, like the app. The number above keeps SKILL_STEP (0.01)
         // so an exact rated level can still be typed — see SKILL_SLIDER_STEP.
         step={SKILL_SLIDER_STEP}
@@ -134,7 +141,7 @@ export function SkillLevelSlider({ value, onChange }: Props) {
       />
 
       <div className="flex justify-between mt-2 px-0">
-        {TICKS.map((tick) => (
+        {ticks.map((tick) => (
           <span key={tick} className="text-[10px] font-bold text-rally-text-muted tabular-nums">
             {tick.toFixed(1)}
           </span>

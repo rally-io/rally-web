@@ -9,6 +9,7 @@ import {
   orderLiveFirstKeepingPromoted,
   orderLiveFirst,
 } from './tournamentHelpers'
+import { FALLBACK_LADDERS } from './skillLadder'
 
 /** ISO-ish local timestamp `offsetHours` from now, in the API's format. */
 function hoursFromNow(offsetHours: number): string {
@@ -112,15 +113,26 @@ describe('formatTournamentSkillRange', () => {
 })
 
 describe('getSkillLevelName', () => {
+  const L7 = FALLBACK_LADDERS[7]
+  const L5 = FALLBACK_LADDERS[5]
+
   it('all levels when no bounds', () => {
-    expect(getSkillLevelName(0, 0)).toBe('All Levels')
+    expect(getSkillLevelName(0, 0, L7)).toBe('All Levels')
   })
-  it('buckets by average', () => {
+  it('names the bucket of the band the midpoint falls in (1–7 ladder)', () => {
     // Without a `t` the helper returns the i18n key — assert the bucketing.
-    expect(getSkillLevelName(1, 2)).toBe('tournament.skillLevelBeginner')
-    expect(getSkillLevelName(3, 3.5)).toBe('tournament.skillLevelIntermediate')
-    expect(getSkillLevelName(4, 5)).toBe('tournament.skillLevelAdvanced')
-    expect(getSkillLevelName(6, 6)).toBe('tournament.skillLevelPro')
+    expect(getSkillLevelName(1, 2, L7)).toBe('tournament.skillLevelBeginner')
+    expect(getSkillLevelName(3, 3.5, L7)).toBe('tournament.skillLevelIntermediate')
+    expect(getSkillLevelName(4, 5, L7)).toBe('tournament.skillLevelAdvanced')
+    expect(getSkillLevelName(6, 6, L7)).toBe('tournament.skillLevelPro')
+    // Pro is the A bands: a 5.0–5.5 range (midpoint 5.25, A2) is Pro, not Advanced.
+    expect(getSkillLevelName(5, 5.5, L7)).toBe('tournament.skillLevelPro')
+  })
+  it('reads the 1–5 ladder: 4.0–4.5 is Advanced (B1), 4.5–5.0 is Pro (A)', () => {
+    expect(getSkillLevelName(4, 4.5, L5)).toBe('tournament.skillLevelAdvanced')
+    expect(getSkillLevelName(4.5, 5, L5)).toBe('tournament.skillLevelPro')
+    expect(getSkillLevelName(4.7, 4.7, L5)).toBe('tournament.skillLevelPro')
+    expect(getSkillLevelName(4.7, 4.7, L7)).toBe('tournament.skillLevelAdvanced')
   })
 })
 

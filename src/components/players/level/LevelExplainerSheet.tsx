@@ -2,7 +2,8 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { BlockIcon } from './BlockIcon'
-import { EXPLAINER_BLOCKS } from './explainerBlocks'
+import { explainerBlocksFor } from './explainerBlocks'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
 
 export interface LevelExplainerSheetProps {
   open: boolean
@@ -11,6 +12,7 @@ export interface LevelExplainerSheetProps {
 
 export function LevelExplainerSheet({ open, onOpenChange }: LevelExplainerSheetProps) {
   const { t } = useTranslation()
+  const blocks = explainerBlocksFor(useSkillLadder())
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent hideClose className="flex w-full flex-col bg-rally-surface sm:max-w-md">
@@ -19,7 +21,7 @@ export function LevelExplainerSheet({ open, onOpenChange }: LevelExplainerSheetP
         </SheetHeader>
         <SheetBody className="flex-1 overflow-y-auto">
           <ol className="flex flex-col gap-5">
-            {EXPLAINER_BLOCKS.map((block) => (
+            {blocks.map((block) => (
               <li key={block.key} className="flex gap-3">
                 <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rally-surface-2">
                   <BlockIcon icon={block.icon} />

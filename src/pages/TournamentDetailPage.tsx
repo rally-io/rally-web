@@ -10,6 +10,7 @@ import { useRtl } from '@/hooks/useRtl'
 import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAppSession } from '@/hooks/useAppSession'
 import { useAuth } from '@/hooks/useAuth'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
 import { useTournamentPartnerDraft } from '@/hooks/useTournamentPartnerDraft'
 import { getOnboardingStatus } from '@/services/api/profile'
 import { computeNeedsDetails } from '@/lib/onboardingGate'
@@ -75,6 +76,7 @@ function TournamentRegistrationPage() {
   const { requireSignIn } = useAuthGate()
   const { status: sessionStatus, refetchOnboarding, needsDetails } = useAppSession()
   const { user } = useAuth()
+  const ladder = useSkillLadder()
   // Same query key as the ScreenMessageList mounted below (scope: 'tournament',
   // id: tr.id) — react-query dedupes the two into one fetch. `tr?.id` is
   // undefined while loading; useScreenMessages' own `enabled` handles that.
@@ -626,7 +628,7 @@ function TournamentRegistrationPage() {
                     )}
                   {skill.level ? ` (${skill.level})` : ''}
                   {!skill.range && !skill.level
-                    ? getSkillLevelName(tr.skill_level_min, tr.skill_level_max, t)
+                    ? getSkillLevelName(tr.skill_level_min, tr.skill_level_max, ladder, t)
                     : ''}
                 </span>
               }

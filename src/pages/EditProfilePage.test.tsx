@@ -9,6 +9,8 @@ import * as profileApi from '@/services/api/profile'
 import * as authApi from '@/services/api/auth'
 import * as playersApi from '@/services/api/players'
 import type { PlayerMe } from '@/types/api'
+import { SkillLadderContext } from '@/contexts/SkillLadderContext'
+import { FALLBACK_LADDERS, type SkillLadder } from '@/lib/skillLadder'
 
 // Drives a freshly-typed phone number through the OTP verification gate so a
 // test can reach an enabled Save button — mirrors the real user flow instead
@@ -315,7 +317,7 @@ describe('EditProfilePage — partial edits on ready profile with gaps', () => {
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledTimes(1)
     })
-    expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 })
+    expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5, level_scale: 7, skill_level_base: 4.2 })
     updateSpy.mockRestore()
   })
 
@@ -406,6 +408,7 @@ describe('EditProfilePage — profile_incomplete partial save', () => {
     expect(createSpy.mock.calls[0][0]).toMatchObject({
       email: 'dana@example.com',
       skill_level: 4.5,
+      level_scale: 7,
       first_name: 'Dana',
       last_name: 'Levi',
     })
@@ -477,7 +480,7 @@ describe('tournament profile completion', () => {
     fireEvent.change(screen.getByRole('slider'), { target: { value: '4.5' } })
     await user.click(screen.getByRole('button', { name: /^continue$/i }))
     expect(await screen.findByTestId('tournament-probe')).toBeInTheDocument()
-    expect(update).toHaveBeenCalledWith({ skill_level: 4.5 })
+    expect(update).toHaveBeenCalledWith({ skill_level: 4.5, level_scale: 7, skill_level_base: null })
     expect(trackFunnelMock).toHaveBeenCalledWith('onboarding_details_completed', { step: 'onboarding' })
     update.mockRestore()
   })
@@ -529,7 +532,7 @@ describe('tournament profile completion', () => {
     // …and pressing it really re-submits rather than replaying the same state.
     await user.click(screen.getByRole('button', { name: /^continue$/i }))
     await waitFor(() => expect(update).toHaveBeenCalledTimes(2))
-    expect(update).toHaveBeenLastCalledWith({ skill_level: 4.5 })
+    expect(update).toHaveBeenLastCalledWith({ skill_level: 4.5, level_scale: 7, skill_level_base: 4.5 })
     update.mockRestore()
   })
 
@@ -605,7 +608,7 @@ describe('tournament profile completion', () => {
     expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled()
     fireEvent.change(screen.getByRole('slider'), { target: { value: '2.5' } })
     await userEvent.click(screen.getByRole('button', { name: /^continue$/i }))
-    await waitFor(() => expect(update).toHaveBeenCalledWith({ skill_level: 2.5 }))
+    await waitFor(() => expect(update).toHaveBeenCalledWith({ skill_level: 2.5, level_scale: 7, skill_level_base: null }))
     update.mockRestore()
   })
 
@@ -838,7 +841,7 @@ describe('EditProfilePage — verified level: warning, confirm, reveal', () => {
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)
     await user.click(await screen.findByRole('button', { name: /reassess anyway/i }))
-    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5, level_scale: 7, skill_level_base: 4.2 }))
     const reveal = await screen.findByRole('dialog')
     expect(reveal).toHaveTextContent('Your new level')
     expect(screen.getByTestId('reliability-ring')).toHaveAccessibleName('5.50')
@@ -859,7 +862,7 @@ describe('EditProfilePage — verified level: warning, confirm, reveal', () => {
     const save = await screen.findByRole('button', { name: /save changes/i })
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)
-    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5, level_scale: 7, skill_level_base: 4.2 }))
     expect(screen.queryByText('Give up your verified seal?')).not.toBeInTheDocument()
     expect(await screen.findByRole('dialog')).toHaveTextContent('Your new level')
     updateSpy.mockRestore()
@@ -876,7 +879,7 @@ describe('EditProfilePage — verified level: warning, confirm, reveal', () => {
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)
     await user.click(await screen.findByRole('button', { name: /reassess anyway/i }))
-    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5, level_scale: 7, skill_level_base: 4.2 }))
     const reveal = await screen.findByRole('dialog')
     expect(reveal).toHaveTextContent('Your new level')
     // The hop hasn't happened yet — it's gated behind the reveal, not the save.
@@ -897,7 +900,7 @@ describe('EditProfilePage — verified level: warning, confirm, reveal', () => {
     await waitFor(() => expect(save).not.toBeDisabled())
     await user.click(save)
     await user.click(await screen.findByRole('button', { name: /reassess anyway/i }))
-    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5 }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 5.5, level_scale: 7, skill_level_base: 4.2 }))
     const reveal = await screen.findByRole('dialog')
     expect(reveal).toHaveTextContent('Your new level')
     fireEvent.keyDown(reveal, { key: 'Escape' })
@@ -949,5 +952,93 @@ describe('EditProfilePage — verified level: warning, confirm, reveal', () => {
     // The level was never in the patch, so the retry must not re-PATCH either.
     expect(updateSpy).toHaveBeenCalledTimes(1)
     updateSpy.mockRestore()
+  })
+})
+
+/** EditProfilePage on a given ladder — the provider is otherwise absent and the context
+    defaults to the 1–7 ladder. `refresh` is the ladder-refetch the page may call. */
+function renderEditProfileOnLadder(ladder: SkillLadder, refresh: () => void = () => {}) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <SkillLadderContext.Provider value={{ ladder, refresh }}>
+        <MemoryRouter initialEntries={['/profile/edit']}>
+          <Routes>
+            <Route path="/profile/edit" element={<EditProfilePage />} />
+          </Routes>
+        </MemoryRouter>
+      </SkillLadderContext.Provider>
+    </QueryClientProvider>,
+  )
+}
+
+describe('EditProfilePage — the scale comes from the served ladder', () => {
+  it('on the 1–5 ladder the slider tops out at 5.0', () => {
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, level_scale: 5 }
+    renderEditProfileOnLadder(FALLBACK_LADDERS[5])
+    expect(screen.getByLabelText(/skill level slider/i)).toHaveAttribute('max', '5')
+    expect(screen.queryByText('7.0')).not.toBeInTheDocument()
+  })
+})
+
+describe('EditProfilePage — the level-write guard (contract §7)', () => {
+  const STALE = 'Your level changed since you loaded it. Reload and try again.'
+
+  it('on the 1–5 ladder a level change is tagged 5, with the level it replaces', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, level_scale: 5 }
+    const updateSpy = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderEditProfileOnLadder(FALLBACK_LADDERS[5])
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '4.5' } })
+    await user.click(await screen.findByRole('button', { name: /save changes/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ skill_level: 4.5, level_scale: 5, skill_level_base: 4.2 }))
+    updateSpy.mockRestore()
+  })
+
+  it('a save that leaves the level alone sends no level fields', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    const updateSpy = vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    renderPage()
+    const firstName = screen.getByLabelText(/first name/i)
+    await user.clear(firstName)
+    await user.type(firstName, 'Dina')
+    await user.click(await screen.findByRole('button', { name: /save changes/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith({ first_name: 'Dina' }))
+    updateSpy.mockRestore()
+  })
+
+  it('a stale refusal is said in the page\'s language, reloads the level and the ladder, and the next save carries the fresh base', async () => {
+    const user = userEvent.setup()
+    const refresh = vi.fn()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    // rally-api's players routes answer a refusal with HTTP 200 and a plain translated string.
+    const updateSpy = vi
+      .spyOn(profileApi, 'updateProfile')
+      .mockResolvedValueOnce({ success: false, error: STALE } as any)
+      .mockResolvedValue({ success: true, data: READY_PROFILE } as any)
+    const reload = vi
+      .spyOn(profileApi, 'getMyPlayerProfile')
+      .mockResolvedValue({ success: true, data: { ...READY_PROFILE, skill_level: 4.6 } } as any)
+    renderEditProfileOnLadder(FALLBACK_LADDERS[7], refresh)
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5.5' } })
+    await user.click(await screen.findByRole('button', { name: /save changes/i }))
+
+    expect(await screen.findByText(/your level changed since this page loaded it/i)).toBeInTheDocument()
+    expect(screen.queryByText(STALE)).not.toBeInTheDocument()
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(reload).toHaveBeenCalled()
+    // The slider now starts from the level the server really holds.
+    await waitFor(() => expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('4.60'))
+
+    fireEvent.change(screen.getByLabelText(/skill level slider/i), { target: { value: '5' } })
+    await user.click(await screen.findByRole('button', { name: /save changes/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenLastCalledWith({ skill_level: 5, level_scale: 7, skill_level_base: 4.6 }))
+    updateSpy.mockRestore()
+    reload.mockRestore()
   })
 })

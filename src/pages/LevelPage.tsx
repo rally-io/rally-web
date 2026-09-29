@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import {
   BlockIcon,
   describeLevel,
-  EXPLAINER_BLOCKS,
+  explainerBlocksFor,
   LevelChip,
 } from '@/components/players/level'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
+import type { SkillBand } from '@/lib/skillLadder'
+import { scaleCopyValues } from '@/lib/skillScaleCopy'
 
 /* The legend: one chip per state a player can meet, with the same values as the spec's
    Appendix B mockups. Fixed on purpose — this is documentation, not data. */
@@ -15,20 +18,49 @@ const LEGEND = [
   { descriptor: describeLevel(null, undefined, null), captionKey: 'level.none' },
 ]
 
+/** Bronze under 3.0, Silver under 4.0, Gold from 4.0 — rally-api's `get_skill_tier` cuts, which sit
+    where the scale change moves nothing. Read off a band's floor. */
+function tierEmoji(band: SkillBand): string {
+  if (band.min < 3.0) return '🟤'
+  if (band.min < 4.0) return '⚪'
+  return '🟡'
+}
+
+/** "1.0 – 1.9" for every band but the top one, which shows its real ceiling: "4.5 – 5.0". */
+function bandRangeText(band: SkillBand, isTop: boolean): string {
+  const hi = isTop ? band.max : band.max - 0.1
+  return `${band.min.toFixed(1)} – ${hi.toFixed(1)}`
+}
+
+/** One literal `t()` per code either ladder serves, so the key scan sees every one. A code the
+    web does not know yet shows its row without a description rather than a raw key. */
+function bandDescription(code: string, t: (key: string) => string): string {
+  switch (code) {
+    case 'D2': return t('level_page.tier_d2_desc')
+    case 'D1': return t('level_page.tier_d1_desc')
+    case 'C2': return t('level_page.tier_c2_desc')
+    case 'C1': return t('level_page.tier_c1_desc')
+    case 'B2': return t('level_page.tier_b2_desc')
+    case 'B1': return t('level_page.tier_b1_desc')
+    case 'A2': return t('level_page.tier_a2_desc')
+    case 'A1': return t('level_page.tier_a1_desc')
+    case 'A': return t('level_page.tier_a_desc')
+    default: return ''
+  }
+}
 
 export default function LevelPage() {
   const { t } = useTranslation()
+  const ladder = useSkillLadder()
+  const blocks = explainerBlocksFor(ladder)
 
-  const tiers = [
-    { label: t('level_page.tier_d2'), range: t('level_page.tier_d2_range'), desc: t('level_page.tier_d2_desc'), emoji: '🟤' },
-    { label: t('level_page.tier_d1'), range: t('level_page.tier_d1_range'), desc: t('level_page.tier_d1_desc'), emoji: '🟤' },
-    { label: t('level_page.tier_c2'), range: t('level_page.tier_c2_range'), desc: t('level_page.tier_c2_desc'), emoji: '🟤' },
-    { label: t('level_page.tier_c1'), range: t('level_page.tier_c1_range'), desc: t('level_page.tier_c1_desc'), emoji: '⚪' },
-    { label: t('level_page.tier_b2'), range: t('level_page.tier_b2_range'), desc: t('level_page.tier_b2_desc'), emoji: '⚪' },
-    { label: t('level_page.tier_b1'), range: t('level_page.tier_b1_range'), desc: t('level_page.tier_b1_desc'), emoji: '🟡' },
-    { label: t('level_page.tier_a2'), range: t('level_page.tier_a2_range'), desc: t('level_page.tier_a2_desc'), emoji: '🟡' },
-    { label: t('level_page.tier_a1'), range: t('level_page.tier_a1_range'), desc: t('level_page.tier_a1_desc'), emoji: '🟡' },
-  ]
+  // The served ladder, row for row: eight bands on the 1–7 scale, seven (A2 + A1 → A) on 1–5.
+  const tiers = ladder.bands.map((band, i) => ({
+    code: band.code,
+    range: bandRangeText(band, i === ladder.bands.length - 1),
+    desc: bandDescription(band.code, t),
+    emoji: tierEmoji(band),
+  }))
 
   const thClass = 'px-4 py-3 font-display font-semibold text-start'
   const tableWrapClass =
@@ -43,7 +75,7 @@ export default function LevelPage() {
             {t('level_page.title')}
           </h1>
           <p className="text-xl text-rally-text-2 max-w-2xl mx-auto leading-relaxed">
-            {t('level_page.intro1')}
+            {t('level_page.intro1', { ...scaleCopyValues(ladder) })}
           </p>
         </div>
       </section>
@@ -63,9 +95,9 @@ export default function LevelPage() {
               </thead>
               <tbody className="text-rally-text-2 divide-y divide-rally-border-subtle">
                 {tiers.map((tier) => (
-                  <tr key={tier.label} className="hover:bg-white/5 transition-colors">
+                  <tr key={tier.code} className="hover:bg-white/5 transition-colors">
                     <td className="px-4 py-2.5 whitespace-nowrap text-start">
-                      {tier.emoji} {tier.label}
+                      {tier.emoji} {tier.code}
                     </td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-start" dir="ltr">
                       {tier.range}
@@ -133,7 +165,7 @@ export default function LevelPage() {
           ))}
         </ul>
         <ol className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {EXPLAINER_BLOCKS.map((block) => (
+          {blocks.map((block) => (
             <li key={block.key} className="flex gap-4 rounded-3xl border border-rally-border bg-rally-surface p-6">
               <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rally-surface-2">
                 <BlockIcon icon={block.icon} />
