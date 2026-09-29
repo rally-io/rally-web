@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import { SkillLadderContext } from '@/contexts/SkillLadderContext'
+import { FALLBACK_LADDERS, type SkillLadder } from '@/lib/skillLadder'
+import { LevelWriteRefusedError } from '@/lib/levelWrite'
 
 vi.mock('@/hooks/useAppSession', () => ({ useAppSession: vi.fn() }))
 vi.mock('@/hooks/useAuth', () => ({ useAuth: vi.fn(() => ({ user: { email: 'dana@acme.co.il' } })) }))
@@ -22,6 +25,17 @@ function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient()
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
 }
+/** The hook on a given ladder; `refresh` is the ladder refetch it may call. */
+function wrapperOn(ladder: SkillLadder, refresh: () => void = () => {}) {
+  return function LadderWrapper({ children }: { children: ReactNode }) {
+    const qc = new QueryClient()
+    return (
+      <QueryClientProvider client={qc}>
+        <SkillLadderContext.Provider value={{ ladder, refresh }}>{children}</SkillLadderContext.Provider>
+      </QueryClientProvider>
+    )
+  }
+}
 function session(status: string, playerProfile: Record<string, unknown> | null) {
   mockSession.mockReturnValue({ status, playerProfile, onboardingStatus: null, needsDetails: false, refetchOnboarding: refetch, clearSession: vi.fn() } as any)
 }
@@ -36,7 +50,7 @@ describe('useEnsureProfileEssentials', () => {
     await act(() => result.current.ensure(INPUT))
     expect(mockCreate).toHaveBeenCalledWith({
       first_name: 'Dana', last_name: 'Cohen', email: 'dana@acme.co.il',
-      contact_number: '501234567', country_code: '+972', skill_level: 3.25,
+      contact_number: '501234567', country_code: '+972', skill_level: 3.25, level_scale: 7,
     })
     expect(mockUpdate).not.toHaveBeenCalled()
     expect(refetch).toHaveBeenCalled()
@@ -46,7 +60,10 @@ describe('useEnsureProfileEssentials', () => {
     session('ready', { first_name: 'Dana', last_name: null, contact_number: null, skill_level: null })
     const { result } = renderHook(() => useEnsureProfileEssentials(), { wrapper })
     await act(() => result.current.ensure(INPUT))
-    expect(mockUpdate).toHaveBeenCalledWith({ last_name: 'Cohen', contact_number: '501234567', country_code: '+972', skill_level: 3.25 })
+    expect(mockUpdate).toHaveBeenCalledWith({
+      last_name: 'Cohen', contact_number: '501234567', country_code: '+972',
+      skill_level: 3.25, level_scale: 7, skill_level_base: null,
+    })
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
@@ -68,7 +85,8 @@ describe('useEnsureProfileEssentials', () => {
     expect(mockUpdate).not.toHaveBeenCalled()
     // Moved: the profile follows.
     await act(() => result.current.ensure({ ...INPUT, skillLevel: 5.5, overwriteStoredLevel: true }))
-    expect(mockUpdate).toHaveBeenCalledWith({ skill_level: 5.5 })
+    // Contract §7: the level it replaces rides along, or the API ignores the change.
+    expect(mockUpdate).toHaveBeenCalledWith({ skill_level: 5.5, level_scale: 7, skill_level_base: 4.6 })
   })
 
   it('ready with skill_level 0 (mobile complete-profile default) → not locked, still patches', async () => {
@@ -76,7 +94,7 @@ describe('useEnsureProfileEssentials', () => {
     const { result } = renderHook(() => useEnsureProfileEssentials(), { wrapper })
     expect(result.current.levelLocked).toBe(false)
     await act(() => result.current.ensure({ ...INPUT, skillLevel: 3.25 }))
-    expect(mockUpdate).toHaveBeenCalledWith({ skill_level: 3.25 })
+    expect(mockUpdate).toHaveBeenCalledWith({ skill_level: 3.25, level_scale: 7, skill_level_base: null })
   })
 
   it('a failed write throws so the page can show it', async () => {
@@ -97,6 +115,41 @@ describe('useEnsureProfileEssentials', () => {
     await expect(act(() => result.current.ensure(INPUT))).rejects.toThrow('PROFILE_NOT_LOADED')
     expect(mockUpdate).not.toHaveBeenCalled()
     expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('tags every level write with the scale of the ladder in force', async () => {
+    session('profile_incomplete', null)
+    const onFive = renderHook(() => useEnsureProfileEssentials(), { wrapper: wrapperOn(FALLBACK_LADDERS[5]) })
+    await act(() => onFive.result.current.ensure({ ...INPUT, skillLevel: 4.25 }))
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ skill_level: 4.25, level_scale: 5 }))
+    expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('skill_level_base')
+  })
+
+  it('a save that writes no level sends no level fields', async () => {
+    session('ready', { first_name: 'Dana', last_name: null, contact_number: '509999999', skill_level: 4.6 })
+    const { result } = renderHook(() => useEnsureProfileEssentials(), { wrapper })
+    await act(() => result.current.ensure({ ...INPUT, skillLevel: 4.6 }))
+    expect(mockUpdate).toHaveBeenCalledWith({ last_name: 'Cohen' })
+  })
+
+  it('a refused level (stale copy) refetches the profile and the ladder, then throws the refusal', async () => {
+    session('ready', { first_name: 'Dana', last_name: 'Cohen', contact_number: '509999999', skill_level: 4.6 })
+    // The players routes answer HTTP 200 with a plain, translated `error` string.
+    mockUpdate.mockResolvedValue({ success: false, error: 'Your level changed since you loaded it. Reload and try again.' } as any)
+    const refresh = vi.fn()
+    const { result } = renderHook(() => useEnsureProfileEssentials(), { wrapper: wrapperOn(FALLBACK_LADDERS[7], refresh) })
+    let error: unknown = null
+    await act(async () => {
+      try {
+        await result.current.ensure({ ...INPUT, skillLevel: 5.5, overwriteStoredLevel: true })
+      } catch (e) {
+        error = e
+      }
+    })
+    expect(error).toBeInstanceOf(LevelWriteRefusedError)
+    expect((error as LevelWriteRefusedError).refusal).toBe('stale')
+    expect(refetch).toHaveBeenCalled()
+    expect(refresh).toHaveBeenCalledTimes(1)
   })
 
   it('signed out / loading throws SESSION_NOT_READY', async () => {

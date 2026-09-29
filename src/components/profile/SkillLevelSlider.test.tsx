@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import '@/i18n'
 import { SkillLevelSlider } from './SkillLevelSlider'
+import { SkillLadderContext } from '@/contexts/SkillLadderContext'
+import { FALLBACK_LADDERS } from '@/lib/skillLadder'
 
 /** Feeds onChange back into value, the way EditProfilePage's Controller does. */
 function Harness() {
@@ -202,5 +204,49 @@ describe('SkillLevelSlider', () => {
     await user.type(box, '4.17')
     await user.tab()
     expect(screen.getByTestId('controlled')).toHaveTextContent('4.17')
+  })
+})
+
+describe('SkillLevelSlider on the served 1–5 ladder', () => {
+  const onFiveScale = (ui: React.ReactElement) =>
+    render(
+      <SkillLadderContext.Provider value={{ ladder: FALLBACK_LADDERS[5], refresh: () => {} }}>
+        {ui}
+      </SkillLadderContext.Provider>,
+    )
+
+  it('bounds both inputs at 1.0–5.0 and draws ticks 1.0 through 5.0', () => {
+    onFiveScale(<SkillLevelSlider value={3} onChange={() => {}} />)
+    expect(screen.getByRole('slider')).toHaveAttribute('min', '1')
+    expect(screen.getByRole('slider')).toHaveAttribute('max', '5')
+    expect(screen.getByRole('spinbutton')).toHaveAttribute('max', '5')
+    expect(screen.getByText('1.0')).toBeInTheDocument()
+    expect(screen.getByText('5.0')).toBeInTheDocument()
+    expect(screen.queryByText('6.0')).not.toBeInTheDocument()
+    expect(screen.queryByText('7.0')).not.toBeInTheDocument()
+  })
+
+  it('never emits a level above typed_max: a typed 6 is ignored, then clamps to 5 on blur', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    onFiveScale(<SkillLevelSlider value={3} onChange={onChange} />)
+    const input = screen.getByRole('spinbutton') as HTMLInputElement
+    await user.clear(input)
+    await user.type(input, '6')
+    expect(onChange).not.toHaveBeenCalled()
+    fireEvent.blur(input)
+    expect(onChange).toHaveBeenLastCalledWith(5)
+  })
+
+  it('a range event past the top lands on typed_max', () => {
+    const onChange = vi.fn()
+    onFiveScale(<SkillLevelSlider value={3} onChange={onChange} />)
+    fireEvent.change(screen.getByRole('slider'), { target: { value: '6.5' } })
+    expect(onChange).toHaveBeenCalledWith(5)
+  })
+
+  it('draws the fill against the 1–5 track: 4.0 is three quarters of the way', () => {
+    onFiveScale(<SkillLevelSlider value={4} onChange={() => {}} />)
+    expect(screen.getByRole('slider').style.getPropertyValue('--skill-fill-pct')).toBe('75%')
   })
 })

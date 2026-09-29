@@ -11,6 +11,10 @@ import {
   SKILL_BUCKETS,
 } from './tournamentFilters'
 import type { Tournament } from '@/types/api'
+import { FALLBACK_LADDERS } from './skillLadder'
+
+const L7 = FALLBACK_LADDERS[7]
+const L5 = FALLBACK_LADDERS[5]
 
 const CLUB_A = '11111111-1111-1111-1111-111111111111'
 const CLUB_B = '22222222-2222-2222-2222-222222222222'
@@ -109,58 +113,79 @@ describe('toServerParams', () => {
 
 describe('matchesFilters', () => {
   it('passes everything when no client filter is set', () => {
-    expect(matchesFilters(tournament(), EMPTY_FILTERS)).toBe(true)
+    expect(matchesFilters(tournament(), EMPTY_FILTERS, L7)).toBe(true)
     expect(hasClientFilters(EMPTY_FILTERS)).toBe(false)
   })
 
   it('ignores the server-side dimensions — they are already applied by the API', () => {
-    expect(matchesFilters(tournament(), { ...EMPTY_FILTERS, clubIds: [CLUB_B] })).toBe(true)
+    expect(matchesFilters(tournament(), { ...EMPTY_FILTERS, clubIds: [CLUB_B] }, L7)).toBe(true)
     expect(hasClientFilters({ ...EMPTY_FILTERS, clubIds: [CLUB_B] })).toBe(false)
   })
 
   it('matches a skill bucket that the tournament range overlaps', () => {
     const tr = tournament({ skill_level_min: 3.0, skill_level_max: 3.5 })
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'] })).toBe(true)
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['pro'] })).toBe(false)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'] }, L7)).toBe(true)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['pro'] }, L7)).toBe(false)
   })
 
   it('does not count a range that only touches a bucket endpoint', () => {
     const tr = tournament({ skill_level_min: 2.5, skill_level_max: 4.0 })
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['beginner'] })).toBe(false)
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['advanced'] })).toBe(false)
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'] })).toBe(true)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['beginner'] }, L7)).toBe(false)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['advanced'] }, L7)).toBe(false)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'] }, L7)).toBe(true)
   })
 
   it('places a single-level tournament in exactly one bucket', () => {
     const tr = tournament({ skill_level_min: 4.0, skill_level_max: 4.0 })
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'] })).toBe(false)
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['advanced'] })).toBe(true)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'] }, L7)).toBe(false)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['advanced'] }, L7)).toBe(true)
   })
 
-  it('keeps an open-to-all tournament in every skill bucket', () => {
+  it('keeps an open-to-all tournament in every skill bucket, on both ladders', () => {
     const tr = tournament({ skill_level_min: 0, skill_level_max: 0 })
-    for (const b of SKILL_BUCKETS) {
-      expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: [b.id] })).toBe(true)
+    for (const ladder of [L7, L5]) {
+      for (const b of SKILL_BUCKETS) {
+        expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: [b.id] }, ladder)).toBe(true)
+      }
     }
+  })
+
+  it('Pro is the A bands: a 5.0–5.5 tournament is Pro, not Advanced, on the 1–7 ladder', () => {
+    // Before the buckets were defined by band, Pro started at 5.5 — mid-A2, no band meaning.
+    const tr = tournament({ skill_level_min: 5.0, skill_level_max: 5.5 })
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['pro'] }, L7)).toBe(true)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['advanced'] }, L7)).toBe(false)
+  })
+
+  it('on the 1–5 ladder Advanced is B1 (4.0–4.5) and Pro is A (4.5–5.0)', () => {
+    const b1 = tournament({ skill_level_min: 4.0, skill_level_max: 4.5 })
+    const a = tournament({ skill_level_min: 4.5, skill_level_max: 5.0 })
+    const top = tournament({ skill_level_min: 5.0, skill_level_max: 5.0 })
+    expect(matchesFilters(b1, { ...EMPTY_FILTERS, skills: ['advanced'] }, L5)).toBe(true)
+    expect(matchesFilters(b1, { ...EMPTY_FILTERS, skills: ['pro'] }, L5)).toBe(false)
+    expect(matchesFilters(a, { ...EMPTY_FILTERS, skills: ['pro'] }, L5)).toBe(true)
+    expect(matchesFilters(a, { ...EMPTY_FILTERS, skills: ['advanced'] }, L5)).toBe(false)
+    // A single-level tournament at the very top of the scale belongs to the top bucket.
+    expect(matchesFilters(top, { ...EMPTY_FILTERS, skills: ['pro'] }, L5)).toBe(true)
   })
 
   it('ORs within a dimension and ANDs across dimensions', () => {
     const tr = tournament({ start_date: '2026-07-04T09:00:00' })
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['pro', 'intermediate'] })).toBe(true)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['pro', 'intermediate'] }, L7)).toBe(true)
     expect(
-      matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'], months: ['2026-08'] }),
+      matchesFilters(tr, { ...EMPTY_FILTERS, skills: ['intermediate'], months: ['2026-08'] }, L7),
     ).toBe(false)
   })
 
   it('matches the month of the start date', () => {
     const tr = tournament({ start_date: '2026-07-04T09:00:00' })
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, months: ['2026-07'] })).toBe(true)
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, months: ['2026-06'] })).toBe(false)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, months: ['2026-07'] }, L7)).toBe(true)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, months: ['2026-06'] }, L7)).toBe(false)
   })
 
   it('drops an item whose start date cannot be read rather than showing it under a month', () => {
     const tr = tournament({ start_date: 'not a date' })
-    expect(matchesFilters(tr, { ...EMPTY_FILTERS, months: ['2026-07'] })).toBe(false)
+    expect(matchesFilters(tr, { ...EMPTY_FILTERS, months: ['2026-07'] }, L7)).toBe(false)
   })
 })
 

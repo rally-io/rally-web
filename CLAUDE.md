@@ -94,10 +94,14 @@ Deployment is Vercel; `vercel.json` rewrites every path to `/index.html` so SPA 
 ### Provider stack (`src/main.tsx`)
 
 ```
-QueryClientProvider → BrowserRouter → AuthProvider → AppSessionProvider → AuthGateProvider → <App/>
+QueryClientProvider → BrowserRouter → AuthProvider → AppSessionProvider → SkillLadderProvider → AuthGateProvider → <App/>
 ```
 
-The order matters. `AppSessionProvider` reads from `AuthProvider`; `AuthGateProvider` reads from `AuthProvider`; both must sit inside `BrowserRouter` because they call `useNavigate`.
+The order matters. `AppSessionProvider` reads from `AuthProvider`; `AuthGateProvider` reads from `AuthProvider`; both must sit inside `BrowserRouter` because they call `useNavigate`. `SkillLadderProvider` (`src/contexts/SkillLadderContext.tsx`) sits inside `AppSessionProvider` because it reads the viewer's `level_scale`.
+
+### The skill ladder (`src/lib/skillLadder.ts`)
+
+Every level-bearing surface — band codes ("4.6 (B1)"), the Beginner/Intermediate/Advanced/Pro buckets, the profile slider's bounds, the `/level` table and every sentence that names the scale — reads the ladder rally-api serves at `GET /public/skill-bands` (contract: rally-api `docs/superpowers/plans/2026-09-26-skill-scale-contract.md`), through `useSkillLadder()`. If the fetch fails the web falls back to a bundled copy (`skillBands.fallback7.json` / `skillBands.fallback5.json`), picked by the viewer's own `level_scale`, else 1–7. Never hard-code a band table, a code list or a top of 7.0 (or 5.0): the scale moves 1–7 → 1–5 and A2 + A1 merge into A. Outside the provider (component tests) the context defaults to the 1–7 ladder; wrap `<SkillLadderContext.Provider value={{ ladder: FALLBACK_LADDERS[5], refresh }}>` to test the 1–5 one.
 
 ### Three-context session model
 
@@ -138,6 +142,7 @@ There is no web checkout. Payment pages, `services/api/payments.ts`, `events.ts`
 - `react-i18next`, two locales: `src/i18n/locales/he.json` (default) and `en.json`. Selection persisted in `localStorage` under key `rallyLang`.
 - `<App/>` flips `dir="rtl"` when `i18n.language === 'he'`. All visible UI text must go through `t('key.path')` — no hardcoded HE/EN in JSX. RTL layouts must be mirrored correctly.
 - Test setup forces English (`src/test-setup.ts` calls `i18n.changeLanguage('en')` in `beforeAll`).
+- Every literal `t('…')` / `i18nKey="…"` key must exist in **both** `he.json` and `en.json` — `src/i18n/__tests__/literalKeys.test.ts` scans the whole tree and fails otherwise (a missing Hebrew key otherwise ships English silently: wiki `gotchas/web-i18n-defaultvalue-hides-missing-keys`). Dynamic keys (`t(\`x.${k}\`)`, `t(b.labelKey)`) need an explicit list test next to their code.
 
 ### UI and the design system
 

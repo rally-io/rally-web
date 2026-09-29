@@ -6,6 +6,7 @@ import App from './App'
 import { AuthProvider } from './contexts/AuthContext'
 import { AppSessionProvider } from './contexts/AppSessionContext'
 import { AuthGateProvider } from './contexts/AuthGateContext'
+import { SkillLadderProvider } from './contexts/SkillLadderContext'
 import './i18n'
 import './App.css'
 import { initDownloadClickTracking } from './lib/analytics'
@@ -33,9 +34,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <AuthProvider>
           <AppSessionProvider>
-            <AuthGateProvider>
-              <App />
-            </AuthGateProvider>
+            <SkillLadderProvider>
+              <AuthGateProvider>
+                <App />
+              </AuthGateProvider>
+            </SkillLadderProvider>
           </AppSessionProvider>
         </AuthProvider>
       </BrowserRouter>

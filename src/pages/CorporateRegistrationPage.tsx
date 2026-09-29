@@ -16,6 +16,7 @@ import { ScreenMessageModalHost } from '@/features/screenMessages/components/Scr
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
 import { useTournamentRegistration, type RegistrationGate } from '@/hooks/useTournamentRegistration'
 import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
 import { ctaFor } from '@/lib/tournamentCta'
 import { isRegistrationOpen, formatCurrency } from '@/lib/tournamentHelpers'
 import { rememberAuthReturnTo } from '@/lib/authReturn'
@@ -578,6 +579,7 @@ function RegistrationForm({
 }: RegistrationFormProps) {
   const { t } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
+  const ladder = useSkillLadder()
   const [partnerState, setPartnerState] = useState<PartnerSelectionState>({ phase: 'idle' })
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [savedDetails, setSavedDetails] = useState<SavedProfileEssentials | null>(null)
@@ -593,7 +595,7 @@ function RegistrationForm({
 
   // Read off the SAVED profile, never off form state: the modal owns the fields
   // and the write, so this can only ever report what actually landed.
-  const details = readProfileDetails(playerProfile, savedDetails)
+  const details = readProfileDetails(playerProfile, ladder, savedDetails)
 
   const openDetails = () => setDetailsOpen(true)
 

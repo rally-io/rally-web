@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -21,9 +21,18 @@ import { Button } from '@/components/ui/button'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
 import { PhoneOtpVerification } from '@/components/profile/PhoneOtpVerification'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
-import { normalizeSkillLevel } from '@/lib/skillLevel'
+import { normalizeSkillLevel, typedBounds, type SkillBounds } from '@/lib/skillLevel'
+import { useRefreshSkillLadder, useSkillLadder } from '@/hooks/useSkillLadder'
+import {
+  LevelWriteRefusedError,
+  apiFailureMessage,
+  levelBase,
+  levelWriteFields,
+  levelWriteRefusal,
+  refusalMessage,
+} from '@/lib/levelWrite'
 import { computeNeedsDetails, REQUIRED_STEPS } from '@/lib/onboardingGate'
-import { editProfileSchema, type EditProfileFormValues } from '@/lib/editProfileSchema'
+import { buildEditProfileSchema, type EditProfileFormValues } from '@/lib/editProfileSchema'
 import type { PlayerCreatePayload, PlayerMe, ProfileUpdateRequest } from '@/types/api'
 import { safeReturnTo } from '@/lib/authReturn'
 import { trackFunnel } from '@/lib/analytics'
@@ -169,6 +178,7 @@ function metaName(user: { user_metadata?: Record<string, unknown> } | null, ...k
 function defaultsFromProfile(
   profile: PlayerMe | null,
   user: { user_metadata?: Record<string, unknown> } | null,
+  skillBounds: SkillBounds,
 ): EditProfileFormValues {
   // For new profiles, fall back to Supabase user_metadata (set by OAuth providers
   // like Google), so social-login users land in the form with names pre-filled.
@@ -183,7 +193,7 @@ function defaultsFromProfile(
     // No default level, ever: a stored 0 (what mobile writes at complete-profile)
     // and a null both normalise to null, so the slider opens empty and the
     // player has to choose.
-    skill_level: normalizeSkillLevel(profile?.skill_level),
+    skill_level: normalizeSkillLevel(profile?.skill_level, skillBounds),
   }
 }
 
@@ -219,7 +229,14 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
   const createdRef = useRef(false)
   const isCreate = profile === null && !createdRef.current
 
-  const defaults = defaultsFromProfile(profile, user)
+  // The typed-level bounds of the ladder in force (1.0–7.0, then 1.0–5.0 after the scale flip).
+  const ladder = useSkillLadder()
+  const skillBounds = useMemo(() => typedBounds(ladder), [ladder])
+  const refreshLadder = useRefreshSkillLadder()
+  const defaults = defaultsFromProfile(profile, user, skillBounds)
+  // Contract §7: the level this page loaded, sent as `skill_level_base` with a level change so
+  // rally-api can tell a decision from a stale copy. Moves to whatever a successful write stored.
+  const levelBaseRef = useRef<number | null>(profile?.skill_level ?? null)
   // An existing saved number is trusted already — only a freshly typed number
   // needs (re-)verifying. Mirrors mobile's EditProfileScreen/PhoneVerificationField.
   const [phoneVerified, setPhoneVerified] = useState(Boolean(profile?.contact_number))
@@ -235,10 +252,13 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
      it is needed: a successful save rebases RHF's defaults to whatever was last saved, so after
      any save a bare `resetField` would revert to that instead of to the profile's level.
      `normalizeSkillLevel` because "never chosen" is null now, not a default 3.0. */
-  const [originalSkill] = useState(() => normalizeSkillLevel(profile?.skill_level))
+  const [originalSkill] = useState(() => normalizeSkillLevel(profile?.skill_level, skillBounds))
 
+  // react-hook-form reads `resolver` on every render, so a ladder that lands after mount
+  // (served replacing the bundled fallback) re-bounds validation from the next change on.
+  const resolver = useMemo(() => zodResolver(buildEditProfileSchema(skillBounds)), [skillBounds])
   const form = useForm<EditProfileFormValues>({
-    resolver: zodResolver(editProfileSchema),
+    resolver,
     defaultValues: defaults,
     mode: 'onChange',
   })
@@ -339,6 +359,22 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
     }
   }
 
+  // Contract §7: a refused level means this page's copy of the level or of the scale is stale.
+  // Reload both, and restart the slider from the level the server really holds.
+  const reloadAfterLevelRefusal = async () => {
+    refreshLadder()
+    if (isCreate) return // no players row yet: nothing to reload
+    try {
+      const fresh = await getMyPlayerProfile()
+      if (!mounted.current || !fresh.success) return
+      queryClient.setQueryData(['player-profile-me', user?.id], fresh.data)
+      levelBaseRef.current = fresh.data.skill_level ?? null
+      form.resetField('skill_level', { defaultValue: normalizeSkillLevel(fresh.data.skill_level, skillBounds) })
+    } catch {
+      // The message already says what happened; a failed reload leaves the page as it was.
+    }
+  }
+
   const mutation = useMutation({
     mutationFn: async (values: EditProfileFormValues) => {
       if (saved.current) return { applied: values, savedPlayer: null, levelWritten: false }
@@ -354,14 +390,17 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
           contact_number: phone,
           gender: 'choose_not_to_answer',
           ...(phone ? { country_code: values.country_code ?? DEFAULT_COUNTRY.dial } : {}),
-          ...(values.skill_level != null ? { skill_level: values.skill_level } : {}),
+          ...(values.skill_level != null ? levelWriteFields(values.skill_level, ladder) : {}),
         }
         const result = await createPlayerProfile(payload)
         if (!result.success) {
+          const refusal = levelWriteRefusal(result)
+          if (refusal) throw new LevelWriteRefusedError(refusal, apiFailureMessage(result) ?? refusal)
           throw new Error(result.error.message ?? t('profile.errorCannotCreate'))
         }
         // The row exists from here on, whatever the refetch goes on to say.
         createdRef.current = true
+        levelBaseRef.current = values.skill_level ?? null
         return { applied: values, savedPlayer: null, levelWritten: false }
       }
       // Edit mode: PATCH only the dirty fields. The players row exists; the
@@ -396,18 +435,33 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       // (null, or mobile's 0) must persist the level they just picked even
       // though react-hook-form would call it dirty anyway — this keeps the
       // patch correct if the form is ever reset to the same value.
-      if ((dirty.skill_level || (detailsMode && normalizeSkillLevel(profile?.skill_level) == null)) && values.skill_level != null) {
+      if ((dirty.skill_level || (detailsMode && normalizeSkillLevel(profile?.skill_level, skillBounds) == null)) && values.skill_level != null) {
         patch.skill_level = values.skill_level
       }
       if (Object.keys(patch).length === 0) return { applied: patch, savedPlayer: null, levelWritten: false }
-      const result = await updateProfile(patch)
+      // Contract §7: a level write carries its scale and the level it replaces. Only here, on
+      // the wire — `patch` itself stays form fields, because it is folded back into the form.
+      const levelFields = patch.skill_level !== undefined
+        ? { level_scale: ladder.level_scale, skill_level_base: levelBase(levelBaseRef.current, ladder) }
+        : {}
+      const result = await updateProfile({ ...patch, ...levelFields })
       if (!result.success) {
+        const refusal = levelWriteRefusal(result)
+        if (refusal) throw new LevelWriteRefusedError(refusal, apiFailureMessage(result) ?? refusal)
         throw new Error(result.error.message ?? t('edit_profile.saveError'))
       }
+      // What this write stored is the base of the next one, on the scale it was sent on.
+      if (patch.skill_level !== undefined) levelBaseRef.current = patch.skill_level
       return { applied: patch, savedPlayer: result.data ?? null, levelWritten: patch.skill_level !== undefined }
     },
     onSuccess: ({ applied, savedPlayer, levelWritten }) => finishSave(applied, savedPlayer, levelWritten),
     onError: (err: unknown) => {
+      const refusal = levelWriteRefusal(err)
+      if (refusal) {
+        void reloadAfterLevelRefusal()
+        setStatus({ kind: 'error', message: refusalMessage(refusal, t) })
+        return
+      }
       const apiError = err as { code?: string; message?: string } | null
       const message = apiError?.code === 'MOBILE_ALREADY_EXISTS'
         ? t('edit_profile.phoneAccountHelp')

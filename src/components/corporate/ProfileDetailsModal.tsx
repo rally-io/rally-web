@@ -4,11 +4,13 @@ import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useEnsureProfileEssentials, type ProfileEssentialsError } from '@/hooks/useEnsureProfileEssentials'
+import { useSkillLadder } from '@/hooks/useSkillLadder'
+import { levelWriteRefusal, refusalMessage } from '@/lib/levelWrite'
 import { useAuth } from '@/hooks/useAuth'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
 import { PhoneOtpVerification } from '@/components/profile/PhoneOtpVerification'
 import { formatLevelWithTier } from '@/lib/skillTiers'
-import { normalizeSkillLevel } from '@/lib/skillLevel'
+import { normalizeSkillLevel, typedBounds } from '@/lib/skillLevel'
 import { DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import { Field } from './Field'
 import { inputClass } from './inputClass'
@@ -57,6 +59,7 @@ export function ProfileDetailsModal({
 }: ProfileDetailsModalProps) {
   const { t, i18n } = useTranslation()
   const { ensure, playerProfile, phoneLocked, levelLocked } = useEnsureProfileEssentials()
+  const ladder = useSkillLadder()
   const { user, signOut } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -98,7 +101,7 @@ export function ProfileDetailsModal({
     // complete-profile to mean "not chosen", and prefilling that showed a
     // declared-looking "0.0 (D2)" that also satisfied the required check. The
     // `levelEditing` guard keeps a profile refetch from reverting an open editor.
-    if (!levelEditing) setLevel(normalizeSkillLevel(playerProfile.skill_level))
+    if (!levelEditing) setLevel(normalizeSkillLevel(playerProfile.skill_level, typedBounds(ladder)))
   }, [playerProfile])
 
   const validate = () => {
@@ -133,7 +136,12 @@ export function ProfileDetailsModal({
       // any SMS is sent, so this branch is the backstop for a race between it and
       // the write — the same account-switch fix applies either way.
       const err = e as ProfileEssentialsError
-      if (err?.code === 'MOBILE_ALREADY_EXISTS') {
+      // Contract §7: the level or its scale moved under this page. The hook has already
+      // reloaded both; say so in the page's language (the API's text follows the browser).
+      const refusal = levelWriteRefusal(e)
+      if (refusal) {
+        setProfileError(refusalMessage(refusal, t))
+      } else if (err?.code === 'MOBILE_ALREADY_EXISTS') {
         setPhoneConflict(true)
         setProfileError(t('edit_profile.phoneAccountHelp'))
       } else {
@@ -302,7 +310,7 @@ export function ProfileDetailsModal({
               <div className="flex items-center justify-between gap-3 rounded-md bg-rally-surface-2 border border-rally-border px-3 py-3">
                 {/* "4.6 (B1)" is Latin + digits inside a Hebrew paragraph — isolate it or the
                     bidi algorithm renders "(B1) 4.6". */}
-                <span className="text-rally-text"><bdi dir="ltr">{formatLevelWithTier(level)}</bdi></span>
+                <span className="text-rally-text"><bdi dir="ltr">{formatLevelWithTier(level, ladder)}</bdi></span>
                 <button
                   type="button"
                   disabled={saving}

@@ -1,5 +1,6 @@
 import { formatLevelWithTier } from '@/lib/skillTiers'
-import { normalizeSkillLevel } from '@/lib/skillLevel'
+import { normalizeSkillLevel, typedBounds } from '@/lib/skillLevel'
+import type { SkillLadder } from '@/lib/skillLadder'
 import { DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import type { PlayerMe } from '@/types/api'
 
@@ -26,6 +27,7 @@ export interface ProfileDetails {
  */
 export function readProfileDetails(
   profile: PlayerMe | null,
+  ladder: SkillLadder,
   justSaved?: Partial<PlayerMe> | null,
 ): ProfileDetails {
   const merged = justSaved ? { ...profile, ...justSaved } : profile
@@ -34,13 +36,13 @@ export function readProfileDetails(
   // complete-profile to mean "not chosen", and a raw read would both format it
   // as a plausible "0.0 (D2)" and call the profile complete — the modal would
   // never open and rally-api would refuse the register the player then makes.
-  const level = normalizeSkillLevel(merged?.skill_level)
+  const level = normalizeSkillLevel(merged?.skill_level, typedBounds(ladder))
   const details: Omit<ProfileDetails, 'complete'> = {
     name: name || null,
     // PlayerMe carries no country_code, so the dial prefix comes from the
     // shared constant — the same assumption the phone field itself makes.
     phone: merged?.contact_number ? `${DEFAULT_COUNTRY.dial} ${merged.contact_number}` : null,
-    level: level == null ? null : formatLevelWithTier(level),
+    level: level == null ? null : formatLevelWithTier(level, ladder),
   }
   return { ...details, complete: !!(details.name && details.phone && details.level) }
 }

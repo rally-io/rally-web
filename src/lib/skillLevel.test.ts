@@ -1,21 +1,29 @@
 import { describe, expect, it } from 'vitest'
+import { FALLBACK_LADDERS } from './skillLadder'
 import {
-  SKILL_MIN,
-  SKILL_MAX,
   SKILL_STEP,
+  SKILL_SLIDER_STEP,
   SKILL_DEFAULT,
   SKILL_DECIMALS,
   snapToSkillStep,
   clampSkill,
   normalizeSkillLevel,
   formatSkill,
+  typedBounds,
 } from './skillLevel'
 
+const B7 = typedBounds(FALLBACK_LADDERS[7])
+const B5 = typedBounds(FALLBACK_LADDERS[5])
+
 describe('skillLevel helpers', () => {
-  it('exposes the canonical range constants at the engine\'s own resolution', () => {
-    expect(SKILL_MIN).toBe(1.0)
-    expect(SKILL_MAX).toBe(7.0)
+  it('reads the typed bounds off the ladder: 1.0–7.0 before the flip, 1.0–5.0 after', () => {
+    expect(B7).toEqual({ min: 1, max: 7 })
+    expect(B5).toEqual({ min: 1, max: 5 })
+  })
+
+  it('keeps the engine\'s own resolution', () => {
     expect(SKILL_STEP).toBe(0.01)
+    expect(SKILL_SLIDER_STEP).toBe(0.25)
     expect(SKILL_DECIMALS).toBe(2)
     expect(SKILL_DEFAULT).toBe(3.0)
   })
@@ -39,12 +47,17 @@ describe('skillLevel helpers', () => {
     }
   })
 
-  it('clampSkill clamps to the scale; NaN becomes the default', () => {
-    expect(clampSkill(0)).toBe(SKILL_MIN)
-    expect(clampSkill(-5)).toBe(SKILL_MIN)
-    expect(clampSkill(99)).toBe(SKILL_MAX)
-    expect(clampSkill(4.17)).toBe(4.17)
-    expect(clampSkill(Number.NaN)).toBe(SKILL_DEFAULT)
+  it('clampSkill clamps to the bounds in force; NaN becomes the default', () => {
+    expect(clampSkill(0, B7)).toBe(1)
+    expect(clampSkill(-5, B7)).toBe(1)
+    expect(clampSkill(99, B7)).toBe(7)
+    expect(clampSkill(4.17, B7)).toBe(4.17)
+    expect(clampSkill(Number.NaN, B7)).toBe(SKILL_DEFAULT)
+    // After the flip an old 1–7 number can never reach the API: it clamps to typed_max.
+    expect(clampSkill(6.0, B5)).toBe(5)
+    expect(clampSkill(99, B5)).toBe(5)
+    expect(clampSkill(4.17, B5)).toBe(4.17)
+    expect(clampSkill(Number.NaN, B5)).toBe(SKILL_DEFAULT)
   })
 
   it('formatSkill prints the same two decimals the level chip does', () => {
@@ -57,16 +70,19 @@ describe('skillLevel helpers', () => {
 })
 
 describe('normalizeSkillLevel', () => {
-  it.each([null, undefined, 0, 0.5, -1, NaN])('reads %s as not chosen', (v) => {
-    expect(normalizeSkillLevel(v as number | null | undefined)).toBeNull()
+  it.each([null, undefined, 0, 0.5, -1, NaN])('reads %s as not chosen, on either ladder', (v) => {
+    expect(normalizeSkillLevel(v as number | null | undefined, B7)).toBeNull()
+    expect(normalizeSkillLevel(v as number | null | undefined, B5)).toBeNull()
   })
+
   it('passes real levels through UNSNAPPED, clamping only the high end', () => {
-    expect(normalizeSkillLevel(1)).toBe(1)
-    expect(normalizeSkillLevel(7)).toBe(7)
-    expect(normalizeSkillLevel(9)).toBe(7)
+    expect(normalizeSkillLevel(1, B7)).toBe(1)
+    expect(normalizeSkillLevel(7, B7)).toBe(7)
+    expect(normalizeSkillLevel(9, B7)).toBe(7)
+    expect(normalizeSkillLevel(9, B5)).toBe(5)
     // Off-step values are what the rating engine writes; snapping them here
     // would misreport the stored level and hide it from the dirty check.
-    expect(normalizeSkillLevel(3.3)).toBe(3.3)
-    expect(normalizeSkillLevel(4.68)).toBe(4.68)
+    expect(normalizeSkillLevel(3.3, B5)).toBe(3.3)
+    expect(normalizeSkillLevel(4.68, B7)).toBe(4.68)
   })
 })
