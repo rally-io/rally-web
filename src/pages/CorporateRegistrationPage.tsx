@@ -26,6 +26,7 @@ import { EventTerms } from '@/components/corporate/EventTerms'
 import { EvidencePicker } from '@/components/corporate/EvidencePicker'
 import { ProfileDetailsModal, type SavedProfileEssentials } from '@/components/corporate/ProfileDetailsModal'
 import { readProfileDetails } from '@/components/corporate/profileDetails'
+import { competeLevelOptions } from '@/lib/competeLevels'
 import { RallyWordmark } from '@/components/corporate/RallyWordmark'
 import { AppDownloadFooter } from '@/components/corporate/AppDownloadFooter'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
@@ -252,6 +253,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         gate={gate}
         feeWaiver={event.feeWaiver}
         competeLevels={event.competeLevels}
+        competeLevelsAreBands={event.competeLevelsAreBands}
         pendingUpload={pendingUploadRef}
         refetchTournament={refetch}
         onEvidenceFailed={setEvidenceError}
@@ -607,6 +609,8 @@ interface RegistrationFormProps {
   feeWaiver?: CorporateFeeWaiver
   /** The event's level categories, if it offers any. Set ⇒ a REQUIRED dropdown. */
   competeLevels?: string[]
+  /** Those categories are the tournament bands: follow the served ladder (lib/competeLevels.ts). */
+  competeLevelsAreBands?: boolean
   /** Where the form parks the evidence upload for the page's `onRegistered`. */
   pendingUpload: MutableRefObject<((reg: TournamentRegistrationResult) => Promise<void | 'stay'>) | null>
   refetchTournament: () => Promise<unknown>
@@ -626,7 +630,7 @@ const WAIVER_OPTIONS: { value: 0 | 1 | 2; key: string }[] = [
 ]
 
 function RegistrationForm({
-  tr, gate, feeWaiver, competeLevels, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
+  tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
 }: RegistrationFormProps) {
   const { t } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
@@ -681,8 +685,12 @@ function RegistrationForm({
   const partnerRequired = (needsPartner || residents === 2) && partnerState.phase === 'idle'
   // An event that offers level categories must get one before it registers the
   // pair; every other event has none to ask about and is never held here.
-  const offersLevels = (competeLevels?.length ?? 0) > 0
-  const levelMissing = offersLevels && !competeLevel
+  // The dropdown's options on the ladder in force. A choice they no longer offer (the scale
+  // switched under an open page) counts as no choice, so it can never be sent.
+  const levelOptions = competeLevelOptions({ competeLevels, competeLevelsAreBands }, ladder)
+  const chosenLevel = levelOptions.includes(competeLevel) ? competeLevel : ''
+  const offersLevels = levelOptions.length > 0
+  const levelMissing = offersLevels && !chosenLevel
   const busy = isRegistering
   // `waivedAmount(fee, seats, 0)` is the same number, but it would round a fee
   // that today is rendered verbatim — a no-waiver price stays untouched.
@@ -784,7 +792,7 @@ function RegistrationForm({
     // every seam that records one — this path stays byte-for-byte what it was.
     // Each extra is passed only when there is one, so an event without level
     // categories makes exactly the call it made before this feature existed.
-    if (offersLevels) await register(partnerState, waiverRequest, competeLevel)
+    if (offersLevels) await register(partnerState, waiverRequest, chosenLevel)
     else if (waiverRequest) await register(partnerState, waiverRequest)
     else await register(partnerState)
     // Stayed after a failed upload: the free-entry confirmation ran after the card's
@@ -841,22 +849,22 @@ function RegistrationForm({
             <Select
               id="cr-compete-level"
               required
-              value={competeLevel}
+              value={chosenLevel}
               disabled={busy}
-              aria-invalid={competeLevelError && !competeLevel}
-              aria-describedby={competeLevelError && !competeLevel ? 'cr-compete-level-error' : 'cr-compete-level-hint'}
+              aria-invalid={competeLevelError && !chosenLevel}
+              aria-describedby={competeLevelError && !chosenLevel ? 'cr-compete-level-error' : 'cr-compete-level-hint'}
               onChange={(e) => {
                 setCompeteLevel(e.target.value)
                 setCompeteLevelError(false)
               }}
-              className={competeLevelError && !competeLevel ? 'border-rally-error' : undefined}
+              className={competeLevelError && !chosenLevel ? 'border-rally-error' : undefined}
             >
               <option value="" disabled>{t('corporate.reg.competeLevelPlaceholder')}</option>
-              {competeLevels!.map((level) => (
+              {levelOptions.map((level) => (
                 <option key={level} value={level}>{level}</option>
               ))}
             </Select>
-            {competeLevelError && !competeLevel ? (
+            {competeLevelError && !chosenLevel ? (
               <p id="cr-compete-level-error" role="alert" className="text-xs text-rally-error mt-1.5">
                 {t('corporate.reg.competeLevelRequired')}
               </p>
