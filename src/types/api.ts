@@ -286,6 +286,7 @@ export interface TournamentDetail extends Tournament {
   waitlist_count: number
   /** e.g. 'holon_resident'. Null when the tournament offers no fee waiver. */
   fee_waiver_type?: string | null
+  is_document_required?: boolean
 }
 
 /**
@@ -346,7 +347,7 @@ export interface AcknowledgedMessageRef {
  *  (residency-fee-waiver-web spec). Evidence is uploaded separately, after the
  *  registration row exists, via `registrationEvidence.ts`. */
 export interface FeeWaiverRequest {
-  type: 'holon_resident'
+  type: string
   resident_count: 1 | 2
 }
 

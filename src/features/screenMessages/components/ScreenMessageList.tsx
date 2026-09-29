@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { useScreenMessages } from '../hooks/useScreenMessages'
 import { ScreenMessageCard } from './ScreenMessageCard'
-import type { ScreenMessageSelection, ScreenMessagesQuery } from '../types'
+import type { ScreenMessage, ScreenMessageSelection, ScreenMessagesQuery } from '../types'
 
 interface Props {
   query: ScreenMessagesQuery
@@ -14,6 +14,8 @@ interface Props {
    *  isn't enforcing a gate (e.g. the club page), which leaves every card in
    *  its original accept-button behaviour. */
   selection?: ScreenMessageSelection
+  /** Optional filter to restrict which messages appear inline in this list. */
+  filter?: (message: ScreenMessage) => boolean
 }
 
 /** Renders nothing — no wrapper, no skeleton, no empty state — while loading
@@ -28,11 +30,13 @@ interface Props {
  *  A non-gating modal (an announcement) has no inline duplicate — it's
  *  handled entirely by ScreenMessageModalHost, mounted separately by the
  *  page. */
-export function ScreenMessageList({ query, className, selection }: Props) {
+export function ScreenMessageList({ query, className, selection, filter }: Props) {
   const { data: messages } = useScreenMessages(query)
 
   const inlineMessages = (messages ?? []).filter(
-    (m) => m.display_mode === 'inline' || (m.gate_actions ?? []).length > 0,
+    (m) =>
+      (!filter || filter(m)) &&
+      (m.display_mode === 'inline' || (m.gate_actions ?? []).length > 0),
   )
 
   if (inlineMessages.length === 0) return null

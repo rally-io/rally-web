@@ -48,16 +48,15 @@ describe('corporateEvents', () => {
   })
 
   // The owner asked for this ONE tournament (2026-09-28). A second one is a deliberate
-  // change here.
-  it('only the Holon Israel Open sends its tournament page to its event page', () => {
+  it('no tournament redirects to an event page when standard flow is enabled', () => {
     const redirecting = Object.values(CORPORATE_EVENTS)
       .filter((ev) => ev.mode === 'tournament' && ev.redirectFromTournamentPage)
       .map((ev) => ev.slug)
-    expect(redirecting).toEqual(['holon-israel-open-2026'])
+    expect(redirecting).toEqual([])
   })
 
-  it('maps that tournament id to its event page, and nothing else to anything', () => {
-    expect(eventPagePathForTournament('7acb6027-33df-456a-8d3c-6ba4073b72ef')).toBe('/join/holon-israel-open-2026')
+  it('maps tournament id to null when redirection is disabled', () => {
+    expect(eventPagePathForTournament('7acb6027-33df-456a-8d3c-6ba4073b72ef')).toBeNull()
     expect(eventPagePathForTournament('00000000-0000-0000-0000-000000000000')).toBeNull()
     expect(eventPagePathForTournament(undefined)).toBeNull()
   })

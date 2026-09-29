@@ -251,7 +251,7 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // Listed publicly from 2026-09-28. Web visitors land here for the full flow; the
     // app registers plain entries (no waiver, no level) and its banner and the
     // tournament description point residents to rallypadel.app/holon (vercel.json).
-    redirectFromTournamentPage: true,
+    redirectFromTournamentPage: false,
   },
 }
 

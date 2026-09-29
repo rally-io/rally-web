@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, FileText, Info, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, FileText, Info, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useScreenMessageState } from '../hooks/useScreenMessageState'
 import { MessageAcceptControls } from './MessageAcceptControls'
@@ -44,11 +45,12 @@ const KIND_BORDER_STYLES: Record<ScreenMessage['kind'], string> = {
 const KIND_ICON_STYLES: Record<ScreenMessage['kind'], string> = {
   info: 'bg-rally-bg/40 text-rally-text-muted',
   warning: 'bg-rally-warning/15 text-rally-warning',
-  terms: 'bg-rally-bg/40 text-rally-text-2',
+  terms: 'bg-rally-accent/15 text-rally-accent',
 }
 
 export function ScreenMessageCard({ message, selection }: Props) {
   const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
   const {
     showCheckbox, showAccept, showConfirmed, canDismiss, isChecked,
     accept, dismissMessage, isAccepting, isDismissing, actionErrorMessage,
@@ -73,41 +75,61 @@ export function ScreenMessageCard({ message, selection }: Props) {
   return (
     <div
       id={`screen-message-${message.id}`}
+      data-testid={`screen-message-card-${message.id}`}
       className={cn(
         'rounded-2xl border p-5 transition-colors',
         KIND_BG_STYLES[message.kind],
         isUntickedBlocking ? 'border-rally-error' : KIND_BORDER_STYLES[message.kind],
       )}
     >
-      <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            'inline-flex items-center justify-center w-9 h-9 rounded-full shrink-0',
-            KIND_ICON_STYLES[message.kind],
-          )}
-        >
-          <Icon className="w-5 h-5" />
-        </span>
-        {/* `dir="auto"` rather than a server-supplied locale: the browser reads
-            direction off the first strong character the author actually typed, so
-            a Hebrew notice renders RTL inside an English page and vice versa,
-            with no language field to store, resolve or get wrong. */}
-        <div dir="auto" className="flex-1 min-w-0">
-          <div className="flex items-center flex-wrap gap-2">
-            <h3 className="font-display font-bold text-rally-text text-lg">{message.title}</h3>
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="w-full flex items-center justify-between gap-3 text-left focus:outline-none"
+        aria-expanded={expanded}
+        aria-controls={`screen-message-body-${message.id}`}
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span
+            className={cn(
+              'inline-flex items-center justify-center w-9 h-9 rounded-full shrink-0',
+              KIND_ICON_STYLES[message.kind],
+            )}
+          >
+            <Icon className="w-5 h-5" />
+          </span>
+          <div dir="auto" className="flex items-center flex-wrap gap-2 min-w-0">
+            <h3 className="font-display font-bold text-rally-text text-lg">
+              {message.title}
+            </h3>
             {isUntickedBlocking && (
-              // Colour is never the only signal — colourblind readers and
-              // dark mode both need the word, not just the red tone.
               <span className="inline-flex items-center gap-1 rounded-full bg-rally-error/15 px-2 py-0.5 text-xs font-bold text-rally-error shrink-0">
                 <span aria-hidden="true">*</span>
                 {t('screenMessages.requiredBadge', { defaultValue: 'Required' })}
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-rally-text-2 leading-relaxed whitespace-pre-line">
-            {message.body}
-          </p>
         </div>
+        {expanded ? (
+          <ChevronUp className="w-5 h-5 text-rally-text-2 shrink-0" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-rally-text-2 shrink-0" />
+        )}
+      </button>
+
+      <div
+        id={`screen-message-body-${message.id}`}
+        className={cn(
+          'mt-3 pt-3 border-t border-rally-border/60 transition-all',
+          !expanded && 'hidden',
+        )}
+      >
+        <p
+          dir="auto"
+          className="text-sm text-rally-text-2 leading-relaxed whitespace-pre-line"
+        >
+          {message.body}
+        </p>
       </div>
 
       {(showAccept || showCheckbox || showConfirmed || canDismiss) && (
