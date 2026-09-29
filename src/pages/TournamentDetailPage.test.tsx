@@ -26,6 +26,10 @@ vi.mock('@/hooks/usePlayerSearch', () => ({
 vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
 vi.mock('@/services/api/profile', () => ({ getOnboardingStatus: vi.fn() }))
 vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
+vi.mock('@/services/api/registrationEvidence', () => ({
+  uploadRegistrationEvidence: vi.fn(() => Promise.resolve({ success: true })),
+  listRegistrationEvidence: vi.fn(() => Promise.resolve([])),
+}))
 // ScreenMessageList calls this real useQuery-backed hook — this file mounts no
 // QueryClientProvider, so it must be mocked like every other hook here.
 vi.mock('@/features/screenMessages/hooks/useScreenMessages', () => ({
@@ -61,6 +65,7 @@ import { confirmTournamentZeroPayment } from '@/services/api/payments'
 import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
 import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
 import { useTournamentParticipants } from '@/hooks/useTournamentParticipants'
+import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
 
 const mockUseTournament = vi.mocked(useTournament)
 const mockUseAuthGate = vi.mocked(useAuthGate)
@@ -71,6 +76,7 @@ const mockConfirmZeroPayment = vi.mocked(confirmTournamentZeroPayment)
 const mockUseScreenMessages = vi.mocked(useScreenMessages)
 const mockUseRegistrationGate = vi.mocked(useRegistrationGate)
 const mockUseParticipants = vi.mocked(useTournamentParticipants)
+const mockUploadEvidence = vi.mocked(uploadRegistrationEvidence)
 const mockRequireSignIn = vi.fn()
 
 // Default: nothing gates registration — every pre-existing test in this file
@@ -115,6 +121,7 @@ function tr(over: Record<string, unknown> = {}) {
     },
     isLoading: false,
     isError: false,
+    refetch: vi.fn(),
   } as any
 }
 
@@ -975,11 +982,11 @@ describe('TournamentDetailPage — event-page-only tournament', () => {
     )
   }
 
-  it('hands the Holon Israel Open over to its event page — the only place it registers', () => {
+  it('renders the Holon Israel Open on its own page now that standard flow is enabled', () => {
+    vi.mocked(useTournament).mockReturnValue({ data: undefined, isLoading: true, isError: false } as any)
     renderAt('/tournaments/7acb6027-33df-456a-8d3c-6ba4073b72ef')
-    expect(screen.getByTestId('event-page')).toBeInTheDocument()
-    // Never rendered its own page, so never fetched the tournament for it.
-    expect(vi.mocked(useTournament)).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('event-page')).not.toBeInTheDocument()
+    expect(vi.mocked(useTournament)).toHaveBeenCalledWith('7acb6027-33df-456a-8d3c-6ba4073b72ef')
   })
 
   it('leaves every other tournament on its own page', () => {
@@ -987,6 +994,140 @@ describe('TournamentDetailPage — event-page-only tournament', () => {
     renderAt('/tournaments/t-1')
     expect(screen.queryByTestId('event-page')).not.toBeInTheDocument()
     expect(vi.mocked(useTournament)).toHaveBeenCalledWith('t-1')
+  })
+})
+
+describe('TournamentDetailPage — residency fee waiver & document upload', () => {
+  it('does not render residency waiver section when is_document_required is false', () => {
+    mockUseTournament.mockReturnValue(tr({ is_document_required: false, entry_fee: 150 }))
+    renderPage()
+    expect(screen.queryByTestId('residency-waiver-section')).not.toBeInTheDocument()
+    expect(screen.getByText('₪150')).toBeInTheDocument()
+  })
+
+  it('renders residency waiver selector when is_document_required is true', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    expect(screen.getByTestId('residency-waiver-section')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-0')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-1')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-2')).toBeInTheDocument()
+    expect(screen.getByText('₪150')).toBeInTheDocument()
+  })
+
+  it('filters out option 2 for singles tournaments', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ format: 'singles', is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    expect(screen.getByTestId('waiver-option-0')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-1')).toBeInTheDocument()
+    expect(screen.queryByTestId('waiver-option-2')).not.toBeInTheDocument()
+  })
+
+  it('updates price and displays evidence picker when selecting 1 resident', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    // 150 for 2 seats, 1 resident -> 75
+    expect(screen.getByText('₪75')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.priceHalf'))).toBeInTheDocument()
+    expect(document.getElementById('tournament-evidence-1')).toBeInTheDocument()
+  })
+
+  it('updates price to ₪0 and displays 2 evidence pickers when selecting 2 residents', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    fireEvent.click(screen.getByTestId('waiver-option-2'))
+    expect(screen.getByText('₪0')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.priceWaived'))).toBeInTheDocument()
+    expect(document.getElementById('tournament-evidence-1')).toBeInTheDocument()
+    expect(document.getElementById('tournament-evidence-2')).toBeInTheDocument()
+  })
+
+  it('blocks registration and displays error if resident selected but no files uploaded', async () => {
+    mockUseTournament.mockReturnValue(
+      tr({ format: 'singles', is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t('corporate.reg.evidenceRequired'))).toBeInTheDocument()
+    })
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
+
+  it('registers successfully with fee waiver and uploads evidence files', async () => {
+    const file = new File(['proof'], 'teudat_zehut.pdf', { type: 'application/pdf' })
+    mockUseTournament.mockReturnValue(
+      tr({
+        format: 'singles',
+        is_document_required: true,
+        fee_waiver_type: 'holon_resident',
+        entry_fee: 150,
+        refetch: vi.fn(),
+      }),
+    )
+    mockRegisterTournament.mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'reg-waiver-1',
+        tournament_id: 't-1',
+        status: 'registered',
+        amount_to_pay: 0,
+      } as any,
+    } as any)
+    mockConfirmZeroPayment.mockResolvedValueOnce({ success: true, data: {} } as any)
+
+    renderPage()
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    const input = document.getElementById('tournament-evidence-1') as HTMLInputElement
+    expect(input).toBeInTheDocument()
+    fireEvent.change(input, { target: { files: [file] } })
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+
+    await waitFor(() => {
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.objectContaining({
+          fee_waiver: {
+            type: 'holon_resident',
+            resident_count: 1,
+          },
+        }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(mockUploadEvidence).toHaveBeenCalledWith('reg-waiver-1', 1, [file])
+    })
+  })
+
+  it('displays residency review status for already registered user with fee waiver', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        is_document_required: true,
+        fee_waiver_type: 'holon_resident',
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          fee_waiver_type: 'holon_resident',
+          fee_waiver_status: 'pending',
+          fee_waiver_resident_count: 2,
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.getByText(i18n.t('corporate.reg.waiverTitle'))).toBeInTheDocument()
+    expect(screen.getByText('Waiting for the club to confirm residency (2/2)')).toBeInTheDocument()
   })
 })
 

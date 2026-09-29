@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  ArrowLeft, Calendar, Clock, ExternalLink, Trophy, TrendingUp, Users,
+  ArrowLeft, Calendar, Clock, ExternalLink, FileCheck, Trophy, TrendingUp, Users,
 } from 'lucide-react'
 import { useTournament } from '@/hooks/useTournament'
 import { eventPagePathForTournament } from '@/constants/corporateEvents'
@@ -20,8 +20,11 @@ import { FactCard } from '@/components/tournaments/FactCard'
 import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
 import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
 import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistrationGate'
+import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
+import { TournamentRulesSection } from '@/components/tournaments/TournamentRulesSection'
 import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { ResidencyWaiverSelector } from '@/components/tournaments/ResidencyWaiverSelector'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import {
@@ -29,8 +32,10 @@ import {
 } from '@/services/api/tournaments'
 import { translateWaitlistError } from '@/lib/registrationErrors'
 import { useTournamentRegistration, buildRegisterPayload } from '@/hooks/useTournamentRegistration'
+import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
+import { validateEvidenceFiles, waivedAmount } from '@/lib/evidenceRules'
 import { ctaFor } from '@/lib/tournamentCta'
-import type { TournamentWaitlistEntry } from '@/types/api'
+import type { FeeWaiverRequest, TournamentRegistrationResult, TournamentWaitlistEntry } from '@/types/api'
 import {
   isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName,
@@ -67,7 +72,7 @@ function TournamentRegistrationPage() {
   const { locale } = useRtl()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { data: tr, isLoading, isError } = useTournament(id!)
+  const { data: tr, isLoading, isError, refetch } = useTournament(id!)
   const { requireSignIn } = useAuthGate()
   const { status: sessionStatus, refetchOnboarding, needsDetails } = useAppSession()
   const { user } = useAuth()
@@ -77,15 +82,77 @@ function TournamentRegistrationPage() {
   // undefined while loading; useScreenMessages' own `enabled` handles that.
   const gate = useRegistrationGate({ scope: 'tournament', id: tr?.id }, REGISTRATION_GATE_ACTION)
 
+  // Fetches all messages for this tournament (deduped with the gate's own call
+  // — same query key, zero extra network requests). Rules are the non-gating
+  // subset: informational messages the CRM author did not attach any gate to.
+  const { data: allMessages } = useScreenMessages({ scope: 'tournament', id: tr?.id })
+  const rulesMessages = (allMessages ?? []).filter(
+    (m) => (m.gate_actions ?? []).length === 0,
+  )
+
   // Only a *selected* partner survives the auth / profile detours; it is
   // cleared the moment a registration or waitlist entry actually exists, so it
   // can never be replayed into a second row.
   const [partnerState, setPartnerState] = useTournamentPartnerDraft(id!, user?.id ?? '')
 
+  const isDocumentRequired = Boolean(tr?.is_document_required ?? tr?.fee_waiver_type)
+  const seats: 1 | 2 = tr?.format === 'singles' ? 1 : 2
+  const [residentCount, setResidentCount] = useState<0 | 1 | 2>(0)
+  const [myFiles, setMyFiles] = useState<File[]>([])
+  const [partnerFiles, setPartnerFiles] = useState<File[]>([])
+  const [myEvidenceError, setMyEvidenceError] = useState<string | null>(null)
+  const [partnerEvidenceError, setPartnerEvidenceError] = useState<string | null>(null)
+  const pendingUploadRef = useRef<((reg: TournamentRegistrationResult) => Promise<void>) | null>(null)
+
+  const handleSelectResidents = (next: 0 | 1 | 2) => {
+    setResidentCount(next)
+    setMyEvidenceError(null)
+    setPartnerEvidenceError(null)
+    if (next === 0) setMyFiles([])
+    if (next < 2) setPartnerFiles([])
+  }
+
+  const residents: 0 | 1 | 2 = isDocumentRequired ? residentCount : 0
+  const effectiveFee = tr ? (residents === 0 ? tr.entry_fee : waivedAmount(tr.entry_fee, seats, residents)) : 0
+
+  const validateEvidence = (): boolean => {
+    if (!isDocumentRequired || residents === 0) return true
+    let ok = true
+    if (myFiles.length === 0) {
+      setMyEvidenceError(t('corporate.reg.evidenceRequired'))
+      ok = false
+    } else {
+      const badFile = validateEvidenceFiles([], myFiles)
+      if (badFile) {
+        setMyEvidenceError(t(`corporate.reg.${badFile}`))
+        ok = false
+      }
+    }
+    if (residents === 2) {
+      if (partnerFiles.length === 0) {
+        setPartnerEvidenceError(t('corporate.reg.evidenceRequired'))
+        ok = false
+      } else {
+        const badFile = validateEvidenceFiles([], partnerFiles)
+        if (badFile) {
+          setPartnerEvidenceError(t(`corporate.reg.${badFile}`))
+          ok = false
+        }
+      }
+    }
+    return ok
+  }
+
   const {
     register, isRegistering, registerError, gateError, setRegisterError, setGateError,
   } = useTournamentRegistration(tr, gate, {
-    onRegistered: () => setPartnerState({ phase: 'idle' }),
+    onRegistered: async (reg) => {
+      try {
+        await pendingUploadRef.current?.(reg)
+      } finally {
+        setPartnerState({ phase: 'idle' })
+      }
+    },
   })
 
   const [isCheckingProfile, setIsCheckingProfile] = useState(false)
@@ -181,6 +248,14 @@ function TournamentRegistrationPage() {
       .then(async () => {
         if (!tr || !mounted.current) return
         if (!(await checkRegistrationProfile())) return
+
+        if (!validateEvidence()) {
+          document
+            .getElementById('residency-waiver-section')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+
         const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
         if (isPartneredFormat && selectedPartner.phase === 'idle') {
           document
@@ -202,7 +277,35 @@ function TournamentRegistrationPage() {
           }
           return
         }
-        await register(selectedPartner)
+
+        const waiverRequest: FeeWaiverRequest | undefined =
+          isDocumentRequired && residents > 0
+            ? {
+                type: tr.fee_waiver_type || 'holon_resident',
+                resident_count: residents as 1 | 2,
+              }
+            : undefined
+
+        pendingUploadRef.current = waiverRequest
+          ? async (reg) => {
+              try {
+                await uploadRegistrationEvidence(reg.id, 1, myFiles)
+                if (residents === 2) {
+                  await uploadRegistrationEvidence(reg.id, 2, partnerFiles)
+                }
+              } catch (uploadError) {
+                console.error('[TournamentDetailPage] evidence upload failed:', uploadError)
+              } finally {
+                await refetch?.()
+              }
+            }
+          : null
+
+        if (waiverRequest) {
+          await register(selectedPartner, waiverRequest)
+        } else {
+          await register(selectedPartner)
+        }
       })
       .catch(() => {
         // USER_CANCELLED or SUPERSEDED — stay on the page as-is.
@@ -331,12 +434,21 @@ function TournamentRegistrationPage() {
     myWaitlistEntry,
     myRegistration: myReg,
   })
+  const myRegResidents = (myReg?.fee_waiver_resident_count ?? 0) as 0 | 1 | 2
+  const myRegAmountDue = myReg ? waivedAmount(tr.entry_fee, seats, myRegResidents) : tr.entry_fee
+  const waiverZero =
+    myReg != null &&
+    (myReg.fee_waiver_status === 'pending' || myReg.fee_waiver_status === 'approved') &&
+    myRegResidents > 0 &&
+    myRegAmountDue === 0
+
   const payState =
-    myReg?.status === 'payment_pending' ||
-    myReg?.status === 'approved' ||
-    (myReg?.status === 'registered' &&
-      myReg?.payment_status !== 'payment_held' &&
-      myReg?.payment_status !== 'completed')
+    !waiverZero &&
+    (myReg?.status === 'payment_pending' ||
+      myReg?.status === 'approved' ||
+      (myReg?.status === 'registered' &&
+        myReg?.payment_status !== 'payment_held' &&
+        myReg?.payment_status !== 'completed'))
   // The message gate never disables the Register Now button and never shows
   // a standing reason text under it (product decision, 2026-08-29 — mirrors
   // rally-mobile commit f27c8c2, superseding the original "disable on
@@ -397,6 +509,7 @@ function TournamentRegistrationPage() {
           selectedIds: gate.selectedIds,
           onToggle: gate.toggle,
         }}
+        filter={(m) => (m.gate_actions ?? []).length > 0}
       />
       <ScreenMessageModalHost
         query={{ scope: 'tournament', id: tr.id }}
@@ -488,6 +601,11 @@ function TournamentRegistrationPage() {
           </p>
         </section>
 
+        {/* Tournament Rules — non-gating CRM messages for this tournament.
+            Placed after About so it reads as part of the tournament information
+            block, before the structural facts (Category, Prizes, Sponsors). */}
+        <TournamentRulesSection messages={rulesMessages} />
+
         <section>
           <h2 className="font-display text-2xl md:text-3xl font-bold text-rally-text mb-5">
             {t('tournament.tournamentDetailCategory')}
@@ -533,6 +651,23 @@ function TournamentRegistrationPage() {
           />
         )}
 
+        {myReg && myReg.fee_waiver_resident_count != null && myReg.fee_waiver_resident_count > 0 && (
+          <FactCard
+            icon={<FileCheck className="w-4 h-4" />}
+            label={t('corporate.reg.waiverTitle')}
+            value={
+              myReg.fee_waiver_status === 'approved'
+                ? t('corporate.reg.waiverApproved', { defaultValue: 'Approved' })
+                : myReg.fee_waiver_status === 'rejected'
+                ? t('corporate.reg.waiverRejected', { defaultValue: 'Rejected' })
+                : t('corporate.reg.registeredStatus_waiverPending', {
+                    residents: myReg.fee_waiver_resident_count,
+                    defaultValue: `Residency review pending (${myReg.fee_waiver_resident_count}/${seats})`,
+                  })
+            }
+          />
+        )}
+
         {cta === 'waiting' && myWaitlistEntry && (
           <WaitlistCard
             position={myWaitlistEntry.position}
@@ -540,6 +675,25 @@ function TournamentRegistrationPage() {
             isLeaving={isLeavingWaitlist}
           />
         )}
+
+        {!myReg &&
+          isDocumentRequired &&
+          (cta === 'register' || cta === 'join_waitlist') && (
+            <ResidencyWaiverSelector
+              seats={seats}
+              residentCount={residentCount}
+              onSelectResidents={handleSelectResidents}
+              myFiles={myFiles}
+              onMyFilesChange={setMyFiles}
+              myEvidenceError={myEvidenceError}
+              onMyEvidenceError={setMyEvidenceError}
+              partnerFiles={partnerFiles}
+              onPartnerFilesChange={setPartnerFiles}
+              partnerEvidenceError={partnerEvidenceError}
+              onPartnerEvidenceError={setPartnerEvidenceError}
+              disabled={isRegistering}
+            />
+          )}
 
         {!myReg &&
           isPartneredFormat &&
@@ -655,8 +809,13 @@ function TournamentRegistrationPage() {
                   : t('tournament.tournamentsEntryFee')}
               </p>
               <p className="text-2xl md:text-3xl font-black text-rally-accent">
-                {formatCurrency(tr.entry_fee)}
+                {formatCurrency(effectiveFee)}
               </p>
+              {residents > 0 && (
+                <p className="text-xs text-rally-accent mt-0.5 leading-relaxed">
+                  {t(effectiveFee < 0.01 ? 'corporate.reg.priceWaived' : 'corporate.reg.priceHalf')}
+                </p>
+              )}
             </div>
             {payState ? (
               <button
