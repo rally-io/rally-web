@@ -1147,7 +1147,7 @@
       "registeredStatus_waiverPending": "Waiting for the club to confirm residency ({{residents}}/2)",
       "evidenceCount": "Files attached: {{n}}",
       "addEvidence": "Add proof of address",
-      "evidenceUploadFailed": "You're registered, but the upload failed. Attach the files here.",
+      "evidenceUploadFailed": "The upload failed. Check your connection and try again.",
       "waiverReviewTitle": "Approval isn't automatic",
       "waiverReviewBody": "The tournament manager checks your documents before confirming the pair. If residency can't be verified the registration is cancelled and anything you paid is refunded in full — you can then register again at the regular fee. This can happen at any stage, including after the pair has been confirmed.",
       "signedInAs": "Signed in as <account>{{account}}</account>",
@@ -1157,7 +1157,16 @@
       "competeLevelPlaceholder": "Choose a level",
       "competeLevelHint": "The level your pair asks to compete in. The tournament manager makes the final placement.",
       "competeLevelRequired": "Choose the level you want to compete in",
-      "ctaMissingLevel": "Choose a level to continue"
+      "ctaMissingLevel": "Choose a level to continue",
+      "evidenceMissingTitle": "Residency documents missing",
+      "evidenceMissingBodyPending": "Your documents didn't reach us, and without them we can't approve free entry. Add them here.",
+      "evidenceMissingBodyApproved": "Your documents didn't reach us. Add them here to complete your registration.",
+      "evidenceRejectedFormat": "That file couldn't be read. Take a screenshot of the document or save it as a PDF, and try again.",
+      "evidenceRejectedSize": "That file is over 10MB. Take a screenshot of the document and try again.",
+      "evidenceRejectedLimit": "You can add up to 2 files per resident.",
+      "evidenceClosed": "Documents can no longer be added to this claim. Please contact the club.",
+      "waiverApproved": "Approved",
+      "waiverRejected": "Rejected"
     },
     "terms": {
       "title": "Tournament rules"

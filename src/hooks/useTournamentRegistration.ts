@@ -90,8 +90,15 @@ export interface UseTournamentRegistrationOptions {
    *  payment branches run — CorporateRegistrationPage uses this to upload fee
    *  waiver evidence against the just-created registration. A rejection is
    *  logged and swallowed: an evidence upload failure must never strand an
-   *  already-created registration, the page offers "add evidence" later. */
-  onRegistered?: (reg: TournamentRegistrationResult) => void | Promise<void>
+   *  already-created registration, the page offers "add evidence" later.
+   *
+   *  Resolve to `'stay'` to keep the player on the calling page instead of handing
+   *  off: the zero-payment confirmation still runs (the money path is unchanged),
+   *  only the navigation is skipped. CorporateRegistrationPage does this when an
+   *  evidence upload failed — navigating away is what let three pairs believe their
+   *  documents had arrived (2026-09-28/29). A paid registration then resumes from
+   *  the page's own "complete payment" button. */
+  onRegistered?: (reg: TournamentRegistrationResult) => void | 'stay' | Promise<void | 'stay'>
   /** Marks every registration this hook sends as coming from the event page. Only
    *  CorporateRegistrationPage sets it; rally-api requires it for an event-page-only
    *  tournament and ignores it for every other one. */
@@ -173,8 +180,9 @@ export function useTournamentRegistration(
         // re-registering. Awaited so an evidence upload can complete before we
         // navigate away — but a failure here must never strand the already-
         // created registration, so it's logged and swallowed, not fatal.
+        let stay = false
         try {
-          await onRegistered?.(reg)
+          stay = (await onRegistered?.(reg)) === 'stay'
         } catch (onRegisteredError) {
           console.error('[useTournamentRegistration] onRegistered failed:', onRegisteredError)
         }
@@ -193,6 +201,7 @@ export function useTournamentRegistration(
             setRegisterError(zeroResult.error.message)
             return
           }
+          if (stay) return
           const sp = new URLSearchParams({
             type: 'tournament_registration',
             id: reg.id,
@@ -202,6 +211,7 @@ export function useTournamentRegistration(
           navigate(`/payments/confirming?${sp.toString()}`)
           return
         }
+        if (stay) return
         const sp = new URLSearchParams({
           registration_id: reg.id,
           tournament_id: tournament.id,

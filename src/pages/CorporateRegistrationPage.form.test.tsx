@@ -580,6 +580,48 @@ describe('CorporateRegistrationPage — residency fee waiver', () => {
     expect(mockUploadEvidence.mock.calls[1][2][0]).toBe(theirs)
   })
 
+  // 2026-09-28/29: the first resident's file was refused (422) and the partner's was
+  // never even sent; the page then moved on to confirmation as if all was well.
+  it('a refused first file does not cost the partner theirs, and the page stays to say so', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr(WAIVER_TOURNAMENT)) // doubles
+    const { usePlayerSearch } = await import('@/hooks/usePlayerSearch')
+    vi.mocked(usePlayerSearch).mockReturnValue({ results: [{ id: 'p-2', first_name: 'Yossi', last_name: 'Levi', avatar_url: null }], isLoading: false, isActive: true } as any)
+    mockUploadEvidence.mockRejectedValueOnce({ status: 422, code: 'INVALID_DOCUMENT', message: 'File must be a JPEG, PNG, WebP or PDF' })
+    renderPage(WAIVER_EVENT)
+    await user.click(screen.getByRole('button', { name: /Yossi Levi/ }))
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverBoth') }))
+    await user.upload(screen.getByLabelText(i18n.t('corporate.reg.evidenceMine')), makeFile('mine.jpg'))
+    await user.upload(screen.getByLabelText(i18n.t('corporate.reg.evidencePartner')), makeFile('theirs.jpg'))
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCtaFree') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+
+    let answer: unknown
+    await act(async () => {
+      answer = await capturedOnRegistered()!({ id: 'reg-2' } as TournamentRegistrationResult)
+    })
+    expect(mockUploadEvidence).toHaveBeenCalledTimes(2)
+    expect(mockUploadEvidence).toHaveBeenNthCalledWith(2, 'reg-2', 2, expect.any(Array))
+    expect(answer).toBe('stay')
+    expect(refetchTournament).toHaveBeenCalled()
+  })
+
+  it('when every file arrives, the hand-off is unchanged — no "stay"', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ ...WAIVER_TOURNAMENT, format: 'singles' }))
+    renderPage(WAIVER_EVENT)
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverOne') }))
+    await user.upload(screen.getByLabelText(i18n.t('corporate.reg.evidenceMine')), makeFile())
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCtaFree') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+
+    let answer: unknown = 'unset'
+    await act(async () => {
+      answer = await capturedOnRegistered()!({ id: 'reg-1' } as TournamentRegistrationResult)
+    })
+    expect(answer).toBeUndefined()
+  })
+
   /**
    * A failed upload must never strand the registration. Nothing surfaces on
    * the FORM for it any more — real production always swaps the form for the

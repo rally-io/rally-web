@@ -200,6 +200,28 @@ describe('useTournamentRegistration', () => {
     expect(onRegistered).toHaveBeenCalledWith(expect.objectContaining({ id: 'r-1', amount_to_pay: 150, entry_fee: 30 }))
   })
 
+  // An evidence upload failed: the page keeps the player where they can see it and
+  // retry. The money path must not change — only the navigation is skipped.
+  it('onRegistered answering "stay" still confirms a free registration, then stays', async () => {
+    mockRegister.mockResolvedValue({ success: true, data: { id: 'r-0', amount_to_pay: 0 } } as any)
+    mockZero.mockResolvedValue({ success: true, data: {} } as any)
+    const { result } = renderHook(
+      () => useTournamentRegistration(T, gate(), { onRegistered: async () => 'stay' as const }), { wrapper },
+    )
+    await act(() => result.current.register(PARTNER as any))
+    expect(mockZero).toHaveBeenCalledWith('r-0')
+    expect(lastPath).toBe('/tournaments/t-1?')
+  })
+
+  it('onRegistered answering "stay" skips the hand-off to payment', async () => {
+    mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150 } } as any)
+    const { result } = renderHook(
+      () => useTournamentRegistration(T, gate(), { onRegistered: () => 'stay' as const }), { wrapper },
+    )
+    await act(() => result.current.register(PARTNER as any))
+    expect(lastPath).toBe('/tournaments/t-1?')
+  })
+
   it('waits for an async onRegistered before navigating', async () => {
     mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150 } } as any)
     let resolveOnRegistered: () => void = () => {}
