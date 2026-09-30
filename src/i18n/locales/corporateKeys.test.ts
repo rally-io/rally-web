@@ -21,6 +21,9 @@ const REQUIRED_REG_KEYS = [
   'waiverTitle', 'waiverNone', 'waiverOne', 'waiverOneOfUs', 'waiverBoth', 'waiverHint', 'evidenceMine', 'evidenceResident', 'evidencePartner',
   'priceHalf', 'evidencePick', 'evidenceRemove', 'evidenceRequired', 'evidenceTooMany', 'evidenceBadFile', 'priceWaived',
   'registeredStatus_waiverPending', 'evidenceCount', 'addEvidence', 'evidenceUploadFailed',
+  // Why an upload failed, and the card's missing-documents box (2026-09-30)
+  'evidenceMissingTitle', 'evidenceMissingBodyPending', 'evidenceMissingBodyApproved',
+  'evidenceRejectedFormat', 'evidenceRejectedSize', 'evidenceRejectedLimit', 'evidenceClosed',
   // Whole-branch review fixes (I1): truthful ₪0 copy
   'waiverNoChargeNote', 'submitCtaFree', 'freeNote',
   // Profile details modal

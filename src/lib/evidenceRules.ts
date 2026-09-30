@@ -29,3 +29,26 @@ export function waivedAmount(entryFee: number, seats: 1 | 2, residents: 0 | 1 | 
   const r = Math.min(residents, seats)
   return Math.round((entryFee * (seats - r) / seats) * 100) / 100
 }
+
+/**
+ * The `corporate.reg.*` key that tells a player WHY an evidence upload failed, from
+ * rally-api's error code. A bare "upload failed" sent players back with the same file
+ * (a phone photo the server refused as INVALID_DOCUMENT) to fail the same way again.
+ */
+export function evidenceFailureKey(code: string | null | undefined): string {
+  switch (code) {
+    case 'INVALID_DOCUMENT': return 'evidenceRejectedFormat'
+    case 'IMAGE_TOO_LARGE': return 'evidenceRejectedSize'
+    case 'EVIDENCE_LIMIT': return 'evidenceRejectedLimit'
+    case 'FEE_WAIVER_NOT_PENDING': return 'evidenceClosed'
+    default: return 'evidenceUploadFailed'
+  }
+}
+
+/** rally-api's error code off a rejected API call (the axios client rejects with a
+ *  plain `{ status, code, message }` object), or null for anything else. */
+export function uploadErrorCode(error: unknown): string | null {
+  const code = (error as { code?: unknown } | null)?.code
+  return typeof code === 'string' ? code : null
+}
+

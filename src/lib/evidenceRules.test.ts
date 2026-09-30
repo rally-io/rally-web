@@ -1,10 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  EVIDENCE_MAX_FILES,
-  EVIDENCE_MAX_BYTES,
-  EVIDENCE_ACCEPT,
-  validateEvidenceFiles,
-  waivedAmount,
+  EVIDENCE_ACCEPT, EVIDENCE_MAX_BYTES, EVIDENCE_MAX_FILES, evidenceFailureKey, uploadErrorCode, validateEvidenceFiles, waivedAmount,
 } from './evidenceRules'
 
 function makeFile(name: string, type: string, sizeBytes = 100): File {
@@ -72,3 +68,26 @@ describe('waivedAmount', () => {
     expect(waivedAmount(150, 2, 0)).toBe(150)
   })
 })
+
+describe('evidenceFailureKey', () => {
+  it('names the reason for each refusal rally-api reports', () => {
+    expect(evidenceFailureKey('INVALID_DOCUMENT')).toBe('evidenceRejectedFormat')
+    expect(evidenceFailureKey('IMAGE_TOO_LARGE')).toBe('evidenceRejectedSize')
+    expect(evidenceFailureKey('EVIDENCE_LIMIT')).toBe('evidenceRejectedLimit')
+    expect(evidenceFailureKey('FEE_WAIVER_NOT_PENDING')).toBe('evidenceClosed')
+  })
+  it('falls back to the generic retry message for anything else', () => {
+    expect(evidenceFailureKey('UNKNOWN')).toBe('evidenceUploadFailed')
+    expect(evidenceFailureKey(null)).toBe('evidenceUploadFailed')
+  })
+})
+
+describe('uploadErrorCode', () => {
+  it('reads the code off the API client\'s rejection, and nothing off anything else', () => {
+    expect(uploadErrorCode({ status: 422, code: 'INVALID_DOCUMENT', message: 'x' })).toBe('INVALID_DOCUMENT')
+    expect(uploadErrorCode(new Error('network'))).toBeNull()
+    expect(uploadErrorCode(null)).toBeNull()
+    expect(uploadErrorCode({ code: 42 })).toBeNull()
+  })
+})
+
