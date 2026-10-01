@@ -1051,17 +1051,116 @@ describe('TournamentDetailPage — residency fee waiver & document upload', () =
     expect(document.getElementById('tournament-evidence-2')).toBeInTheDocument()
   })
 
-  it('blocks registration and displays error if resident selected but no files uploaded', async () => {
+  it('blocks registration and displays error if document is required but no files uploaded', async () => {
     mockUseTournament.mockReturnValue(
       tr({ format: 'singles', is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
     )
     renderPage()
     fireEvent.click(screen.getByTestId('waiver-option-1'))
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.ctaMissingDocument') }))
     await waitFor(() => {
-      expect(screen.getByText(i18n.t('corporate.reg.evidenceRequired'))).toBeInTheDocument()
+      expect(screen.getByText(i18n.t('tournament.evidenceRequired'))).toBeInTheDocument()
     })
     expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
+
+  it('Scenario 2: document required without fee waiver blocks without doc and registers + uploads evidence', async () => {
+    const file = new File(['proof'], 'medical_cert.pdf', { type: 'application/pdf' })
+    mockUseTournament.mockReturnValue(
+      tr({
+        format: 'singles',
+        is_document_required: true,
+        fee_waiver_type: null,
+        entry_fee: 150,
+        refetch: vi.fn(),
+      }),
+    )
+    mockRegisterTournament.mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'reg-doc-only-1',
+        tournament_id: 't-1',
+        status: 'registered',
+        amount_to_pay: 150,
+      } as any,
+    } as any)
+
+    renderPage()
+    // No waiver pills exist
+    expect(screen.queryByTestId('waiver-option-0')).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.t('tournament.documentRequiredTitle'))).toBeInTheDocument()
+
+    // Try submit without file -> blocked
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.ctaMissingDocument') }))
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t('tournament.evidenceRequired'))).toBeInTheDocument()
+    })
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+
+    // Attach file -> submit succeeds without waiver payload, and uploads file
+    const input = document.getElementById('tournament-evidence-1') as HTMLInputElement
+    expect(input).toBeInTheDocument()
+    fireEvent.change(input, { target: { files: [file] } })
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    await waitFor(() => {
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.not.objectContaining({ fee_waiver: expect.anything() }),
+      )
+    })
+    await waitFor(() => {
+      expect(mockUploadEvidence).toHaveBeenCalledWith('reg-doc-only-1', 1, [file])
+    })
+  })
+
+  it('Scenario 3: fee waiver added without document requirement applies discount and registers without uploading files', async () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        format: 'singles',
+        is_document_required: false,
+        fee_waiver_type: 'club_member',
+        entry_fee: 100,
+        refetch: vi.fn(),
+      }),
+    )
+    mockRegisterTournament.mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'reg-waiver-nodoc-1',
+        tournament_id: 't-1',
+        status: 'registered',
+        amount_to_pay: 0,
+      } as any,
+    } as any)
+    mockConfirmZeroPayment.mockResolvedValueOnce({ success: true, data: {} } as any)
+
+    renderPage()
+    // Dynamic title is rendered
+    expect(screen.getByText('Club Member Discount')).toBeInTheDocument()
+    // No evidence pickers rendered
+    expect(document.getElementById('tournament-evidence-1')).not.toBeInTheDocument()
+
+    // Select waiver
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    expect(screen.getByText('₪0')).toBeInTheDocument()
+
+    // Register now - should NOT be blocked by evidence validation!
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+
+    await waitFor(() => {
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.objectContaining({
+          fee_waiver: {
+            type: 'club_member',
+            resident_count: 1,
+          },
+        }),
+      )
+    })
+    // No evidence upload attempted
+    expect(mockUploadEvidence).not.toHaveBeenCalled()
   })
 
   it('registers successfully with fee waiver and uploads evidence files', async () => {

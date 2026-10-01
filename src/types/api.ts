@@ -287,6 +287,7 @@ export interface TournamentDetail extends Tournament {
   /** e.g. 'holon_resident'. Null when the tournament offers no fee waiver. */
   fee_waiver_type?: string | null
   is_document_required?: boolean
+  document_instructions?: string | null
 }
 
 /**
