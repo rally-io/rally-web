@@ -24,7 +24,7 @@ import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMess
 import { TournamentRulesSection } from '@/components/tournaments/TournamentRulesSection'
 import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
-import { ResidencyWaiverSelector } from '@/components/tournaments/ResidencyWaiverSelector'
+import { ResidencyWaiverSelector, formatWaiverTitle } from '@/components/tournaments/ResidencyWaiverSelector'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import {
@@ -95,7 +95,9 @@ function TournamentRegistrationPage() {
   // can never be replayed into a second row.
   const [partnerState, setPartnerState] = useTournamentPartnerDraft(id!, user?.id ?? '')
 
-  const isDocumentRequired = Boolean(tr?.is_document_required ?? tr?.fee_waiver_type)
+  const isDocRequired = Boolean(tr?.is_document_required)
+  const hasFeeWaiver = Boolean(tr?.fee_waiver_type)
+  const showRequirementsSection = isDocRequired || hasFeeWaiver
   const seats: 1 | 2 = tr?.format === 'singles' ? 1 : 2
   const [residentCount, setResidentCount] = useState<0 | 1 | 2>(0)
   const [myFiles, setMyFiles] = useState<File[]>([])
@@ -108,18 +110,19 @@ function TournamentRegistrationPage() {
     setResidentCount(next)
     setMyEvidenceError(null)
     setPartnerEvidenceError(null)
-    if (next === 0) setMyFiles([])
-    if (next < 2) setPartnerFiles([])
   }
 
-  const residents: 0 | 1 | 2 = isDocumentRequired ? residentCount : 0
-  const effectiveFee = tr ? (residents === 0 ? tr.entry_fee : waivedAmount(tr.entry_fee, seats, residents)) : 0
+  const effectiveFee = tr
+    ? hasFeeWaiver && residentCount > 0
+      ? waivedAmount(tr.entry_fee, seats, residentCount)
+      : tr.entry_fee
+    : 0
 
   const validateEvidence = (): boolean => {
-    if (!isDocumentRequired || residents === 0) return true
+    if (!isDocRequired) return true
     let ok = true
     if (myFiles.length === 0) {
-      setMyEvidenceError(t('corporate.reg.evidenceRequired'))
+      setMyEvidenceError(t('tournament.evidenceRequired', { defaultValue: 'Please attach the required document.' }))
       ok = false
     } else {
       const badFile = validateEvidenceFiles([], myFiles)
@@ -128,9 +131,10 @@ function TournamentRegistrationPage() {
         ok = false
       }
     }
-    if (residents === 2) {
+    // If doubles and 2 waivers are claimed, partner evidence is also required
+    if (seats === 2 && residentCount === 2) {
       if (partnerFiles.length === 0) {
-        setPartnerEvidenceError(t('corporate.reg.evidenceRequired'))
+        setPartnerEvidenceError(t('tournament.evidenceRequired', { defaultValue: 'Please attach the required document.' }))
         ok = false
       } else {
         const badFile = validateEvidenceFiles([], partnerFiles)
@@ -138,6 +142,12 @@ function TournamentRegistrationPage() {
           setPartnerEvidenceError(t(`corporate.reg.${badFile}`))
           ok = false
         }
+      }
+    } else if (partnerFiles.length > 0) {
+      const badFile = validateEvidenceFiles([], partnerFiles)
+      if (badFile) {
+        setPartnerEvidenceError(t(`corporate.reg.${badFile}`))
+        ok = false
       }
     }
     return ok
@@ -279,27 +289,30 @@ function TournamentRegistrationPage() {
         }
 
         const waiverRequest: FeeWaiverRequest | undefined =
-          isDocumentRequired && residents > 0
+          hasFeeWaiver && residentCount > 0
             ? {
-                type: tr.fee_waiver_type || 'holon_resident',
-                resident_count: residents as 1 | 2,
+                type: tr.fee_waiver_type!,
+                resident_count: residentCount as 1 | 2,
               }
             : undefined
 
-        pendingUploadRef.current = waiverRequest
-          ? async (reg) => {
-              try {
-                await uploadRegistrationEvidence(reg.id, 1, myFiles)
-                if (residents === 2) {
-                  await uploadRegistrationEvidence(reg.id, 2, partnerFiles)
+        pendingUploadRef.current =
+          isDocRequired && (myFiles.length > 0 || partnerFiles.length > 0)
+            ? async (reg) => {
+                try {
+                  if (myFiles.length > 0) {
+                    await uploadRegistrationEvidence(reg.id, 1, myFiles)
+                  }
+                  if (partnerFiles.length > 0 && (!waiverRequest || waiverRequest.resident_count === 2)) {
+                    await uploadRegistrationEvidence(reg.id, 2, partnerFiles)
+                  }
+                } catch (uploadError) {
+                  console.error('[TournamentDetailPage] evidence upload failed:', uploadError)
+                } finally {
+                  await refetch?.()
                 }
-              } catch (uploadError) {
-                console.error('[TournamentDetailPage] evidence upload failed:', uploadError)
-              } finally {
-                await refetch?.()
               }
-            }
-          : null
+            : null
 
         if (waiverRequest) {
           await register(selectedPartner, waiverRequest)
@@ -321,6 +334,14 @@ function TournamentRegistrationPage() {
       .then(async () => {
         if (!tr || !mounted.current) return
         if (!(await checkRegistrationProfile())) return
+
+        if (!validateEvidence()) {
+          document
+            .getElementById('residency-waiver-section')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+
         const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
         if (isPartneredFormat && selectedPartner.phase === 'idle') {
           document
@@ -654,15 +675,28 @@ function TournamentRegistrationPage() {
         {myReg && myReg.fee_waiver_resident_count != null && myReg.fee_waiver_resident_count > 0 && (
           <FactCard
             icon={<FileCheck className="w-4 h-4" />}
-            label={t('corporate.reg.waiverTitle')}
+            label={
+              myReg.fee_waiver_type === 'holon_resident'
+                ? t('corporate.reg.waiverTitle')
+                : t('tournament.customWaiverTitle', {
+                    waiverTitle: formatWaiverTitle(myReg.fee_waiver_type || tr?.fee_waiver_type),
+                    defaultValue: `${formatWaiverTitle(myReg.fee_waiver_type || tr?.fee_waiver_type)} Discount`,
+                  })
+            }
             value={
               myReg.fee_waiver_status === 'approved'
                 ? t('corporate.reg.waiverApproved', { defaultValue: 'Approved' })
                 : myReg.fee_waiver_status === 'rejected'
                 ? t('corporate.reg.waiverRejected', { defaultValue: 'Rejected' })
-                : t('corporate.reg.registeredStatus_waiverPending', {
+                : myReg.fee_waiver_type === 'holon_resident'
+                ? t('corporate.reg.registeredStatus_waiverPending', {
                     residents: myReg.fee_waiver_resident_count,
                     defaultValue: `Residency review pending (${myReg.fee_waiver_resident_count}/${seats})`,
+                  })
+                : t('tournament.registeredStatus_waiverPending', {
+                    residents: myReg.fee_waiver_resident_count,
+                    seats,
+                    defaultValue: `Eligibility review pending (${myReg.fee_waiver_resident_count}/${seats})`,
                   })
             }
           />
@@ -677,10 +711,15 @@ function TournamentRegistrationPage() {
         )}
 
         {!myReg &&
-          isDocumentRequired &&
+          showRequirementsSection &&
           (cta === 'register' || cta === 'join_waitlist') && (
             <ResidencyWaiverSelector
               seats={seats}
+              format={tr.format}
+              entryFee={tr.entry_fee}
+              feeWaiverType={tr.fee_waiver_type}
+              isDocumentRequired={isDocRequired}
+              documentInstructions={tr.document_instructions}
               residentCount={residentCount}
               onSelectResidents={handleSelectResidents}
               myFiles={myFiles}
@@ -811,7 +850,7 @@ function TournamentRegistrationPage() {
               <p className="text-2xl md:text-3xl font-black text-rally-accent">
                 {formatCurrency(effectiveFee)}
               </p>
-              {residents > 0 && (
+              {hasFeeWaiver && residentCount > 0 && (
                 <p className="text-xs text-rally-accent mt-0.5 leading-relaxed">
                   {t(effectiveFee < 0.01 ? 'corporate.reg.priceWaived' : 'corporate.reg.priceHalf')}
                 </p>
@@ -900,6 +939,8 @@ function TournamentRegistrationPage() {
                   ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
+                  : isDocRequired && myFiles.length === 0
+                  ? t('tournament.ctaMissingDocument', { defaultValue: 'Upload required document' })
                   : t('tournament.tournamentDetailRegisterNow')}
               </button>
             )}
