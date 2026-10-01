@@ -806,7 +806,7 @@ function TournamentRegistrationPage() {
                   ? t('tournament.tournamentFullWaitlistLine', { count: waitlistCount })
                   : cta === 'none' && isFull
                   ? t('tournament.tournamentFullLine')
-                  : t('tournament.tournamentsEntryFee')}
+                  : t(isPartneredFormat ? 'tournament.tournamentsEntryFee' : 'tournament.tournamentsEntryFeePlayer')}
               </p>
               <p className="text-2xl md:text-3xl font-black text-rally-accent">
                 {formatCurrency(effectiveFee)}

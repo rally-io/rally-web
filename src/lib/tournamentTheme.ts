@@ -46,6 +46,8 @@ export function structureLabelKey(structure: string | null | undefined): string 
       return 'tournament.tournamentStructureGroupThenKnockout'
     case 'round_robin_league':
       return 'tournament.tournamentStructureRoundRobinLeague'
+    case 'americano':
+      return 'tournament.tournamentStructureAmericano'
     default:
       return 'tournament.tournamentStructureSingleElimination'
   }

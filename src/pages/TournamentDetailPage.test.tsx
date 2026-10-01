@@ -1131,3 +1131,19 @@ describe('TournamentDetailPage — residency fee waiver & document upload', () =
   })
 })
 
+describe('TournamentDetailPage entry fee label', () => {
+  it('shows "per player" for a singles tournament, where players register alone', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.tournamentsEntryFeePlayer'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentsEntryFee'))).not.toBeInTheDocument()
+  })
+
+  it('still shows "per pair" for a doubles tournament', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.tournamentsEntryFee'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentsEntryFeePlayer'))).not.toBeInTheDocument()
+  })
+})
+
