@@ -10,6 +10,8 @@ import {
   verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState,
 } from './CorporateRegistrationPage.fixtures'
 import type { TournamentRegistrationResult } from '@/types/api'
+import { FALLBACK_LADDERS } from '@/lib/skillLadder'
+import { tournamentLevelsBetween } from '@/lib/tournamentLevelBands'
 import { LevelWriteRefusedError } from '@/lib/levelWrite'
 
 beforeEach(resetPageMocks)
@@ -888,6 +890,66 @@ describe('CorporateRegistrationPage — the level category the pair enters', () 
     await user.click(screen.getByRole('button', { name: /register & pay/i }))
 
     expect(register).toHaveBeenCalledWith({ phase: 'idle' }, undefined, 'רמה 4.5–5')
+  })
+
+  /**
+   * The Israel Open's categories ARE the tournament bands. Registrations run on today's
+   * list, so on the 1–7 ladder it must not move by a character; after the switch to 1–5
+   * the served ladder decides, labelled the way tournaments are (contract §4).
+   */
+  describe('an event whose categories are the tournament bands (the Israel Open)', () => {
+    const BAND_EVENT = { competeLevels: tournamentLevelsBetween(2, 5), competeLevelsAreBands: true }
+    const optionValues = () =>
+      Array.from((levelSelect() as HTMLSelectElement).options).slice(1).map((o) => o.value)
+
+    it('on the 1–7 ladder shows today\'s list, unchanged', () => {
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      renderPage(BAND_EVENT, FALLBACK_LADDERS[7])
+      expect(optionValues()).toEqual([
+        '2.0 - 2.5 (D1)',
+        '2.5 - 3.0 (D1 - C2)',
+        '3.0 - 3.5 (C2 - C1)',
+        '3.5 - 4.0 (C1 - B2)',
+        '4.0 - 4.5 (B2 - B1)',
+        '4.5 - 5.0 (B1 - A)',
+      ])
+    })
+
+    it('on the 1–5 ladder shows one option per served band, labelled like tournaments', () => {
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      renderPage(BAND_EVENT, FALLBACK_LADDERS[5])
+      expect(optionValues()).toEqual([
+        '1.0 - 2.0 (D2)',
+        '2.0 - 2.5 (D2 - D1)',
+        '2.5 - 3.0 (D1 - C2)',
+        '3.0 - 3.5 (C2 - C1)',
+        '3.5 - 4.0 (C1 - B2)',
+        '4.0 - 4.5 (B2 - B1)',
+        '4.5 - 5.0 (B1 - A)',
+      ])
+    })
+
+    it('a choice the ladder in use no longer offers must be made again', async () => {
+      const user = userEvent.setup()
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      const { rerender } = renderPage(BAND_EVENT, FALLBACK_LADDERS[7])
+      await user.selectOptions(levelSelect(), '2.0 - 2.5 (D1)')
+      // The switch lands while the page is open.
+      rerender(FALLBACK_LADDERS[5])
+      expect((levelSelect() as HTMLSelectElement).value).toBe('')
+      await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.ctaMissingLevel') }))
+      expect(register).not.toHaveBeenCalled()
+
+      await user.selectOptions(levelSelect(), '2.0 - 2.5 (D2 - D1)')
+      await user.click(screen.getByRole('button', { name: /register & pay/i }))
+      expect(register).toHaveBeenCalledWith({ phase: 'idle' }, undefined, '2.0 - 2.5 (D2 - D1)')
+    })
+
+    it('an event\'s own categories stay as it wrote them, even on the 1–5 ladder', () => {
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      renderPage(LEVEL_EVENT, FALLBACK_LADDERS[5])
+      expect(optionValues()).toEqual(LEVELS)
+    })
   })
 
   // The guard that keeps every OTHER corporate event exactly as it was.
