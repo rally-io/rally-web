@@ -198,6 +198,25 @@ describe('TournamentCard last-spots badge', () => {
   })
 })
 
+describe('TournamentCard entry fee label', () => {
+  it('shows "per pair" for a doubles tournament', () => {
+    renderCard({ format: 'doubles' })
+    expect(screen.getByText(i18n.t('tournament.tournamentsEntryFee'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentsEntryFeePlayer'))).not.toBeInTheDocument()
+  })
+
+  it('shows "per player" for a singles tournament, where players register alone', () => {
+    renderCard({ format: 'singles' })
+    expect(screen.getByText(i18n.t('tournament.tournamentsEntryFeePlayer'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentsEntryFee'))).not.toBeInTheDocument()
+  })
+
+  it('shows "per pair" for a mixed tournament', () => {
+    renderCard({ format: 'mixed' })
+    expect(screen.getByText(i18n.t('tournament.tournamentsEntryFee'))).toBeInTheDocument()
+  })
+})
+
 describe('TournamentCard registration count', () => {
   it('shows how full and how big, so the card conveys the size of the draw', () => {
     renderCard({ confirmed_registrations: 12, max_participants: 16 })

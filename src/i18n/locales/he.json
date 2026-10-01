@@ -429,6 +429,7 @@
     "tournamentsMyEmptyMessage": "הזמן להוציא את המחבט מהארון. הטורניר הבא שלך מחכה.",
     "tournamentsMyEmptyCta": "ראה טורנירים פתוחים",
     "tournamentsEntryFee": "דמי השתתפות לזוג",
+    "tournamentsEntryFeePlayer": "דמי השתתפות לשחקן",
     "tournamentsRegister": "הרשמה",
     "tournamentsViewDetails": "צפייה",
     "tournamentsCompleteRegistration": "השלמת הרשמה",
@@ -514,6 +515,7 @@
     "tournamentStructureSingleElimination": "משחקי נוקאאוט",
     "tournamentStructureGroupThenKnockout": "בתים ואז נוקאאוט",
     "tournamentStructureRoundRobinLeague": "ליגה מלאה",
+    "tournamentStructureAmericano": "אמריקנו",
     "activityTypeTournament": "טורניר",
     "skillLevelBeginner": "מתחילים",
     "skillLevelIntermediate": "בינוני",
@@ -1183,7 +1185,7 @@
       "registeredStatus_waiverPending": "ממתין לאישור תושבות מהמועדון ({{residents}}/2)",
       "evidenceCount": "קבצים שצורפו: {{n}}",
       "addEvidence": "הוסיפו הוכחת כתובת",
-      "evidenceUploadFailed": "ההרשמה נקלטה אבל ההעלאה נכשלה. אפשר לצרף את הקבצים כאן.",
+      "evidenceUploadFailed": "ההעלאה נכשלה. בדקו את החיבור לאינטרנט ונסו שוב.",
       "waiverReviewTitle": "האישור אינו אוטומטי",
       "waiverReviewBody": "מנהל התחרות בודק את המסמכים לפני אישור ההשתתפות. אם התושבות לא תאומת, רישום הזוג יבוטל וכל תשלום שבוצע יוחזר במלואו — ותוכלו להירשם מחדש בתשלום הרגיל. ביטול כזה יכול להתבצע בכל שלב, גם לאחר שההשתתפות אושרה.",
       "signedInAs": "מחוברים בתור <account>{{account}}</account>",
@@ -1193,7 +1195,16 @@
       "competeLevelPlaceholder": "בחרו רמה",
       "competeLevelHint": "הרמה שבה הזוג מבקש להתחרות. השיבוץ הסופי נקבע על ידי מנהל התחרות.",
       "competeLevelRequired": "בחרו את הרמה שבה תרצו להתחרות",
-      "ctaMissingLevel": "בחרו רמה כדי להמשיך"
+      "ctaMissingLevel": "בחרו רמה כדי להמשיך",
+      "evidenceMissingTitle": "חסרים מסמכי תושבות",
+      "evidenceMissingBodyPending": "המסמכים לא הגיעו אלינו, ובלעדיהם לא נוכל לאשר את ההשתתפות ללא תשלום. צרפו אותם כאן.",
+      "evidenceMissingBodyApproved": "המסמכים לא הגיעו אלינו. צרפו אותם כאן כדי להשלים את הרישום.",
+      "evidenceRejectedFormat": "הקובץ לא נקלט. צלמו מסך של המסמך או שמרו אותו כ-PDF, ונסו שוב.",
+      "evidenceRejectedSize": "הקובץ גדול מ-10MB. צלמו מסך של המסמך ונסו שוב.",
+      "evidenceRejectedLimit": "אפשר לצרף עד 2 קבצים לכל תושב/ת.",
+      "evidenceClosed": "כבר לא ניתן לצרף מסמכים לבקשה הזו. פנו למועדון.",
+      "waiverApproved": "אושר",
+      "waiverRejected": "נדחה"
     },
     "terms": {
       "title": "תקנון התחרות"

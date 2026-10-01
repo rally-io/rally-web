@@ -11,7 +11,7 @@ import {
   formatCurrency,
   formatTournamentCardDate,
 } from '@/lib/tournamentHelpers'
-import { formatLabelKey } from '@/lib/tournamentTheme'
+import { formatLabelKey, needsPartner } from '@/lib/tournamentTheme'
 import { StatusBadge } from './StatusBadge'
 import { LiveBadge } from './LiveBadge'
 
@@ -227,7 +227,7 @@ export function TournamentCard({
         <div className="mt-4 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">
-              {t('tournament.tournamentsEntryFee')}
+              {t(needsPartner(tr.format) ? 'tournament.tournamentsEntryFee' : 'tournament.tournamentsEntryFeePlayer')}
             </p>
             <p
               className={

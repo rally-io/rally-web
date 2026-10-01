@@ -359,6 +359,65 @@ describe('CorporateRegistrationPage — registered card residency waiver', () =>
     expect(await screen.findByText(i18n.t('corporate.reg.evidenceUploadFailed'))).toBeInTheDocument()
   })
 
+  // The 2026-09-28/29 lost uploads: three pairs' documents were refused, the page moved
+  // on, and the manager approved without them. The card must say so, loudly, in both
+  // states a claim can still take documents in — and let them add the files.
+  const MISSING = () => i18n.t('corporate.reg.evidenceMissingTitle')
+  const waiverReg = (status: string, counts: Record<string, number>) => tr({
+    my_registration: {
+      id: 'r-1', status: 'confirmed', payment_status: 'completed',
+      fee_waiver_type: 'holon_resident', fee_waiver_status: status, fee_waiver_resident_count: 2,
+      evidence_counts: counts,
+    },
+  })
+
+  it('a pending claim with an empty slot shows the missing-documents box', () => {
+    mockUseTournament.mockReturnValue(waiverReg('pending', { 1: 1 }))
+    renderPage()
+    expect(screen.getByRole('alert')).toHaveTextContent(MISSING())
+    expect(screen.getByText(i18n.t('corporate.reg.evidenceMissingBodyPending'))).toBeInTheDocument()
+  })
+
+  it('an approved claim with no documents shows the box AND the pickers — the recovery path', () => {
+    mockUseTournament.mockReturnValue(waiverReg('approved', {}))
+    renderPage()
+    expect(screen.getByRole('alert')).toHaveTextContent(MISSING())
+    expect(screen.getByText(i18n.t('corporate.reg.evidenceMissingBodyApproved'))).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: i18n.t('corporate.reg.addEvidence') })).toHaveLength(2)
+  })
+
+  it('an approved claim with its documents is closed: no box, no picker', () => {
+    mockUseTournament.mockReturnValue(waiverReg('approved', { 1: 1, 2: 1 }))
+    renderPage()
+    expect(screen.queryByText(MISSING())).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: i18n.t('corporate.reg.addEvidence') })).not.toBeInTheDocument()
+  })
+
+  it('a refused file says why — the format message, not a bare "failed"', async () => {
+    const user = userEvent.setup()
+    mockUploadEvidence.mockRejectedValueOnce({ status: 422, code: 'INVALID_DOCUMENT', message: 'File must be a JPEG, PNG, WebP or PDF' })
+    mockUseTournament.mockReturnValue(tr({
+      my_registration: {
+        id: 'r-1', status: 'registered', payment_status: 'pending',
+        fee_waiver_type: 'holon_resident', fee_waiver_status: 'pending', fee_waiver_resident_count: 1,
+        evidence_counts: {},
+      },
+    }))
+    renderPage()
+    await user.upload(screen.getByLabelText(i18n.t('corporate.reg.evidenceResident')), makeFile())
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.addEvidence') }))
+    expect(await screen.findByText(i18n.t('corporate.reg.evidenceRejectedFormat'))).toBeInTheDocument()
+  })
+
+  it('an event whose tournament page redirects here has no "view the tournament" link — it would only reload this card', () => {
+    mockUseTournament.mockReturnValue(tr({
+      my_registration: { id: 'reg-1', status: 'confirmed', payment_status: 'completed', player_2_name: 'Yossi Levi' },
+    }))
+    renderPage({ redirectFromTournamentPage: true })
+    expect(screen.queryByRole('link', { name: 'View the tournament' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'My tournaments on Rally' })).toBeInTheDocument()
+  })
+
   it('singles, one resident, pending, unpaid → the truthful ₪0 case: waiver line "(1/2)" (hardcoded per spec), no payment button, exactly one slot', () => {
     mockUseTournament.mockReturnValue(tr({
       format: 'singles',

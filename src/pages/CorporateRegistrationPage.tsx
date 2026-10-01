@@ -26,10 +26,13 @@ import { EventTerms } from '@/components/corporate/EventTerms'
 import { EvidencePicker } from '@/components/corporate/EvidencePicker'
 import { ProfileDetailsModal, type SavedProfileEssentials } from '@/components/corporate/ProfileDetailsModal'
 import { readProfileDetails } from '@/components/corporate/profileDetails'
+import { competeLevelOptions } from '@/lib/competeLevels'
 import { RallyWordmark } from '@/components/corporate/RallyWordmark'
 import { AppDownloadFooter } from '@/components/corporate/AppDownloadFooter'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
-import { isWaiverOffered, validateEvidenceFiles, waivedAmount } from '@/lib/evidenceRules'
+import {
+  evidenceFailureKey, isWaiverOffered, uploadErrorCode, validateEvidenceFiles, waivedAmount,
+} from '@/lib/evidenceRules'
 import type { CorporateFeeWaiver } from '@/constants/corporateFeeWaiver'
 import type { CorporateTournamentEvent } from '@/constants/corporateEvents'
 import type { PartnerSelectionState } from '@/types/partner'
@@ -65,7 +68,13 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
    * hook has just created. It is null for every registration without a declared
    * waiver, so that path stays exactly what it was.
    */
-  const pendingUploadRef = useRef<((reg: TournamentRegistrationResult) => Promise<void>) | null>(null)
+  const pendingUploadRef = useRef<((reg: TournamentRegistrationResult) => Promise<void | 'stay'>) | null>(null)
+  /**
+   * rally-api's code for an evidence upload that failed while registering. Lives on
+   * the page, not the form: the refetch that follows swaps the form for the
+   * registered card, which is where the player reads why and retries.
+   */
+  const [evidenceError, setEvidenceError] = useState<string | null>(null)
   const registration = useTournamentRegistration(tr, gate, {
     returnTo,
     skipProfileRedirect: true,
@@ -155,7 +164,18 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
   let isRegisteredCard = false
   if (cta === 'my_registration' && myReg) {
     isRegisteredCard = true
-    body = <RegisteredCard tr={tr} myReg={myReg} returnTo={returnTo} refetchTournament={refetch} />
+    body = (
+      <RegisteredCard
+        tr={tr}
+        myReg={myReg}
+        returnTo={returnTo}
+        refetchTournament={refetch}
+        evidenceError={evidenceError}
+        // For an event whose tournament page redirects here, "view the tournament"
+        // would only reload this card.
+        showTournamentLink={!event.redirectFromTournamentPage}
+      />
+    )
   } else if (!open) {
     const notYet = tr.status === 'approved'
     body = (
@@ -233,8 +253,10 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         gate={gate}
         feeWaiver={event.feeWaiver}
         competeLevels={event.competeLevels}
+        competeLevelsAreBands={event.competeLevelsAreBands}
         pendingUpload={pendingUploadRef}
         refetchTournament={refetch}
+        onEvidenceFailed={setEvidenceError}
         register={registration.register}
         isRegistering={registration.isRegistering}
         registerError={registration.registerError}
@@ -316,7 +338,7 @@ const NON_CONFIRMED_STATUSES: string[] = [
 ]
 
 function RegisteredCard({
-  tr, myReg, returnTo, refetchTournament,
+  tr, myReg, returnTo, refetchTournament, evidenceError, showTournamentLink,
 }: {
   tr: TournamentDetail
   myReg: MyRegistration
@@ -324,6 +346,9 @@ function RegisteredCard({
   /** Re-reads the tournament after an add-evidence upload, the same `refetch`
    *  the form uses — the card needs it so a slot's count updates live. */
   refetchTournament: () => Promise<unknown>
+  /** rally-api's code for an upload that failed while registering, if one did. */
+  evidenceError: string | null
+  showTournamentLink: boolean
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -391,6 +416,14 @@ function RegisteredCard({
   // registration must never render a "partner's proof" slot for a partner
   // that can't exist.
   const declaredSlots = ([1, 2] as const).filter((slot) => slot <= residents && slot <= seats)
+  const slotCount = (slot: 1 | 2) => myReg.evidence_counts?.[slot === 1 ? '1' : '2'] ?? 0
+  // A claim documents can still go on: pending, or approved with a slot left empty
+  // (rally-api accepts exactly those). Approved-without-documents happened three
+  // times on 2026-09-28/29 when uploads silently failed — this is how those pairs
+  // find out and fix it.
+  const claimOpen =
+    residents > 0 && (myReg.fee_waiver_status === 'pending' || myReg.fee_waiver_status === 'approved')
+  const missingEvidence = claimOpen && declaredSlots.some((slot) => slotCount(slot) === 0)
 
   return (
     <div className="rounded-2xl bg-rally-surface border border-rally-accent/40 p-6 sm:p-8 shadow-glow-electric text-center">
@@ -412,6 +445,19 @@ function RegisteredCard({
       {showBaseStatusLine && (
         <p className="text-sm text-rally-text-2 leading-relaxed">{t(statusKey)}</p>
       )}
+      {missingEvidence && (
+        <div role="alert" className="mt-4 rounded-xl border border-rally-error/50 bg-rally-error/10 p-4 text-start">
+          <p className="text-sm font-bold text-rally-error">{t('corporate.reg.evidenceMissingTitle')}</p>
+          <p className="mt-1 text-sm text-rally-text-2 leading-relaxed">
+            {t(waiverPending ? 'corporate.reg.evidenceMissingBodyPending' : 'corporate.reg.evidenceMissingBodyApproved')}
+          </p>
+          {evidenceError && (
+            <p className="mt-2 text-sm text-rally-text leading-relaxed">
+              {t(`corporate.reg.${evidenceFailureKey(evidenceError)}`)}
+            </p>
+          )}
+        </div>
+      )}
       {declaredSlots.length > 0 && (
         <div className="mt-4 text-start space-y-4">
           {declaredSlots.map((slot) => (
@@ -424,8 +470,8 @@ function RegisteredCard({
                 : residents === 1 && seats === 2 ? t('corporate.reg.evidenceResident')
                 : t('corporate.reg.evidenceMine')
               }
-              count={myReg.evidence_counts?.[slot === 1 ? '1' : '2'] ?? 0}
-              pending={waiverPending}
+              count={slotCount(slot)}
+              open={claimOpen}
               refetchTournament={refetchTournament}
             />
           ))}
@@ -449,17 +495,19 @@ function RegisteredCard({
           {t('corporate.reg.completePayment')}
         </button>
       )}
-      <Link
-        to={`/tournaments/${tr.id}`}
-        className={cn(
-          'mt-6 w-full h-12 rounded-full font-display font-bold inline-flex items-center justify-center gap-2 transition-colors',
-          payState
-            ? 'mt-3 border border-rally-border text-rally-text hover:border-rally-border-strong'
-            : 'bg-rally-accent text-rally-accent-text hover:bg-rally-accent-hover',
-        )}
-      >
-        {t('corporate.reg.viewTournament')}
-      </Link>
+      {showTournamentLink && (
+        <Link
+          to={`/tournaments/${tr.id}`}
+          className={cn(
+            'mt-6 w-full h-12 rounded-full font-display font-bold inline-flex items-center justify-center gap-2 transition-colors',
+            payState
+              ? 'mt-3 border border-rally-border text-rally-text hover:border-rally-border-strong'
+              : 'bg-rally-accent text-rally-accent-text hover:bg-rally-accent-hover',
+          )}
+        >
+          {t('corporate.reg.viewTournament')}
+        </Link>
+      )}
       <SiteLink className="mt-4" />
     </div>
   )
@@ -469,25 +517,28 @@ function RegisteredCard({
  * One declared resident's evidence, inside the registered card. This is the
  * permanent recovery path for a failed post-register upload (the form's own
  * `uploadFailed` flash is gone — see the note above `pendingUpload.current`):
- * whatever left this slot's count at 0 while the waiver is still pending, the
- * player can pick files and retry from here, as many times as it takes.
+ * whatever left this slot's count at 0 while the claim is still open (pending, or
+ * approved with nothing in the slot), the player can pick files and retry from
+ * here, as many times as it takes.
  */
 function EvidenceSlot({
-  registrationId, slot, label, count, pending, refetchTournament,
+  registrationId, slot, label, count, open, refetchTournament,
 }: {
   registrationId: string
   slot: 1 | 2
   /** Whose proof this slot holds — the card decides ("the resident's" for a 1-of-2 claim). */
   label: string
   count: number
-  pending: boolean
+  /** The claim still takes documents (pending, or approved with this slot empty). */
+  open: boolean
   refetchTournament: () => Promise<unknown>
 }) {
   const { t } = useTranslation()
   const [files, setFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [failed, setFailed] = useState(false)
+  /** rally-api's code for the last failed attempt — the message says why. */
+  const [failure, setFailure] = useState<string | null>(null)
 
   const handleAdd = async () => {
     if (files.length === 0) {
@@ -500,14 +551,14 @@ function EvidenceSlot({
       return
     }
     setError(null)
-    setFailed(false)
+    setFailure(null)
     setBusy(true)
     try {
       await uploadRegistrationEvidence(registrationId, slot, files)
       setFiles([])
     } catch (uploadError) {
       console.error('[CorporateRegistrationPage] add-evidence upload failed:', uploadError)
-      setFailed(true)
+      setFailure(uploadErrorCode(uploadError) ?? 'UNKNOWN')
     } finally {
       setBusy(false)
       await refetchTournament()
@@ -517,7 +568,7 @@ function EvidenceSlot({
   return (
     <div>
       <p className="text-sm text-rally-text-2">{label} · {t('corporate.reg.evidenceCount', { n: count })}</p>
-      {count === 0 && pending && (
+      {count === 0 && open && (
         <div className="mt-2 space-y-2">
           <EvidencePicker
             id={`registered-evidence-${slot}`}
@@ -539,9 +590,9 @@ function EvidenceSlot({
           >
             {t('corporate.reg.addEvidence')}
           </button>
-          {failed && (
+          {failure && (
             <p role="alert" className="text-sm text-rally-error">
-              {t('corporate.reg.evidenceUploadFailed')}
+              {t(`corporate.reg.${evidenceFailureKey(failure)}`)}
             </p>
           )}
         </div>
@@ -558,9 +609,13 @@ interface RegistrationFormProps {
   feeWaiver?: CorporateFeeWaiver
   /** The event's level categories, if it offers any. Set ⇒ a REQUIRED dropdown. */
   competeLevels?: string[]
+  /** Those categories are the tournament bands: follow the served ladder (lib/competeLevels.ts). */
+  competeLevelsAreBands?: boolean
   /** Where the form parks the evidence upload for the page's `onRegistered`. */
-  pendingUpload: MutableRefObject<((reg: TournamentRegistrationResult) => Promise<void>) | null>
+  pendingUpload: MutableRefObject<((reg: TournamentRegistrationResult) => Promise<void | 'stay'>) | null>
   refetchTournament: () => Promise<unknown>
+  /** An upload failed while registering: the page shows why on the registered card. */
+  onEvidenceFailed: (code: string) => void
   register: (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest, requestedLevel?: string) => Promise<void>
   isRegistering: boolean
   registerError: string | null
@@ -575,7 +630,7 @@ const WAIVER_OPTIONS: { value: 0 | 1 | 2; key: string }[] = [
 ]
 
 function RegistrationForm({
-  tr, gate, feeWaiver, competeLevels, pendingUpload, refetchTournament, register, isRegistering, registerError, gateError,
+  tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
 }: RegistrationFormProps) {
   const { t } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
@@ -630,8 +685,12 @@ function RegistrationForm({
   const partnerRequired = (needsPartner || residents === 2) && partnerState.phase === 'idle'
   // An event that offers level categories must get one before it registers the
   // pair; every other event has none to ask about and is never held here.
-  const offersLevels = (competeLevels?.length ?? 0) > 0
-  const levelMissing = offersLevels && !competeLevel
+  // The dropdown's options on the ladder in force. A choice they no longer offer (the scale
+  // switched under an open page) counts as no choice, so it can never be sent.
+  const levelOptions = competeLevelOptions({ competeLevels, competeLevelsAreBands }, ladder)
+  const chosenLevel = levelOptions.includes(competeLevel) ? competeLevel : ''
+  const offersLevels = levelOptions.length > 0
+  const levelMissing = offersLevels && !chosenLevel
   const busy = isRegistering
   // `waivedAmount(fee, seats, 0)` is the same number, but it would round a fee
   // that today is rendered verbatim — a no-waiver price stays untouched.
@@ -698,22 +757,34 @@ function RegistrationForm({
      * The evidence can only be uploaded once the registration row exists, and
      * only the register hook knows when that is — so the work is parked here and
      * the page's `onRegistered` runs it (and awaits it) at that moment. A failed
-     * upload must never strand a created registration: it is caught and logged,
-     * never surfaced here — the refetch below flips `my_registration`, which
-     * swaps this form for the registered card, and THAT card is the recovery
-     * path (its own per-slot picker + "add evidence" button, since the failed
-     * slot's evidence count is still 0).
+     * upload must never strand a created registration, so it never throws — but it
+     * must never be silent either: three pairs on 2026-09-28/29 were handed on to
+     * payment with their documents refused and believed them sent. So:
+     * - each resident's upload runs on its own — one refused file used to cost the
+     *   partner theirs too, which was never even sent;
+     * - any failure answers `'stay'`, keeping the player here instead of moving on
+     *   (the free-entry confirmation still runs), and hands the reason to the page;
+     * - the refetch flips `my_registration`, swapping this form for the registered
+     *   card, whose "missing documents" box and per-slot pickers are the retry path.
      */
+    let stayed = false
     pendingUpload.current = waiverRequest
       ? async (reg) => {
-          try {
-            await uploadRegistrationEvidence(reg.id, 1, myFiles)
-            if (residents === 2) await uploadRegistrationEvidence(reg.id, 2, partnerFiles)
-          } catch (uploadError) {
-            console.error('[CorporateRegistrationPage] evidence upload failed:', uploadError)
-          } finally {
-            await refetchTournament()
+          const uploads: [1 | 2, File[]][] = residents === 2 ? [[1, myFiles], [2, partnerFiles]] : [[1, myFiles]]
+          let failedCode: string | null = null
+          for (const [slot, files] of uploads) {
+            try {
+              await uploadRegistrationEvidence(reg.id, slot, files)
+            } catch (uploadError) {
+              console.error(`[CorporateRegistrationPage] evidence upload failed (slot ${slot}):`, uploadError)
+              failedCode ??= uploadErrorCode(uploadError) ?? 'UNKNOWN'
+            }
           }
+          await refetchTournament()
+          if (failedCode === null) return
+          onEvidenceFailed(failedCode)
+          stayed = true
+          return 'stay'
         }
       : null
     // Only ever passed when there is one. An explicit `undefined` reads the same
@@ -721,9 +792,12 @@ function RegistrationForm({
     // every seam that records one — this path stays byte-for-byte what it was.
     // Each extra is passed only when there is one, so an event without level
     // categories makes exactly the call it made before this feature existed.
-    if (offersLevels) await register(partnerState, waiverRequest, competeLevel)
+    if (offersLevels) await register(partnerState, waiverRequest, chosenLevel)
     else if (waiverRequest) await register(partnerState, waiverRequest)
     else await register(partnerState)
+    // Stayed after a failed upload: the free-entry confirmation ran after the card's
+    // last refetch, so read the registration once more.
+    if (stayed) await refetchTournament()
   }
 
   return (
@@ -775,22 +849,22 @@ function RegistrationForm({
             <Select
               id="cr-compete-level"
               required
-              value={competeLevel}
+              value={chosenLevel}
               disabled={busy}
-              aria-invalid={competeLevelError && !competeLevel}
-              aria-describedby={competeLevelError && !competeLevel ? 'cr-compete-level-error' : 'cr-compete-level-hint'}
+              aria-invalid={competeLevelError && !chosenLevel}
+              aria-describedby={competeLevelError && !chosenLevel ? 'cr-compete-level-error' : 'cr-compete-level-hint'}
               onChange={(e) => {
                 setCompeteLevel(e.target.value)
                 setCompeteLevelError(false)
               }}
-              className={competeLevelError && !competeLevel ? 'border-rally-error' : undefined}
+              className={competeLevelError && !chosenLevel ? 'border-rally-error' : undefined}
             >
               <option value="" disabled>{t('corporate.reg.competeLevelPlaceholder')}</option>
-              {competeLevels!.map((level) => (
+              {levelOptions.map((level) => (
                 <option key={level} value={level}>{level}</option>
               ))}
             </Select>
-            {competeLevelError && !competeLevel ? (
+            {competeLevelError && !chosenLevel ? (
               <p id="cr-compete-level-error" role="alert" className="text-xs text-rally-error mt-1.5">
                 {t('corporate.reg.competeLevelRequired')}
               </p>

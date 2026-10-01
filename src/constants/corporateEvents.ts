@@ -131,6 +131,14 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    */
   competeLevels?: string[]
   /**
+   * The categories in `competeLevels` ARE the tournament level bands, written the way the
+   * 1–7 scale's tournaments carry them. On that scale the page shows `competeLevels` exactly;
+   * after the switch to 1–5 it shows one option per served band instead, labelled the way the
+   * CRM labels tournaments (lib/competeLevels.ts). A plain flag on purpose: this module is
+   * loaded by api/join-og.ts as native ESM and must never import the skill ladder.
+   */
+  competeLevelsAreBands?: boolean
+  /**
    * Send the tournament's regular web page (/tournaments/<id>) here instead — for a
    * tournament listed publicly whose event page is the full way in (the residents'
    * waiver, its documents and the level choice exist only here; the regular page can
@@ -248,6 +256,9 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // categories were a mock. Taken from the one tournament band list rather than
     // typed here, so it reads exactly like a tournament's level.
     competeLevels: tournamentLevelsBetween(2, 5),
+    // They are the tournament bands, so after the 1–7 → 1–5 switch the page lists the
+    // served bands instead of these 1–7 strings (lib/competeLevels.ts).
+    competeLevelsAreBands: true,
     // Listed publicly from 2026-09-28. Web visitors land here for the full flow; the
     // app registers plain entries (no waiver, no level) and its banner and the
     // tournament description point residents to rallypadel.app/holon (vercel.json).
