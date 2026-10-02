@@ -7,7 +7,7 @@ import {
   renderPage, tr, session, gate, mockUseTournament, mockUseAppSession, mockUseGate, mockUseEnsure,
   mockUseRegistration, mockUploadEvidence, ensure, register, refetchTournament, resetPageMocks,
   completeDetails, expectDetailsModal, COMPLETE_PROFILE,
-  verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState,
+  verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState, mockPreviewCoupon,
 } from './CorporateRegistrationPage.fixtures'
 import type { TournamentRegistrationResult } from '@/types/api'
 import { FALLBACK_LADDERS } from '@/lib/skillLadder'
@@ -965,3 +965,87 @@ describe('CorporateRegistrationPage — the level category the pair enters', () 
     expect(register.mock.calls[0]).toHaveLength(1)
   })
 })
+
+// The coupon card on /join (2026-10-02): the event's VIP code is 100% off, and a VIP
+// must see a free entry BEFORE registering — not "Register & pay" and a card hold.
+describe('CorporateRegistrationPage — coupons', () => {
+  beforeEach(resetPageMocks)
+
+  const preview = (over: Record<string, unknown> = {}) => ({
+    success: true, meta: null, error: null,
+    data: {
+      coupon_id: 'c-1', code: 'VIP', name: 'VIP', discount_amount: 150, original_amount: 150,
+      final_amount: 0, currency: 'ILS', rule_points: [], ...over,
+    },
+  }) as any
+
+  async function applyCode(user: ReturnType<typeof userEvent.setup>, code = 'vip') {
+    await user.type(screen.getByPlaceholderText(i18n.t('coupon.placeholder')), code)
+    await user.click(screen.getByRole('button', { name: i18n.t('coupon.apply') }))
+  }
+
+  it('a code covering the whole fee makes the price, the note and the button free — and rides along to register', async () => {
+    const user = userEvent.setup()
+    mockPreviewCoupon.mockResolvedValue(preview())
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await applyCode(user)
+
+    expect(mockPreviewCoupon).toHaveBeenCalledWith('VIP', { tournamentId: 't-1', orderValue: 150 })
+    expect(await screen.findByText('₪0')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('coupon.confirmFreeNotice'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('corporate.reg.holdNote'))).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCtaFree') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+    expect(register).toHaveBeenCalledWith(
+      { phase: 'idle' }, undefined, undefined, { id: 'c-1', code: 'VIP', coversAll: true },
+    )
+  })
+
+  it('a partial discount keeps "Register & pay" and the hold note, and still rides along', async () => {
+    const user = userEvent.setup()
+    mockPreviewCoupon.mockResolvedValue(preview({ discount_amount: 15, final_amount: 135 }))
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await applyCode(user)
+
+    expect(await screen.findByText('₪135')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.holdNote'))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCta') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+    expect((register.mock.calls[0] as unknown[])[3]).toEqual({ id: 'c-1', code: 'VIP', coversAll: false })
+  })
+
+  it('declaring a resident changes what is due, so the code is resolved again for the new amount', async () => {
+    const user = userEvent.setup()
+    mockPreviewCoupon.mockResolvedValue(preview({ discount_amount: 15, final_amount: 135 }))
+    mockUseTournament.mockReturnValue(tr({ fee_waiver_type: 'holon_resident' })) // doubles, 150
+    renderPage({ feeWaiver: { type: 'holon_resident' } })
+    await applyCode(user)
+    await screen.findByText('₪135')
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverOneOfUs') }))
+    await waitFor(() => expect(mockPreviewCoupon).toHaveBeenCalledTimes(2))
+    expect(mockPreviewCoupon).toHaveBeenLastCalledWith('VIP', { tournamentId: 't-1', orderValue: 75 })
+  })
+
+  it('a free entry (both residents) has nothing to discount: no coupon card', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ fee_waiver_type: 'holon_resident' }))
+    renderPage({ feeWaiver: { type: 'holon_resident' } })
+    expect(screen.getByPlaceholderText(i18n.t('coupon.placeholder'))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverBoth') }))
+    expect(screen.queryByPlaceholderText(i18n.t('coupon.placeholder'))).not.toBeInTheDocument()
+  })
+
+  it('without a coupon the register call is exactly what it was', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCta') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+    expect(register.mock.calls[0]).toHaveLength(1)
+  })
+})
+

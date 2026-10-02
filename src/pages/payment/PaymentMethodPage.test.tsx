@@ -167,6 +167,24 @@ describe('PaymentMethodPage', () => {
     expect(mockInitiate).not.toHaveBeenCalled()
   })
 
+  // The /join page applied a code before registering and hands it over.
+  it('applies a handed-over code once on arrival — never typed twice', async () => {
+    mockPreviewCoupon.mockResolvedValue({ success: true, data: couponPreview, meta: null, error: null })
+    renderAt('?registration_id=r-1&tournament_id=t-1&amount=150&coupon=SAVE10')
+    await screen.findByText('SAVE10')
+    expect(mockPreviewCoupon).toHaveBeenCalledTimes(1)
+    expect(mockPreviewCoupon).toHaveBeenCalledWith('SAVE10', { tournamentId: 't-1', orderValue: 150 })
+    expect(screen.getAllByText('₪135').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('a handed-over code that no longer applies says so', async () => {
+    mockPreviewCoupon.mockResolvedValue({
+      success: false, data: null, meta: null, error: { message: 'Coupon expired' },
+    } as any)
+    renderAt('?registration_id=r-1&tournament_id=t-1&amount=150&coupon=OLD')
+    expect(await screen.findByText('Coupon expired')).toBeInTheDocument()
+  })
+
   it('shows the backend error when the typed code is invalid', async () => {
     mockPreviewCoupon.mockResolvedValue({
       success: false,

@@ -51,6 +51,8 @@ vi.mock('@/services/api/registrationEvidence', () => ({
   uploadRegistrationEvidence: vi.fn(),
   listRegistrationEvidence: vi.fn(),
 }))
+// The form's coupon card lists and previews coupons; no network in tests.
+vi.mock('@/services/api/coupons', () => ({ listCoupons: vi.fn(), previewCoupon: vi.fn() }))
 vi.mock('@/hooks/useEnsureProfileEssentials', async () => {
   const actual = await vi.importActual<typeof import('@/hooks/useEnsureProfileEssentials')>('@/hooks/useEnsureProfileEssentials')
   return { ...actual, useEnsureProfileEssentials: vi.fn() }
@@ -64,6 +66,7 @@ import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistra
 import { useTournamentRegistration } from '@/hooks/useTournamentRegistration'
 import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
+import { listCoupons, previewCoupon } from '@/services/api/coupons'
 import {
   checkPhoneAvailable, requestPhoneVerificationOtp, verifyPhoneVerificationOtp,
 } from '@/services/api/players'
@@ -82,6 +85,8 @@ export const mockUseGate = vi.mocked(useRegistrationGate)
 export const mockUseRegistration = vi.mocked(useTournamentRegistration)
 export const mockUseEnsure = vi.mocked(useEnsureProfileEssentials)
 export const mockUploadEvidence = vi.mocked(uploadRegistrationEvidence)
+export const mockListCoupons = vi.mocked(listCoupons)
+export const mockPreviewCoupon = vi.mocked(previewCoupon)
 export const mockCheckPhone = vi.mocked(checkPhoneAvailable)
 export const mockRequestOtp = vi.mocked(requestPhoneVerificationOtp)
 export const mockVerifyOtp = vi.mocked(verifyPhoneVerificationOtp)
@@ -251,6 +256,8 @@ export function resetPageMocks() {
   mockUseRegistration.mockReturnValue({ register, isRegistering: false, registerError: null, gateError: null, setRegisterError: vi.fn(), setGateError: vi.fn() } as any)
   mockUseEnsure.mockReturnValue({ ensure, status: 'ready', playerProfile: COMPLETE_PROFILE, phoneLocked: true, levelLocked: true } as any)
   mockUploadEvidence.mockResolvedValue([])
+  mockListCoupons.mockResolvedValue({ success: true, data: [], meta: null, error: null } as any)
+  mockPreviewCoupon.mockReset()
   refetchTournament.mockResolvedValue(undefined)
   // The happy OTP path; a test about a taken number or a wrong code overrides one.
   mockCheckPhone.mockResolvedValue({ success: true, data: { available: true }, meta: null, error: null } as any)

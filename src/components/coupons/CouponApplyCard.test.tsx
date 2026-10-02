@@ -88,4 +88,24 @@ describe('CouponApplyCard', () => {
     fireEvent.click(viewAll)
     expect(onViewAllCoupons).toHaveBeenCalled()
   })
+
+  // On /join the card sits inside the registration <form>: Enter must apply the
+  // code and nothing else — never submit the registration.
+  it('Enter inside a form applies the code without submitting the form', async () => {
+    const onApplyCode = vi.fn(async () => {})
+    const onSubmit = vi.fn((e: { preventDefault: () => void }) => e.preventDefault())
+    render(
+      <form onSubmit={onSubmit}>
+        <CouponApplyCard onApplyCode={onApplyCode} onRemoveCoupon={vi.fn()} onViewAllCoupons={vi.fn()} />
+      </form>,
+    )
+    const input = screen.getByPlaceholderText(i18n.t('coupon.placeholder'))
+    fireEvent.change(input, { target: { value: 'vip' } })
+    const enter = fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(onApplyCode).toHaveBeenCalledWith('VIP'))
+    // keyDown's default action IS the implicit submission; returning false means prevented.
+    expect(enter).toBe(false)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })
+
