@@ -1254,8 +1254,9 @@ describe('TournamentDetailPage settled payment breakdown', () => {
           id: 'my-reg-1',
           status: 'registered',
           payment_status: 'completed',
+          // rally-api's shape (get_my_payment): gross = fee − coupon, base = gross − service fee.
           my_payment: {
-            base_amount: 150,
+            base_amount: 135,
             fee_portion: 0,
             gross_amount: 135,
             discount_amount: 15,
@@ -1285,10 +1286,11 @@ describe('TournamentDetailPage settled payment breakdown', () => {
           id: 'my-reg-1',
           status: 'registered',
           payment_status: 'completed',
+          // rally-api's shape: credits pay part of the gross, they are not taken out of it.
           my_payment: {
-            base_amount: 150,
+            base_amount: 135,
             fee_portion: 0,
-            gross_amount: 100,
+            gross_amount: 135,
             discount_amount: 15,
             credits_applied: 35,
             card_charged: 100,
@@ -1302,6 +1304,8 @@ describe('TournamentDetailPage settled payment breakdown', () => {
     renderPage()
     expect(screen.getByText(i18n.t('coupon.creditsApplied'))).toBeInTheDocument()
     expect(screen.getByText('-₪35')).toBeInTheDocument()
+    // 150 − 35 − 15: the rows add up to what reached the card.
+    expect(screen.getByText('₪100')).toBeInTheDocument()
   })
 
   it('stays hidden while payment is still pending, even if a discount is already known', () => {

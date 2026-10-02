@@ -104,7 +104,11 @@ export function CouponApplyCard({
                 if (error) setError(null)
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleApply()
+                if (e.key !== 'Enter') return
+                // Enter applies the code — and only that. Inside a <form> (the /join
+                // registration form) it would otherwise also submit the form.
+                e.preventDefault()
+                void handleApply()
               }}
               placeholder={t('coupon.placeholder')}
               disabled={disabled || applying}

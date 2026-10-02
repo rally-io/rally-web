@@ -61,6 +61,24 @@ describe('CorporateRegistrationPage — states', () => {
     expect(screen.queryByRole('button', { name: /register & pay/i })).not.toBeInTheDocument()
   })
 
+  it('a registration paid with a coupon shows the receipt: fee, discount, total', () => {
+    mockUseTournament.mockReturnValue(tr({
+      my_registration: {
+        id: 'reg-1', status: 'registered', payment_status: 'completed', player_2_name: 'Yossi Levi',
+        // rally-api's shape for a 100% coupon: gross = fee − coupon.
+        my_payment: {
+          base_amount: 0, fee_portion: 0, gross_amount: 0, discount_amount: 150, credits_applied: 0,
+          card_charged: 0, auto_charged_amount: 0, payment_status: 'completed', refund: null,
+        },
+      },
+    }))
+    renderPage()
+    expect(screen.getByText(i18n.t('coupon.discount'))).toBeInTheDocument()
+    expect(screen.getByText('-₪150')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('coupon.totalPaid'))).toBeInTheDocument()
+    expect(screen.getByText('₪0')).toBeInTheDocument()
+  })
+
   it('the registered card links to the tournament page and back to the site', () => {
     mockUseTournament.mockReturnValue(tr({
       my_registration: { id: 'reg-1', tournament_id: 't-1', player_1_id: 'p-1', player_2_id: 'p-2', player_2_name: 'Yossi Levi', status: 'confirmed', payment_status: 'completed' },

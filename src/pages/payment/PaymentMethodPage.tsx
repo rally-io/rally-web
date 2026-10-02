@@ -1,7 +1,7 @@
 // src/pages/payment/PaymentMethodPage.tsx
 // "Add a card" — places a pre-authorization hold via Grow's hosted checkout page.
 // No saved-card list / reuse in this scope: every registration adds a fresh card.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CreditCard } from 'lucide-react'
@@ -62,6 +62,20 @@ export default function PaymentMethodPage() {
   useEffect(() => {
     if (!isWaitlistHold && tournamentId && amount > 0) void fetchCoupons()
   }, [isWaitlistHold, tournamentId, amount, fetchCoupons, i18n.language])
+
+  // A code the player already applied before registering (the /join page) —
+  // applied once on arrival, so it is never typed twice. A refusal shows like
+  // any other: the code may have stopped applying in between.
+  const handedCode = params.get('coupon')
+  const handedCodeTried = useRef(false)
+  const { applyCode } = coupon
+  useEffect(() => {
+    if (handedCodeTried.current || !handedCode || isWaitlistHold || !tournamentId || !(amount > 0)) return
+    handedCodeTried.current = true
+    applyCode(handedCode).catch((e: unknown) => {
+      setError(e instanceof Error && e.message ? e.message : t('coupon.cannotApply'))
+    })
+  }, [handedCode, isWaitlistHold, tournamentId, amount, applyCode, t])
 
   const finalAmount = isWaitlistHold ? amount : coupon.finalAmount
 

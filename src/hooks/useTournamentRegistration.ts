@@ -16,6 +16,18 @@ import type {
 
 export type RegistrationGate = ReturnType<typeof useRegistrationGate>
 
+/**
+ * A coupon the caller already resolved through `/coupons/preview` before
+ * registering. A coupon is not part of the register call — rally-api applies it
+ * when payment starts — so the hook carries it into the payment hand-off.
+ */
+export interface RegistrationCoupon {
+  id: string
+  code: string
+  /** The preview said it brings what's due to ₪0. */
+  coversAll: boolean
+}
+
 // Pure helper — no side-effects, fully testable in isolation. Shared by the
 // register and join-waitlist paths (the waitlist replays the same payload shape
 // at promotion time).
@@ -154,7 +166,12 @@ export function useTournamentRegistration(
   }, [gate.isSatisfied])
 
   const register = useCallback(
-    async (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest, requestedLevel?: string): Promise<void> => {
+    async (
+      partnerState: PartnerSelectionState,
+      feeWaiver?: FeeWaiverRequest,
+      requestedLevel?: string,
+      coupon?: RegistrationCoupon,
+    ): Promise<void> => {
       if (!tournament) return
       const gate = gateRef.current
       setIsRegistering(true)
@@ -211,6 +228,31 @@ export function useTournamentRegistration(
           navigate(`/payments/confirming?${sp.toString()}`)
           return
         }
+        // Already free without it (above): the coupon is never sent, so it is
+        // never spent. Covering the whole amount: confirm with it right here, no
+        // card screen. rally-api re-resolves it against the registration's own
+        // amount and refuses if it no longer applies or no longer covers it —
+        // then the payment page below takes over, re-applies the code and says why.
+        if (coupon?.coversAll) {
+          let confirmed = false
+          try {
+            confirmed = (await confirmTournamentZeroPayment(reg.id, coupon.id)).success
+          } catch (couponError) {
+            console.error('[useTournamentRegistration] coupon confirmation refused:', couponError)
+          }
+          if (!mounted.current) return
+          if (confirmed) {
+            if (stay) return
+            const sp = new URLSearchParams({
+              type: 'tournament_registration',
+              id: reg.id,
+              tournament_id: tournament.id,
+            })
+            if (returnTo) sp.set('return_to', returnTo)
+            navigate(`/payments/confirming?${sp.toString()}`)
+            return
+          }
+        }
         if (stay) return
         const sp = new URLSearchParams({
           registration_id: reg.id,
@@ -218,6 +260,8 @@ export function useTournamentRegistration(
           amount: String(amountToPay),
         })
         if (returnTo) sp.set('return_to', returnTo)
+        // The payment page applies it on arrival, so it is never typed twice.
+        if (coupon) sp.set('coupon', coupon.code)
         navigate(`/payment-method?${sp.toString()}`)
       } catch (e) {
         // Validation failures (partner already registered, tournament closed,

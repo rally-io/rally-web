@@ -14,7 +14,10 @@ import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistra
 import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
 import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
-import { useTournamentRegistration, type RegistrationGate } from '@/hooks/useTournamentRegistration'
+import {
+  useTournamentRegistration, type RegistrationCoupon, type RegistrationGate,
+} from '@/hooks/useTournamentRegistration'
+import { useCouponFlow } from '@/hooks/useCouponFlow'
 import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
 import { useSkillLadder } from '@/hooks/useSkillLadder'
 import { ctaFor } from '@/lib/tournamentCta'
@@ -29,6 +32,10 @@ import { readProfileDetails } from '@/components/corporate/profileDetails'
 import { competeLevelOptions } from '@/lib/competeLevels'
 import { RallyWordmark } from '@/components/corporate/RallyWordmark'
 import { AppDownloadFooter } from '@/components/corporate/AppDownloadFooter'
+import { CouponApplyCard } from '@/components/coupons/CouponApplyCard'
+import { CouponsModal } from '@/components/coupons/CouponsModal'
+import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
+import { paymentReceiptRows } from '@/lib/paymentReceipt'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
 import {
   evidenceFailureKey, isWaiverOffered, uploadErrorCode, validateEvidenceFiles, waivedAmount,
@@ -37,7 +44,7 @@ import type { CorporateFeeWaiver } from '@/constants/corporateFeeWaiver'
 import type { CorporateTournamentEvent } from '@/constants/corporateEvents'
 import type { PartnerSelectionState } from '@/types/partner'
 import type {
-  FeeWaiverRequest, MyRegistration, TournamentDetail, TournamentRegistrationResult,
+  ConsumerCoupon, FeeWaiverRequest, MyRegistration, TournamentDetail, TournamentRegistrationResult,
 } from '@/types/api'
 
 // The only gate action web can reach — same constant TournamentDetailPage uses.
@@ -416,6 +423,9 @@ function RegisteredCard({
   // registration must never render a "partner's proof" slot for a partner
   // that can't exist.
   const declaredSlots = ([1, 2] as const).filter((slot) => slot <= residents && slot <= seats)
+  // Entry fee, coupon discount, amount paid — once money has moved and there is
+  // more than a plain fee to explain (a VIP's 100% coupon reads as such).
+  const receipt = paymentReceiptRows(myReg.my_payment, t)
   const slotCount = (slot: 1 | 2) => myReg.evidence_counts?.[slot === 1 ? '1' : '2'] ?? 0
   // A claim documents can still go on: pending, or approved with a slot left empty
   // (rally-api accepts exactly those). Approved-without-documents happened three
@@ -444,6 +454,11 @@ function RegisteredCard({
       )}
       {showBaseStatusLine && (
         <p className="text-sm text-rally-text-2 leading-relaxed">{t(statusKey)}</p>
+      )}
+      {receipt.length > 0 && (
+        <div className="mt-4 text-start">
+          <PriceBreakdown rows={receipt} />
+        </div>
       )}
       {missingEvidence && (
         <div role="alert" className="mt-4 rounded-xl border border-rally-error/50 bg-rally-error/10 p-4 text-start">
@@ -616,7 +631,12 @@ interface RegistrationFormProps {
   refetchTournament: () => Promise<unknown>
   /** An upload failed while registering: the page shows why on the registered card. */
   onEvidenceFailed: (code: string) => void
-  register: (partnerState: PartnerSelectionState, feeWaiver?: FeeWaiverRequest, requestedLevel?: string) => Promise<void>
+  register: (
+    partnerState: PartnerSelectionState,
+    feeWaiver?: FeeWaiverRequest,
+    requestedLevel?: string,
+    coupon?: RegistrationCoupon,
+  ) => Promise<void>
   isRegistering: boolean
   registerError: string | null
   gateError: string | null
@@ -632,7 +652,7 @@ const WAIVER_OPTIONS: { value: 0 | 1 | 2; key: string }[] = [
 function RegistrationForm({
   tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
 }: RegistrationFormProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
   const ladder = useSkillLadder()
   const [partnerState, setPartnerState] = useState<PartnerSelectionState>({ phase: 'idle' })
@@ -695,6 +715,55 @@ function RegistrationForm({
   // `waivedAmount(fee, seats, 0)` is the same number, but it would round a fee
   // that today is rendered verbatim — a no-waiver price stays untouched.
   const amountDue = residents === 0 ? tr.entry_fee : waivedAmount(tr.entry_fee, seats, residents)
+
+  /**
+   * Coupons — the same hook and components as the payment page, here so a player
+   * with a code (the event's VIP code is 100% off) sees the real price, the real
+   * note and the real button BEFORE registering, not a ₪300 card hold. Resolved
+   * against `amountDue`, the post-waiver amount — what rally-api discounts too
+   * (`effective_entry_fee`). Never spent here: the hook applies it at payment.
+   */
+  const coupon = useCouponFlow(tr.id, amountDue)
+  const { appliedCoupon, applyCode, removeCoupon, fetchCoupons } = coupon
+  const [couponError, setCouponError] = useState<string | null>(null)
+  // Re-fetched on a language switch, like the payment page: the list's copy is
+  // localized server-side.
+  useEffect(() => {
+    if (amountDue >= 0.01) void fetchCoupons()
+  }, [amountDue, fetchCoupons, i18n.language])
+  /** The amount the applied coupon was resolved against. Set BEFORE each call,
+   *  so a response that disagrees about the amount can never re-trigger it. */
+  const couponResolvedFor = useRef<number | null>(null)
+  const applyCouponCode = async (code: string) => {
+    couponResolvedFor.current = amountDue
+    setCouponError(null)
+    await applyCode(code)
+  }
+  // Declaring residents changes what is due, so the discount in hand is for the
+  // wrong amount: resolve the code again, or drop it at ₪0, where it would buy
+  // nothing (and is never sent — see the hook).
+  useEffect(() => {
+    if (!appliedCoupon || couponResolvedFor.current === amountDue) return
+    couponResolvedFor.current = amountDue
+    if (amountDue < 0.01) {
+      removeCoupon()
+      return
+    }
+    applyCode(appliedCoupon.code).catch(() => {
+      removeCoupon()
+      setCouponError(t('coupon.cannotApply'))
+    })
+  }, [amountDue, appliedCoupon, applyCode, removeCoupon, t])
+  const handleSelectCoupon = (picked: ConsumerCoupon) => {
+    coupon.setIsModalOpen(false)
+    applyCouponCode(picked.code).catch((e: unknown) => {
+      setCouponError(e instanceof Error && e.message ? e.message : t('coupon.cannotApply'))
+    })
+  }
+  const discount = appliedCoupon && amountDue >= 0.01 ? coupon.discountAmount : 0
+  const finalDue = Math.max(0, amountDue - discount)
+  /** The coupon alone takes the price to ₪0 — no card, no hold. */
+  const couponCoversAll = discount > 0 && finalDue < 0.01
 
   const chooseResidents = (next: 0 | 1 | 2) => {
     setResidentCount(next)
@@ -792,7 +861,13 @@ function RegistrationForm({
     // every seam that records one — this path stays byte-for-byte what it was.
     // Each extra is passed only when there is one, so an event without level
     // categories makes exactly the call it made before this feature existed.
-    if (offersLevels) await register(partnerState, waiverRequest, chosenLevel)
+    // The coupon rides along to the payment hand-off; without one, every call
+    // below stays exactly what it was.
+    const couponArg: RegistrationCoupon | undefined = appliedCoupon && discount > 0
+      ? { id: appliedCoupon.coupon_id, code: appliedCoupon.code, coversAll: couponCoversAll }
+      : undefined
+    if (couponArg) await register(partnerState, waiverRequest, offersLevels ? chosenLevel : undefined, couponArg)
+    else if (offersLevels) await register(partnerState, waiverRequest, chosenLevel)
     else if (waiverRequest) await register(partnerState, waiverRequest)
     else await register(partnerState)
     // Stayed after a failed upload: the free-entry confirmation ran after the card's
@@ -969,6 +1044,28 @@ function RegistrationForm({
             />
           </section>
         )}
+
+        {/* Only while there is something to discount — a ₪0 entry (both residents)
+            has nothing a coupon could take off. */}
+        {amountDue >= 0.01 && (
+          <section>
+            <CouponApplyCard
+              appliedCoupon={appliedCoupon}
+              savingsAmount={discount}
+              onApplyCode={applyCouponCode}
+              onRemoveCoupon={() => {
+                removeCoupon()
+                setCouponError(null)
+              }}
+              onViewAllCoupons={() => coupon.setIsModalOpen(true)}
+              availableCouponsCount={coupon.availableCoupons.length}
+              disabled={busy}
+            />
+            {couponError && (
+              <p role="alert" className="mt-2 text-xs text-rally-error">{couponError}</p>
+            )}
+          </section>
+        )}
       </div>
 
       <div className="mt-7 rounded-xl bg-rally-surface-2 border border-rally-border px-4 py-3 flex items-center justify-between gap-4">
@@ -976,7 +1073,19 @@ function RegistrationForm({
           <p className="text-[11px] uppercase tracking-wider text-rally-text-muted">{t('corporate.reg.priceLabel')}</p>
           {/* Entry fee only — TournamentDetail carries no `service_fee` (the platform fee
               is ₪0 today); the authoritative charge is the register response's `amount_to_pay`. */}
-          <p className="text-2xl font-black text-rally-accent">{formatCurrency(amountDue)}</p>
+          <p className="text-2xl font-black text-rally-accent">
+            {formatCurrency(finalDue)}
+            {discount > 0 && (
+              <span className="ms-2 text-sm font-semibold text-rally-text-muted line-through">
+                {formatCurrency(amountDue)}
+              </span>
+            )}
+          </p>
+          {discount > 0 && appliedCoupon && (
+            <p className="text-xs text-rally-success mt-0.5 leading-relaxed">
+              {t('coupon.discountLabel', { code: appliedCoupon.code })} · −{formatCurrency(discount)}
+            </p>
+          )}
           {residents > 0 && (
             <p className="text-xs text-rally-accent mt-0.5 leading-relaxed">
               {t(amountDue < 0.01 ? 'corporate.reg.priceWaived' : 'corporate.reg.priceHalf')}
@@ -996,7 +1105,9 @@ function RegistrationForm({
           so `freeNote` is the generic one instead. */}
       <p className="text-xs text-rally-text-muted mt-2 leading-relaxed">
         {t(
-          amountDue >= 0.01
+          couponCoversAll
+            ? 'coupon.confirmFreeNotice'
+            : amountDue >= 0.01
             ? 'corporate.reg.holdNote'
             : residents === 0
               ? 'corporate.reg.freeNote'
@@ -1013,7 +1124,7 @@ function RegistrationForm({
         {busy ? t('corporate.reg.submitting')
           : levelMissing ? t('corporate.reg.ctaMissingLevel')
           : partnerRequired ? t('tournament.ctaMissingPartner')
-          : amountDue < 0.01 ? t('corporate.reg.submitCtaFree')
+          : finalDue < 0.01 ? t('corporate.reg.submitCtaFree')
           : t('corporate.reg.submitCta')}
       </button>
 
@@ -1026,6 +1137,14 @@ function RegistrationForm({
     </form>
     {/* Outside the <form> in source order for readability only — Radix portals it
         to the body either way, so it is never a nested form. */}
+    <CouponsModal
+      open={coupon.isModalOpen}
+      onOpenChange={coupon.setIsModalOpen}
+      coupons={coupon.availableCoupons}
+      appliedCouponId={appliedCoupon?.coupon_id}
+      onSelectCoupon={handleSelectCoupon}
+      loading={coupon.loadingCoupons}
+    />
     <ProfileDetailsModal
       open={detailsOpen}
       onOpenChange={setDetailsOpen}
