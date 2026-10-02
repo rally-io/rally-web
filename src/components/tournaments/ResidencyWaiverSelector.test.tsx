@@ -123,6 +123,59 @@ describe('ResidencyWaiverSelector', () => {
     expect(screen.queryByTestId('documents-required-accordion-content')).not.toBeInTheDocument()
   })
 
+  it('Scenario 5 (both active, residentCount=0): shows waiver pills and evidence picker — option to upload is shown (optional upload)', () => {
+    render(
+      <ResidencyWaiverSelector
+        seats={2}
+        feeWaiverType="club_member"
+        isDocumentRequired={true}
+        documentInstructions="Attach club member card"
+        residentCount={0}
+        onSelectResidents={vi.fn()}
+        myFiles={[]}
+        onMyFilesChange={vi.fn()}
+        partnerFiles={[]}
+        onPartnerFilesChange={vi.fn()}
+      />,
+    )
+
+    // Waiver pills are shown
+    expect(screen.getByTestId('waiver-option-0')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-1')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-2')).toBeInTheDocument()
+
+    // Player 1 picker is present — option to upload is still presented
+    expect(document.getElementById('tournament-evidence-1')).toBeInTheDocument()
+    // Partner picker is NOT present — only shown when residentCount === 2
+    expect(document.getElementById('tournament-evidence-2')).not.toBeInTheDocument()
+  })
+
+  it('Scenario 6 (both active, residentCount=1): shows waiver pills and only the player 1 picker — no partner picker', () => {
+    render(
+      <ResidencyWaiverSelector
+        seats={2}
+        feeWaiverType="club_member"
+        isDocumentRequired={true}
+        documentInstructions="Attach club member card"
+        residentCount={1}
+        onSelectResidents={vi.fn()}
+        myFiles={[]}
+        onMyFilesChange={vi.fn()}
+        partnerFiles={[]}
+        onPartnerFilesChange={vi.fn()}
+      />,
+    )
+
+    // Waiver pills are shown
+    expect(screen.getByTestId('waiver-option-0')).toBeInTheDocument()
+    expect(screen.getByTestId('waiver-option-1')).toBeInTheDocument()
+
+    // Player 1 picker present
+    expect(document.getElementById('tournament-evidence-1')).toBeInTheDocument()
+    // Partner picker NOT present — API would reject for_player=2 with residentCount=1 and a waiver
+    expect(document.getElementById('tournament-evidence-2')).not.toBeInTheDocument()
+  })
+
   it('Holon resident: preserves Holon title when feeWaiverType is holon_resident', () => {
     render(
       <ResidencyWaiverSelector

@@ -85,10 +85,11 @@ export function ResidencyWaiverSelector({
   }
 
   // Partner evidence slot in doubles:
-  // - If tournament has waiver: allow partner slot if residentCount === 2 or residentCount === 0
-  // - If tournament has no waiver: allow partner slot for doubles
+  // - If tournament has waiver: only show when residentCount === 2 (API rejects for_player=2 otherwise)
+  // - If waiver only (no doc required): never show (isDocumentRequired is false, whole block hidden)
+  // - If doc required only (no waiver): show for doubles
   const showPartnerEvidence =
-    seats === 2 && isDocumentRequired && (!hasWaiver || residentCount !== 1)
+    seats === 2 && isDocumentRequired && (!hasWaiver || residentCount === 2)
 
   return (
     <section
@@ -172,6 +173,9 @@ export function ResidencyWaiverSelector({
         </div>
       )}
 
+      {/* Show document instructions and evidence pickers whenever isDocumentRequired is true.
+          When a fee waiver is also configured, uploading documents is optional when no waiver
+          is selected (residentCount === 0), but the option to upload is still presented. */}
       {isDocumentRequired && (
         <div className={cn(hasWaiver ? 'mt-5 pt-4 border-t border-rally-border' : 'mt-4')}>
           {/* Expandable Document Explanation Accordion */}

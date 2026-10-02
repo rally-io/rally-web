@@ -98,6 +98,9 @@ function TournamentRegistrationPage() {
 
   const isDocRequired = Boolean(tr?.is_document_required)
   const hasFeeWaiver = Boolean(tr?.fee_waiver_type)
+  // True when BOTH feeWaiverType AND isDocumentRequired are set: the fee waiver
+  // selection (residentCount) is the single source of truth for evidence upload.
+  const hasWaiverActive = isDocRequired && hasFeeWaiver
   const showRequirementsSection = isDocRequired || hasFeeWaiver
   const seats: 1 | 2 = tr?.format === 'singles' ? 1 : 2
   const [residentCount, setResidentCount] = useState<0 | 1 | 2>(0)
@@ -111,6 +114,10 @@ function TournamentRegistrationPage() {
     setResidentCount(next)
     setMyEvidenceError(null)
     setPartnerEvidenceError(null)
+    // Partner files are only valid for 2 residents in doubles; clear them if
+    // the selection drops below 2. myFiles is preserved because player 1
+    // document upload remains valid (and optional) at residentCount === 0.
+    if (next < 2) setPartnerFiles([])
   }
 
   const effectiveFee = tr
@@ -120,7 +127,10 @@ function TournamentRegistrationPage() {
     : 0
 
   const validateEvidence = (): boolean => {
-    if (!isDocRequired) return true
+    // When both feeWaiverType and isDocumentRequired are set, the fee waiver
+    // selection drives evidence: no selection means evidence is optional.
+    const evidenceRequired = hasWaiverActive ? residentCount > 0 : isDocRequired
+    if (!evidenceRequired) return true
     let ok = true
     if (myFiles.length === 0) {
       setMyEvidenceError(t('tournament.evidenceRequired', { defaultValue: 'Please attach the required document.' }))
@@ -298,7 +308,8 @@ function TournamentRegistrationPage() {
             : undefined
 
         pendingUploadRef.current =
-          isDocRequired && (myFiles.length > 0 || partnerFiles.length > 0)
+          (isDocRequired || (hasWaiverActive && residentCount > 0)) &&
+          (myFiles.length > 0 || partnerFiles.length > 0)
             ? async (reg) => {
                 try {
                   if (myFiles.length > 0) {
@@ -978,7 +989,7 @@ function TournamentRegistrationPage() {
                   ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
-                  : isDocRequired && myFiles.length === 0
+                  : (hasWaiverActive ? residentCount > 0 : isDocRequired) && myFiles.length === 0
                   ? t('tournament.ctaMissingDocument', { defaultValue: 'Upload required document' })
                   : t('tournament.tournamentDetailRegisterNow')}
               </button>
