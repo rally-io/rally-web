@@ -1246,3 +1246,111 @@ describe('TournamentDetailPage entry fee label', () => {
   })
 })
 
+describe('TournamentDetailPage settled payment breakdown', () => {
+  it('shows entry fee, coupon discount and total paid once the payment is completed', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          payment_status: 'completed',
+          my_payment: {
+            base_amount: 150,
+            fee_portion: 0,
+            gross_amount: 135,
+            discount_amount: 15,
+            credits_applied: 0,
+            card_charged: 135,
+            auto_charged_amount: 0,
+            payment_status: 'completed',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.getByText(i18n.t('coupon.entryFee'))).toBeInTheDocument()
+    // The sticky CTA footer also shows the base entry fee — ₪150 appears twice.
+    expect(screen.getAllByText('₪150').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(i18n.t('coupon.discount'))).toBeInTheDocument()
+    expect(screen.getByText('-₪15')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('coupon.totalPaid'))).toBeInTheDocument()
+    expect(screen.getByText('₪135')).toBeInTheDocument()
+  })
+
+  it('also shows credits applied when both credits and a coupon were used', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          payment_status: 'completed',
+          my_payment: {
+            base_amount: 150,
+            fee_portion: 0,
+            gross_amount: 100,
+            discount_amount: 15,
+            credits_applied: 35,
+            card_charged: 100,
+            auto_charged_amount: 0,
+            payment_status: 'completed',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.getByText(i18n.t('coupon.creditsApplied'))).toBeInTheDocument()
+    expect(screen.getByText('-₪35')).toBeInTheDocument()
+  })
+
+  it('stays hidden while payment is still pending, even if a discount is already known', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'payment_pending',
+          my_payment: {
+            base_amount: 150,
+            fee_portion: 0,
+            gross_amount: 135,
+            discount_amount: 15,
+            credits_applied: 0,
+            card_charged: 0,
+            auto_charged_amount: 0,
+            payment_status: 'pending',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.queryByText(i18n.t('coupon.totalPaid'))).not.toBeInTheDocument()
+  })
+
+  it('stays hidden when nothing beyond the plain entry fee was applied', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          payment_status: 'completed',
+          my_payment: {
+            base_amount: 150,
+            fee_portion: 0,
+            gross_amount: 150,
+            discount_amount: 0,
+            credits_applied: 0,
+            card_charged: 150,
+            auto_charged_amount: 0,
+            payment_status: 'completed',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.queryByText(i18n.t('coupon.totalPaid'))).not.toBeInTheDocument()
+  })
+})
+

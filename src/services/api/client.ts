@@ -2,6 +2,7 @@
 import axios, { AxiosError } from 'axios'
 import { supabase } from '@/lib/supabase'
 import { isAuthError } from '@/lib/auth'
+import i18n from '@/i18n'
 
 declare module 'axios' {
   export interface AxiosRequestConfig {
@@ -35,6 +36,14 @@ client.interceptors.request.use(async (config) => {
   // web return URL instead of the mobile deep link (PAYMENT_BACKEND_DELTA.md §1).
   config.headers = config.headers ?? {}
   config.headers['X-Rally-Client'] = 'web'
+
+  // The site's language, as rally-mobile's apiClient does. rally-api localizes the
+  // text it composes itself (coupon rule_points / disabled_reason, error strings)
+  // from Accept-Language and defaults to Hebrew without it, while the browser's own
+  // header follows the browser locale, not the site's language switch.
+  if (!config.headers['Accept-Language']) {
+    config.headers['Accept-Language'] = i18n.resolvedLanguage ?? i18n.language ?? 'he'
+  }
 
   // Honor an explicit opt-out for unauthenticated endpoints (e.g. check-email).
   if (config.headers['X-Skip-Auth']) {

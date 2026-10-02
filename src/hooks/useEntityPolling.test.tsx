@@ -12,15 +12,21 @@ vi.mock('@/services/api/tournaments', () => ({
 vi.mock('@/services/api/events', () => ({
   getEvent: vi.fn(),
 }))
+vi.mock('@/services/api/payments', () => ({
+  getWaitlistHoldStatus: vi.fn(),
+  getPaymentLinkStatus: vi.fn(),
+}))
 
 import { useEntityPolling } from './useEntityPolling'
 import { getBooking } from '@/services/api/bookings'
 import { getRegistration } from '@/services/api/tournaments'
 import { getEvent } from '@/services/api/events'
+import { getPaymentLinkStatus } from '@/services/api/payments'
 
 const mockGetBooking = vi.mocked(getBooking)
 const mockGetRegistration = vi.mocked(getRegistration)
 const mockGetEvent = vi.mocked(getEvent)
+const mockGetPaymentLinkStatus = vi.mocked(getPaymentLinkStatus)
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({
@@ -124,6 +130,48 @@ describe('useEntityPolling — event_participation', () => {
       expect(result.current.status).toBe('confirmed')
     })
     expect(mockGetEvent).toHaveBeenCalledWith('e-1')
+  })
+})
+
+describe('useEntityPolling — store_order (payment link)', () => {
+  it('routes to getPaymentLinkStatus and confirms on completed=true', async () => {
+    mockGetPaymentLinkStatus.mockResolvedValue({
+      success: true,
+      data: { status: 'completed', completed: true, failed: false },
+      meta: null,
+      error: null,
+    } as any)
+
+    const { result } = renderHook(
+      () => useEntityPolling({ type: 'store_order', entityId: 'txn-1' }),
+      { wrapper },
+    )
+
+    await vi.waitFor(() => {
+      expect(result.current.status).toBe('confirmed')
+    })
+    expect(mockGetPaymentLinkStatus).toHaveBeenCalledWith('txn-1')
+  })
+
+  it('keeps polling (then times out) while the transaction is still initiated', async () => {
+    mockGetPaymentLinkStatus.mockResolvedValue({
+      success: true,
+      data: { status: 'initiated', completed: false, failed: false },
+      meta: null,
+      error: null,
+    } as any)
+
+    const { result } = renderHook(
+      () => useEntityPolling({ type: 'store_order', entityId: 'txn-1' }),
+      { wrapper },
+    )
+
+    for (let i = 0; i < 10; i++) {
+      await vi.advanceTimersByTimeAsync(3000)
+    }
+    await vi.waitFor(() => {
+      expect(result.current.status).toBe('timeout')
+    })
   })
 })
 

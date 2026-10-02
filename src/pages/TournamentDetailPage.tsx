@@ -26,6 +26,7 @@ import { ParticipantsSection } from '@/components/tournaments/ParticipantsSectio
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
 import { ResidencyWaiverSelector, formatWaiverTitle } from '@/components/tournaments/ResidencyWaiverSelector'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
+import { PriceBreakdown, type PriceBreakdownRow } from '@/components/coupons/PriceBreakdown'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import {
   joinTournamentWaitlist, leaveTournamentWaitlist,
@@ -483,6 +484,38 @@ function TournamentRegistrationPage() {
   // §6a): a real submit reached the server with something still outstanding.
   const gateMessage = gateError
 
+  // The viewer's own settled payment breakdown (coupon discount, wallet
+  // credits) — null for player_2/guest, and absent until money has actually
+  // moved (payment_status completed/refunded), same gate rally-mobile's
+  // `buildPaymentSections` uses.
+  const myPayment = myReg?.my_payment
+  const showPaymentBreakdown =
+    myPayment != null &&
+    (myPayment.payment_status === 'completed' || myPayment.payment_status === 'refunded') &&
+    (myPayment.discount_amount > 0 || myPayment.credits_applied > 0)
+  const paymentBreakdownRows: PriceBreakdownRow[] = !showPaymentBreakdown || !myPayment
+    ? []
+    : [
+        { key: 'entryFee', label: t('coupon.entryFee'), value: formatCurrency(myPayment.base_amount) },
+        ...(myPayment.credits_applied > 0
+          ? [{
+              key: 'credits',
+              label: t('coupon.creditsApplied'),
+              value: `-${formatCurrency(myPayment.credits_applied)}`,
+              tone: 'success' as const,
+            }]
+          : []),
+        ...(myPayment.discount_amount > 0
+          ? [{
+              key: 'discount',
+              label: t('coupon.discount'),
+              value: `-${formatCurrency(myPayment.discount_amount)}`,
+              tone: 'success' as const,
+            }]
+          : []),
+        { key: 'total', label: t('coupon.totalPaid'), value: formatCurrency(myPayment.gross_amount), bold: true },
+      ]
+
   return (
     <main className="min-h-screen bg-rally-bg pb-28">
       <button
@@ -701,6 +734,12 @@ function TournamentRegistrationPage() {
             }
           />
         )}
+
+        {/* Settled payment receipt — only once money has actually moved, and
+            only when there's something beyond the plain entry fee to explain
+            (a coupon discount or wallet credits). Mirrors rally-mobile's
+            `buildPaymentSections` gate on `my_payment.payment_status`. */}
+        {showPaymentBreakdown && <PriceBreakdown rows={paymentBreakdownRows} />}
 
         {cta === 'waiting' && myWaitlistEntry && (
           <WaitlistCard
