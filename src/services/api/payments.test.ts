@@ -1,11 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import client from './client'
-import { initiateTournamentRegistrationPayment, confirmTournamentZeroPayment } from './payments'
+import {
+  initiateTournamentRegistrationPayment, confirmTournamentZeroPayment, getPaymentLinkStatus,
+} from './payments'
 
-vi.mock('./client', () => ({ default: { post: vi.fn().mockResolvedValue({ success: true }) } }))
+vi.mock('./client', () => ({
+  default: {
+    post: vi.fn().mockResolvedValue({ success: true }),
+    get: vi.fn().mockResolvedValue({ success: true }),
+  },
+}))
 
 describe('payments api', () => {
-  beforeEach(() => vi.mocked(client.post).mockClear())
+  beforeEach(() => {
+    vi.mocked(client.post).mockClear()
+    vi.mocked(client.get).mockClear()
+  })
 
   it('initiates a tournament registration payment on the correct path', async () => {
     await initiateTournamentRegistrationPayment('reg-1')
@@ -35,5 +45,10 @@ describe('payments api', () => {
       '/rally/v1/payments/tournament-registration/reg-1/confirm-zero-payment',
       { coupon_id: 'coupon-9' },
     )
+  })
+
+  it('polls a payment link status by transaction id', async () => {
+    await getPaymentLinkStatus('txn-1')
+    expect(client.get).toHaveBeenCalledWith('/rally/v1/payments/link/txn-1/status')
   })
 })

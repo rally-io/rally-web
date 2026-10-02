@@ -591,9 +591,20 @@ export type PaymentEntityType =
   | 'tournament_registration'
   | 'event_participation'
   | 'tournament_waitlist_hold'
+  // A CRM-staff-sent payment link (e.g. a store-order top-up over WhatsApp) —
+  // the player has no rally-web session when Grow redirects back, so this
+  // type is polled via the unauthenticated `getPaymentLinkStatus`, keyed by
+  // the payment_transaction id rather than a booking/registration id.
+  | 'store_order'
 
 export interface InitiatePaymentResponse {
   payment_url: string | null
+}
+
+export interface PaymentLinkStatusResponse {
+  status: string
+  completed: boolean
+  failed: boolean
 }
 
 export interface WaitlistHoldStatusResponse {
