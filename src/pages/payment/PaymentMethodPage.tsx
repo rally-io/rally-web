@@ -1,7 +1,7 @@
 // src/pages/payment/PaymentMethodPage.tsx
 // "Add a card" — places a pre-authorization hold via Grow's hosted checkout page.
 // No saved-card list / reuse in this scope: every registration adds a fresh card.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CreditCard } from 'lucide-react'
@@ -10,10 +10,15 @@ import { formatCurrency } from '@/lib/tournamentHelpers'
 import { sanitizeReturnTo } from '@/lib/authReturn'
 import { pendingPayment } from '@/hooks/usePendingPayment'
 import { useRegistration } from '@/hooks/useRegistration'
+import { useCouponFlow } from '@/hooks/useCouponFlow'
+import { CouponApplyCard } from '@/components/coupons/CouponApplyCard'
+import { CouponsModal } from '@/components/coupons/CouponsModal'
+import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
 import {
+  confirmTournamentZeroPayment,
   initiateTournamentRegistrationPayment, initiateTournamentWaitlistHoldPayment,
 } from '@/services/api/payments'
-import type { PaymentEntityType } from '@/types/api'
+import type { ConsumerCoupon, PaymentEntityType } from '@/types/api'
 import { trackFunnel } from '@/lib/analytics'
 
 export default function PaymentMethodPage() {
@@ -47,14 +52,52 @@ export default function PaymentMethodPage() {
     ? Number(params.get('amount'))
     : registration?.amount_to_pay ?? 0
 
-  const handleAddCard = async () => {
+  // No coupon support on the waitlist-hold pre-auth path — rally-api's
+  // initiate endpoint for it takes no body at all (unlike the registration
+  // and charge-saved-card ones, which all accept coupon_id).
+  const coupon = useCouponFlow(tournamentId, amount)
+  const { fetchCoupons } = coupon
+  useEffect(() => {
+    if (!isWaitlistHold && tournamentId && amount > 0) void fetchCoupons()
+  }, [isWaitlistHold, tournamentId, amount, fetchCoupons])
+
+  const finalAmount = isWaitlistHold ? amount : coupon.finalAmount
+
+  // The list already flags a coupon as applicable, but the preview can still
+  // reject it (changed mid-session) — surface that instead of an unhandled
+  // rejection (mirrors rally-mobile's Alert on this same path).
+  const handleSelectCoupon = (c: ConsumerCoupon) => {
+    coupon.selectCoupon(c).catch((e: unknown) => {
+      setError(e instanceof Error && e.message ? e.message : t('coupon.cannotApply'))
+    })
+  }
+
+  const handlePrimaryAction = async () => {
     if (!entityId) return
     setIsInitiating(true)
     setError(null)
     try {
+      // A coupon dropped what's due to zero — confirm directly, no Grow
+      // checkout to launch (mirrors rally-mobile's registration-detail flow).
+      if (!isWaitlistHold && finalAmount < 0.01) {
+        const zeroResult = await confirmTournamentZeroPayment(entityId, coupon.couponId)
+        if (!zeroResult.success) {
+          setError(t('payment.checkoutError'))
+          return
+        }
+        trackFunnel('checkout_started', { tournament_id: tournamentId })
+        const sp = new URLSearchParams({
+          type: 'tournament_registration',
+          id: entityId,
+          tournament_id: tournamentId,
+        })
+        if (returnTo) sp.set('return_to', returnTo)
+        navigate(`/payments/confirming?${sp.toString()}`)
+        return
+      }
       const result = isWaitlistHold
         ? await initiateTournamentWaitlistHoldPayment(entityId)
-        : await initiateTournamentRegistrationPayment(entityId)
+        : await initiateTournamentRegistrationPayment(entityId, coupon.couponId)
       if (!result.success || !result.data.payment_url) {
         setError(t('payment.checkoutError'))
         return
@@ -63,7 +106,7 @@ export default function PaymentMethodPage() {
         type: paymentType,
         entityId,
         tournamentId,
-        amount,
+        amount: finalAmount,
         returnTo: returnTo ?? undefined,
       })
       trackFunnel('checkout_started', { tournament_id: tournamentId })
@@ -75,8 +118,11 @@ export default function PaymentMethodPage() {
     }
   }
 
+  const isFree = !isWaitlistHold && amount > 0 && finalAmount < 0.01
+  const discountCode = coupon.appliedCoupon?.code
+
   return (
-    <main className="min-h-screen bg-rally-bg flex items-center justify-center px-4">
+    <main className="min-h-screen bg-rally-bg flex items-center justify-center px-4 py-10">
       <div className="container max-w-md mx-auto text-center space-y-6">
         <div className="mx-auto w-16 h-16 rounded-full bg-rally-accent/15 flex items-center justify-center">
           <CreditCard className="w-8 h-8 text-rally-accent" />
@@ -85,11 +131,40 @@ export default function PaymentMethodPage() {
           {t('payment.paymentMethodAddCardTitle')}
         </h1>
         {amount > 0 && (
-          <p className="text-3xl font-black text-rally-accent">{formatCurrency(amount)}</p>
+          <p className="text-3xl font-black text-rally-accent">{formatCurrency(finalAmount)}</p>
         )}
         <p className="text-rally-text-2 text-sm">
-          {t(isWaitlistHold ? 'payment.paymentMethodWaitlistHoldNotice' : 'payment.paymentMethodHoldNotice')}
+          {isFree
+            ? t('coupon.confirmFreeNotice')
+            : t(isWaitlistHold ? 'payment.paymentMethodWaitlistHoldNotice' : 'payment.paymentMethodHoldNotice')}
         </p>
+
+        {!isWaitlistHold && coupon.appliedCoupon && (
+          <PriceBreakdown
+            rows={[
+              { key: 'entryFee', label: t('coupon.entryFee'), value: formatCurrency(amount) },
+              {
+                key: 'discount',
+                label: t('coupon.discountLabel', { code: discountCode }),
+                value: `-${formatCurrency(coupon.discountAmount)}`,
+                tone: 'success',
+              },
+              { key: 'total', label: t('coupon.totalDue'), value: formatCurrency(finalAmount), bold: true },
+            ]}
+          />
+        )}
+
+        {!isWaitlistHold && amount > 0 && (
+          <CouponApplyCard
+            appliedCoupon={coupon.appliedCoupon}
+            savingsAmount={coupon.discountAmount}
+            onApplyCode={coupon.applyCode}
+            onRemoveCoupon={coupon.removeCoupon}
+            onViewAllCoupons={() => coupon.setIsModalOpen(true)}
+            availableCouponsCount={coupon.availableCoupons.length}
+            disabled={isInitiating}
+          />
+        )}
 
         {error && <p className="text-sm text-rally-error">{error}</p>}
 
@@ -98,9 +173,9 @@ export default function PaymentMethodPage() {
             variant="accent"
             className="w-full h-12 rounded-full font-bold"
             disabled={isInitiating || !entityId}
-            onClick={() => void handleAddCard()}
+            onClick={() => void handlePrimaryAction()}
           >
-            {isInitiating ? '…' : t('payment.paymentMethodAddCardCta')}
+            {isInitiating ? '…' : isFree ? t('coupon.confirmFree') : t('payment.paymentMethodAddCardCta')}
           </Button>
           <button
             onClick={() => navigate(-1)}
@@ -110,6 +185,17 @@ export default function PaymentMethodPage() {
           </button>
         </div>
       </div>
+
+      {!isWaitlistHold && (
+        <CouponsModal
+          open={coupon.isModalOpen}
+          onOpenChange={coupon.setIsModalOpen}
+          coupons={coupon.availableCoupons}
+          appliedCouponId={coupon.appliedCoupon?.coupon_id}
+          onSelectCoupon={handleSelectCoupon}
+          loading={coupon.loadingCoupons}
+        />
+      )}
     </main>
   )
 }

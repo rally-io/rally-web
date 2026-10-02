@@ -4,8 +4,10 @@ import type { ApiResponse, InitiatePaymentResponse, WaitlistHoldStatusResponse }
 
 export async function initiateTournamentRegistrationPayment(
   registrationId: string,
+  couponId?: string,
 ): Promise<ApiResponse<InitiatePaymentResponse>> {
-  return client.post(`/rally/v1/payments/tournament-registration/${registrationId}/initiate`)
+  const url = `/rally/v1/payments/tournament-registration/${registrationId}/initiate`
+  return couponId ? client.post(url, { coupon_id: couponId }) : client.post(url)
 }
 
 /** Place a J4/J5 pre-auth hold for a tournament waitlist join. */
@@ -24,8 +26,8 @@ export async function getWaitlistHoldStatus(
 
 export async function confirmTournamentZeroPayment(
   registrationId: string,
+  couponId?: string,
 ): Promise<ApiResponse<{ confirmed: boolean }>> {
-  return client.post(
-    `/rally/v1/payments/tournament-registration/${registrationId}/confirm-zero-payment`,
-  )
+  const url = `/rally/v1/payments/tournament-registration/${registrationId}/confirm-zero-payment`
+  return couponId ? client.post(url, { coupon_id: couponId }) : client.post(url)
 }

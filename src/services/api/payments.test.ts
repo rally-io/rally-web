@@ -20,4 +20,20 @@ describe('payments api', () => {
       '/rally/v1/payments/tournament-registration/reg-1/confirm-zero-payment',
     )
   })
+
+  it('initiates with a coupon_id body when a coupon is applied', async () => {
+    await initiateTournamentRegistrationPayment('reg-1', 'coupon-9')
+    expect(client.post).toHaveBeenCalledWith(
+      '/rally/v1/payments/tournament-registration/reg-1/initiate',
+      { coupon_id: 'coupon-9' },
+    )
+  })
+
+  it('confirms a zero-amount registration with a coupon_id body when a coupon is applied', async () => {
+    await confirmTournamentZeroPayment('reg-1', 'coupon-9')
+    expect(client.post).toHaveBeenCalledWith(
+      '/rally/v1/payments/tournament-registration/reg-1/confirm-zero-payment',
+      { coupon_id: 'coupon-9' },
+    )
+  })
 })
