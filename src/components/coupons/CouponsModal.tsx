@@ -27,14 +27,20 @@ export function CouponsModal({
   onSelectCoupon,
   loading = false,
 }: CouponsModalProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{t('coupon.modalTitle')}</DialogTitle>
-          <DialogDescription>{t('coupon.modalSubtitle')}</DialogDescription>
+      {/* bg-rally-surface is load-bearing: the shared DialogContent defaults to
+          shadcn's `bg-background`, which this theme doesn't define, so without it
+          the page shows straight through the dialog. */}
+      <DialogContent
+        dir={i18n.dir()}
+        className="bg-rally-surface border-rally-border w-[calc(100%_-_2rem)] max-w-md rounded-2xl max-h-[85dvh] overflow-y-auto"
+      >
+        <DialogHeader className="text-start">
+          <DialogTitle className="font-display text-rally-text">{t('coupon.modalTitle')}</DialogTitle>
+          <DialogDescription className="text-rally-text-2">{t('coupon.modalSubtitle')}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -55,19 +61,18 @@ export function CouponsModal({
                 <div
                   key={coupon.id}
                   className={cn(
-                    'rounded-xl border p-3',
-                    !coupon.is_applicable && 'opacity-55 border-rally-border bg-rally-surface-2',
-                    coupon.is_applicable && !isApplied && 'border-rally-border bg-rally-surface',
-                    isApplied && 'border-rally-accent bg-rally-accent/5',
+                    // surface-2 so cards read against the dialog's own surface.
+                    'rounded-xl border p-3 bg-rally-surface-2',
+                    isApplied ? 'border-rally-accent bg-rally-accent/5' : 'border-rally-border',
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className={cn('flex items-center justify-between gap-2', !coupon.is_applicable && 'opacity-60')}>
                     <span
                       className={cn(
                         'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold tracking-wide',
                         coupon.is_applicable
                           ? 'bg-rally-accent/10 text-rally-accent'
-                          : 'bg-rally-surface-2 text-rally-text-muted',
+                          : 'bg-rally-surface text-rally-text-muted',
                       )}
                     >
                       <Tag className="w-3 h-3" />
@@ -90,7 +95,7 @@ export function CouponsModal({
                         {isApplied ? t('coupon.applied') : t('coupon.apply')}
                       </button>
                     ) : (
-                      <span className="px-2 py-1 rounded-md bg-rally-surface-2 text-rally-text-muted text-[11px] font-semibold">
+                      <span className="px-2 py-1 rounded-md bg-rally-surface text-rally-text-muted text-[11px] font-semibold">
                         {t('coupon.notApplicable')}
                       </span>
                     )}
@@ -104,7 +109,7 @@ export function CouponsModal({
                   )}
 
                   {coupon.rule_points.length > 0 && (
-                    <ul className="mt-2 space-y-0.5">
+                    <ul className={cn('mt-2 space-y-0.5', !coupon.is_applicable && 'opacity-60')}>
                       {coupon.rule_points.map((rule, i) => (
                         <li key={i} className="text-xs text-rally-text-2 flex gap-1.5">
                           <span className="text-rally-text-muted">•</span>

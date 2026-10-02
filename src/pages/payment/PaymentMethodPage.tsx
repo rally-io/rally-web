@@ -22,7 +22,7 @@ import type { ConsumerCoupon, PaymentEntityType } from '@/types/api'
 import { trackFunnel } from '@/lib/analytics'
 
 export default function PaymentMethodPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [isInitiating, setIsInitiating] = useState(false)
@@ -57,9 +57,11 @@ export default function PaymentMethodPage() {
   // and charge-saved-card ones, which all accept coupon_id).
   const coupon = useCouponFlow(tournamentId, amount)
   const { fetchCoupons } = coupon
+  // Re-fetched on a language switch: rule_points / disabled_reason are localized
+  // server-side from Accept-Language, so the list in hand would stay in the old one.
   useEffect(() => {
     if (!isWaitlistHold && tournamentId && amount > 0) void fetchCoupons()
-  }, [isWaitlistHold, tournamentId, amount, fetchCoupons])
+  }, [isWaitlistHold, tournamentId, amount, fetchCoupons, i18n.language])
 
   const finalAmount = isWaitlistHold ? amount : coupon.finalAmount
 
