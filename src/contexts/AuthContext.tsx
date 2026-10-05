@@ -100,7 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     async signOut() {
-      await supabase.auth.signOut()
+      // scope: 'local' ends only this browser's session. Supabase's default is 'global',
+      // which revokes the user's refresh tokens on every device (mobile app, CRM, other browsers).
+      await supabase.auth.signOut({ scope: 'local' })
       // Force the batched setSession(null) (queued by onAuthStateChange during
       // signOut) to flush synchronously. Without this, React 18 defers the state
       // update, so navigate('/') in the caller renders the Navbar with the old
