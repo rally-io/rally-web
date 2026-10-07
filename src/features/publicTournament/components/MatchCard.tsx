@@ -5,14 +5,21 @@ import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FitText } from './FitText';
 import { RatingChip } from './RatingChip';
-import { isLiveStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName, slotPlaceholderLabel } from '../utils';
+import { TieLabel } from './TieLabel';
+import { SCORE_TONE_CLASS, isLiveStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName, scoreTone, slotPlaceholderLabel, type ScoreTone } from '../utils';
 import type { PublicMatch, PublicPlayer, PublicTeam, SetScore, SlotPlaceholder } from '../types';
 
-export type MatchCardVariant = 'default' | 'node' | 'hero';
+export type MatchCardVariant = 'default' | 'node' | 'hero' | 'stage';
 
-type MatchCardProps = { match: PublicMatch; variant?: MatchCardVariant; className?: string };
+type MatchCardProps = {
+    match: PublicMatch;
+    variant?: MatchCardVariant;
+    className?: string;
+    /** Americano final: each player's place in the table, shown as "#3" before the name. */
+    seeds?: ReadonlyMap<string, number>;
+};
 
-function TeamNames({ team, maxPx }: { team: PublicTeam; maxPx: number }): React.ReactElement {
+function TeamNames({ team, maxPx, seeds }: { team: PublicTeam; maxPx: number; seeds?: ReadonlyMap<string, number> }): React.ReactElement {
     const { t } = useTranslation();
     const players = [team.player_1, team.player_2].filter((p): p is PublicPlayer => Boolean(p));
     if (players.length === 0) {
@@ -22,7 +29,12 @@ function TeamNames({ team, maxPx }: { team: PublicTeam; maxPx: number }): React.
         <span className="flex min-w-0 flex-col gap-0.5">
             {players.map(p => (
                 <span key={p.id} className="flex min-w-0 items-center gap-1.5">
-                    <FitText text={playerFullName(p)} maxPx={maxPx} minPx={9} className="min-w-0" />
+                    {seeds?.has(p.id) && (
+                        <span className="shrink-0 rounded-md bg-(--pb-card-raised) px-1.5 font-black tabular-nums text-(--pb-text-muted)" style={{ fontSize: Math.round(maxPx * 0.72) }}>
+                            #{seeds.get(p.id)}
+                        </span>
+                    )}
+                    <FitText text={playerFullName(p)} maxPx={maxPx} minPx={9} className="min-w-0" wrapAtFloor />
                     <RatingChip rating={p.skill_level} />
                 </span>
             ))}
@@ -39,15 +51,19 @@ function TeamNames({ team, maxPx }: { team: PublicTeam; maxPx: number }): React.
     );
 }
 
-function TeamRow({ team, sets, side, winner, status, small, large, placeholder }: {
+function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, placeholder, seeds }: {
     team: PublicTeam | null | undefined;
     sets: SetScore[];
     side: 'team_a' | 'team_b';
     winner: 'team_a' | 'team_b' | null;
+    /** This side's score tone (`scoreTone`). The card marks a live game with its frame, so live reads as neutral here. */
+    tone: ScoreTone;
     status: string;
     small: boolean;
     large: boolean;
+    stage?: boolean;
     placeholder?: SlotPlaceholder | null;
+    seeds?: ReadonlyMap<string, number>;
 }): React.ReactElement {
     const { t } = useTranslation();
     const isWinner = winner === side;
@@ -55,16 +71,16 @@ function TeamRow({ team, sets, side, winner, status, small, large, placeholder }
     const scores = sets.map(s => (side === 'team_a' ? s.team_a_score : s.team_b_score));
     // The same three-step ladder as the row's own text size below, in px: FitText needs a
     // number, and two copies of a variant ladder drift the moment one variant is retuned.
-    const namePx = small ? 12 : large ? 15 : 13;
+    const namePx = stage ? 22 : small ? 12 : large ? 15 : 13;
     return (
         <div className={cn('flex items-stretch', isWinner && 'bg-(--pb-winner-bg)')}>
             <div className={cn(
                 'flex min-w-0 flex-1 items-center gap-1.5 font-bold text-(--pb-text)',
-                small ? 'px-3 py-2 text-xs' : large ? 'px-4 py-3 text-[15px]' : 'px-3 py-2 text-[13px]',
+                stage ? 'px-5 py-3 text-[22px]' : small ? 'px-3 py-2 text-xs' : large ? 'px-4 py-3 text-[15px]' : 'px-3 py-2 text-[13px]',
                 isLoser && 'text-(--pb-text-muted)',
             )}>
                 {team ? (
-                    <TeamNames team={team} maxPx={namePx} />
+                    <TeamNames team={team} maxPx={namePx} seeds={seeds} />
                 ) : (
                     // `truncate` because the label is translated: `public_bracket.status.tbd`
                     // used to be an empty string here and now carries real text (Hebrew
@@ -72,12 +88,12 @@ function TeamRow({ team, sets, side, winner, status, small, large, placeholder }
                     // rather than push the score column out of the card.
                     <span className="min-w-0 truncate text-(--pb-text-faint)">{slotPlaceholderLabel(placeholder, t) ?? t('public_bracket.status.tbd', 'TBD')}</span>
                 )}
-                {isWinner && <Trophy size={12} className="shrink-0 text-(--pb-highlight)" />}
+                {isWinner && <Trophy size={stage ? 20 : 12} className="shrink-0 text-(--pb-highlight)" />}
             </div>
             <div className={cn(
                 'flex items-center gap-2 border-s border-(--pb-border) px-2.5 font-black',
-                small ? 'min-w-9 text-xs' : large ? 'min-w-12 px-3 text-[15px]' : 'min-w-10 text-[13px]',
-                isWinner ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)',
+                stage ? 'min-w-20 justify-center px-4 text-[34px]' : small ? 'min-w-9 text-xs' : large ? 'min-w-12 px-3 text-[15px]' : 'min-w-10 text-[13px]',
+                SCORE_TONE_CLASS[tone === 'live' ? 'neutral' : tone],
             )}>
                 {status === 'walkover' ? (
                     <span>{isWinner ? t('public_bracket.status.walkover', 'W/O') : ''}</span>
@@ -91,12 +107,14 @@ function TeamRow({ team, sets, side, winner, status, small, large, placeholder }
     );
 }
 
-export function MatchCard({ match, variant = 'default', className }: MatchCardProps): React.ReactElement {
+export function MatchCard({ match, variant = 'default', className, seeds }: MatchCardProps): React.ReactElement {
     const { t } = useTranslation();
     const small = variant === 'node';
     const large = variant === 'hero';
+    const stage = variant === 'stage';
     const isLive = isLiveStatus(match.status);
     const isDone = match.status === 'completed' || match.status === 'walkover';
+    const isTie = scoreTone(match, 'team_a') === 'tie';
     const time = match.scheduled_at ? format(parseISO(match.scheduled_at), 'HH:mm') : null;
 
     const scoreKey = match.sets.map(s => `${s.team_a_score}-${s.team_b_score}`).join(',');
@@ -110,7 +128,7 @@ export function MatchCard({ match, variant = 'default', className }: MatchCardPr
         <div className={cn(
             'overflow-hidden rounded-xl border bg-(--pb-card)',
             isLive ? 'border-(--pb-live)/50' : 'border-(--pb-border)',
-            variant === 'hero' && 'border-(--pb-highlight)/60 shadow-[0_0_24px_var(--pb-glow)]',
+            (variant === 'hero' || variant === 'stage') && 'border-(--pb-highlight)/60 shadow-[0_0_24px_var(--pb-glow)]',
             justChanged && 'pb-score-flash',
             className,
         )}>
@@ -125,6 +143,9 @@ export function MatchCard({ match, variant = 'default', className }: MatchCardPr
                             {t('public_bracket.status.live', 'Live')}
                         </span>
                     </span>
+                ) : isTie ? (
+                    // An Americano game can end level; neither row is highlighted, so say why.
+                    <TieLabel />
                 ) : isDone ? (
                     <span className="shrink-0 text-[10px] font-black text-(--pb-highlight)">✓</span>
                 ) : time ? (
@@ -132,8 +153,8 @@ export function MatchCard({ match, variant = 'default', className }: MatchCardPr
                 ) : null}
             </div>
             <div className="divide-y divide-(--pb-border)">
-                <TeamRow team={match.team_a} sets={match.sets} side="team_a" winner={match.winner_team ?? null} status={match.status} small={small} large={large} placeholder={match.team_a_placeholder} />
-                <TeamRow team={match.team_b} sets={match.sets} side="team_b" winner={match.winner_team ?? null} status={match.status} small={small} large={large} placeholder={match.team_b_placeholder} />
+                <TeamRow team={match.team_a} sets={match.sets} side="team_a" winner={match.winner_team ?? null} tone={scoreTone(match, 'team_a')} status={match.status} small={small} large={large} stage={stage} placeholder={match.team_a_placeholder} seeds={seeds} />
+                <TeamRow team={match.team_b} sets={match.sets} side="team_b" winner={match.winner_team ?? null} tone={scoreTone(match, 'team_b')} status={match.status} small={small} large={large} stage={stage} placeholder={match.team_b_placeholder} seeds={seeds} />
             </div>
         </div>
     );

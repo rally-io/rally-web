@@ -45,7 +45,7 @@ import { TvCanvas } from './features/publicTournament/components/TvCanvas';
 import { GroupBoardCard } from './features/publicTournament/components/GroupBoardCard';
 import { GroupsView, GROUP_ACCENTS, tvGridCols } from './features/publicTournament/components/GroupsView';
 import { LanesView } from './features/publicTournament/components/LanesView';
-import { getRotationViews } from './features/publicTournament/hooks/useViewMode';
+import { getRotationViews } from './features/publicTournament/liveLayouts';
 import { PublicHeader } from './features/publicTournament/components/PublicHeader';
 import { ViewTabs } from './features/publicTournament/components/ViewTabs';
 import { QrPanel } from './features/publicTournament/components/QrPanel';
@@ -250,7 +250,7 @@ function Preview(): React.ReactElement {
                         {tvView === 'games' ? (
                             <LanesView groups={groups} accents={GROUP_ACCENTS} />
                         ) : (
-                            <div className={cn('grid h-full items-stretch gap-5 px-8 pb-6', tvGridCols(groups.length))} style={forcedCols}>
+                            <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(groups.length))} style={forcedCols}>
                                 {groups.map((g, i) => (
                                     <GroupBoardCard key={g.group_name} group={g} accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]} qualifyCount={2} />
                                 ))}

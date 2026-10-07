@@ -43,6 +43,9 @@
        Green/red on every row by design — not a sign color. */
     --pb-won: #4ade80;
     --pb-lost: #f87171;
+    /* The podium's second and third place, on --pb-card: silver 10.6:1, bronze 6.3:1. */
+    --pb-medal-silver: #c0c7d1;
+    --pb-medal-bronze: #cd8a4f;
 }
 [data-bracket-theme='light'] {
     --pb-surface: #f8fafc;
@@ -61,6 +64,10 @@
     --pb-glow: rgb(153 191 0 / 0.3);
     --pb-won: #16a34a;
     --pb-lost: #dc2626;
+    /* Darkened for the white card, where the dark skin's metals fall to 1.7:1 and 2.9:1:
+       silver 4.8:1, bronze 5.6:1 on --pb-card. */
+    --pb-medal-silver: #71717a;
+    --pb-medal-bronze: #a0522d;
 }
 [data-bracket-theme='gradient'] {
     --pb-surface: linear-gradient(160deg, #0033a0 0%, #0055ff 55%, #003d7a 100%);
@@ -88,6 +95,10 @@
        hue family so "opponent games" and "live" reds don't clash on one card. */
     --pb-won: #a7f3d0;
     --pb-lost: #ffc2cd;
+    /* Lightened for the blue ground. Measured on --pb-card over the ground's lightest stop
+       (#0055ff, composited #1a66ff), the worst case: silver 3.9:1, bronze 3.5:1. */
+    --pb-medal-silver: #e2e8f0;
+    --pb-medal-bronze: #fed7aa;
 }
 
 @keyframes pb-pulse {

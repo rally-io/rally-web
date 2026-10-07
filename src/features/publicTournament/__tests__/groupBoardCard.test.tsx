@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 
 import { GroupBoardCard } from '../components/GroupBoardCard';
+import { GroupsView } from '../components/GroupsView';
 import type { PublicGroup, PublicMatch, PublicPlayer, PublicStanding } from '../types';
 
 const player = (id: string, first: string, last: string): PublicPlayer => ({
@@ -337,6 +338,30 @@ describe('GroupBoardCard', () => {
         const denseWins = denseRow.querySelectorAll('.tabular-nums')[1];
         expect(denseWins.className).toContain('text-[13px]');
         expect(denseWins.className).not.toContain('text-[15px]');
+    });
+
+    it('draws the card it drew before TvCard, minus the full height (owner 2026-10-04: content-sized)', () => {
+        const g = group({
+            matches: [match({ id: 'm1', sets: [{ team_a_score: 6, team_b_score: 2, is_tiebreak: null }] })],
+            standings: [
+                standing({ position: 1, team_name: 'Leaders', wins: 1, losses: 0 }),
+                standing({ position: 2, team_name: 'Trailers', wins: 0, losses: 1 }),
+            ],
+        });
+        const { container } = render(<GroupBoardCard group={g} accentClass="pb-ga-1" qualifyCount={1} />);
+        const card = container.firstElementChild as HTMLElement;
+        expect(card.className).toBe('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-(--pb-border) border-t-[3px] bg-(--pb-card) [border-top-color:var(--pb-ga,var(--pb-highlight))] pb-ga-1');
+        expect(card.querySelector('header')!.className).toBe('flex shrink-0 items-center gap-2.5 border-b border-(--pb-border) bg-(--pb-card-header) px-4 py-1.5');
+        expect((card.children[1] as HTMLElement).className).toBe('flex shrink-0 items-center gap-1.5 px-6 pt-1 text-[10px] font-black uppercase tracking-wider text-(--pb-text-faint)');
+        const rank = rowFor(container, 'Leaders').firstElementChild as HTMLElement;
+        expect(rank.className).toBe('w-6 shrink-0 text-center text-2xl font-black leading-none text-(--pb-highlight)');
+        expect(rank.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('sits in a grid that centres content-sized cards instead of stretching them', () => {
+        const g = group({ standings: [standing({ position: 1, team_name: 'Solo' })] });
+        const { container } = render(<GroupsView groups={[g, { ...g, group_name: 'Group B' }]} view="groups" isBigScreen />);
+        expect((container.firstElementChild as HTMLElement).className).toBe('grid h-full content-center gap-5 px-8 pb-6 grid-cols-2');
     });
 
     it('renders a pair of nameless guests as two lines with distinct keys', () => {

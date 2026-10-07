@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { FitText } from './FitText';
-import { isLiveStatus, teamLabel, upNextMatches } from '../utils';
+import { isLiveStatus, keepNamesWhole, teamLabel, upNextMatches } from '../utils';
 import type { PublicBracketData, PublicMatch } from '../types';
 
 type CourtRailProps = { bracket: PublicBracketData };
@@ -106,8 +106,8 @@ export function CourtRail({ bracket }: CourtRailProps): React.ReactElement | nul
                 </div>
                 <div className="flex min-w-0 items-center gap-2">
                     <span className="min-w-0 flex-1 font-extrabold leading-tight text-(--pb-text)">
-                        <FitText text={teamLabel(match.team_a)} maxPx={12} minPx={9} />
-                        <FitText text={teamLabel(match.team_b)} maxPx={12} minPx={9} className="text-(--pb-text-muted)" />
+                        <FitText text={keepNamesWhole(teamLabel(match.team_a))} maxPx={12} minPx={9} wrapAtFloor />
+                        <FitText text={keepNamesWhole(teamLabel(match.team_b))} maxPx={12} minPx={9} className="text-(--pb-text-muted)" wrapAtFloor />
                     </span>
                     {live && match.sets.length > 0 ? (
                         // Each set as its own pair of elements — a joined "6:4" mirrors in RTL.
