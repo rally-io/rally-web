@@ -38,4 +38,19 @@ describe('tvGridCols', () => {
             );
         }
     });
+
+    describe('one row (oneRow) — the Americano rounds board tiers', () => {
+        it('keeps the same centred single column at one', () => {
+            expect(tvGridCols(1, true)).toBe('mx-auto w-full max-w-2xl grid-cols-1');
+        });
+
+        it('lays two and three out across in a single row', () => {
+            expect(tvGridCols(2, true)).toBe('grid-cols-2');
+            expect(tvGridCols(3, true)).toBe('grid-cols-3');
+        });
+
+        it('caps at four across — the window never sends more than four', () => {
+            expect(tvGridCols(4, true)).toBe('grid-cols-4');
+        });
+    });
 });

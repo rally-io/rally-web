@@ -477,6 +477,82 @@ function liveTr(over: Record<string, unknown> = {}) {
   })
 }
 
+/** A tournament that finished the evening, with a live-results token. */
+function finishedTr(over: Record<string, unknown> = {}) {
+  const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString()
+  return tr({
+    start_date: hours(-30),
+    end_date: hours(-25),
+    registration_deadline: hours(-48),
+    share_token: 'abc123',
+    status: 'completed',
+    ...over,
+  })
+}
+
+describe('TournamentDetailPage final results (owner: "keep the link then")', () => {
+  it('keeps the results link once the tournament has completed, with results wording', () => {
+    mockUseTournament.mockReturnValue(finishedTr())
+    renderPage()
+    const link = screen.getByTestId('live-results-link')
+    expect(link).toHaveAttribute('href', '/live/abc123')
+    expect(screen.getByText(i18n.t('tournament.finalResultsTitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.liveResultsTitle'))).toBeNull()
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).toBeNull()
+    // Calm styling, never the live red treatment.
+    expect(link).toHaveClass('border-rally-accent/40', 'bg-rally-accent/10')
+    expect(link).not.toHaveClass('border-rally-error/50', 'bg-rally-error/10')
+  })
+
+  it('shows the sticky results CTA to a registered player while registration is still open', () => {
+    // Isolates the `myReg` arm of (myReg || !open): open registration, so the
+    // CTA can only be showing because the player is registered.
+    mockUseTournament.mockReturnValue(
+      finishedTr({
+        registration_deadline: new Date(Date.now() + 48 * 3_600_000).toISOString(),
+        my_registration: { id: 'r-1', status: 'registered', payment_status: 'completed' },
+      }),
+    )
+    renderPage()
+    const cta = screen.getByTestId('live-results-sticky-link')
+    expect(cta).toHaveAttribute('href', '/live/abc123')
+    expect(cta).toHaveClass('bg-rally-accent')
+    expect(cta).not.toHaveClass('bg-rally-error')
+  })
+
+  it('shows the sticky results CTA to a non-registered viewer once registration is closed', () => {
+    // Isolates the `!open` arm: no registration at all, closed deadline (finishedTr's
+    // default) — the CTA can only be showing because registration closed.
+    mockUseTournament.mockReturnValue(finishedTr())
+    renderPage()
+    expect(screen.getByTestId('live-results-sticky-link')).toHaveAttribute(
+      'href',
+      '/live/abc123',
+    )
+  })
+
+  it('shows no results link for a cancelled tournament', () => {
+    mockUseTournament.mockReturnValue(finishedTr({ status: 'cancelled' }))
+    renderPage()
+    expect(screen.queryByTestId('live-results-link')).toBeNull()
+    expect(screen.queryByTestId('live-results-sticky-link')).toBeNull()
+  })
+
+  it('leaves a live tournament exactly as before — red styling, live wording', () => {
+    mockUseTournament.mockReturnValue(liveTr())
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.liveResultsTitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.finalResultsTitle'))).toBeNull()
+    // Red styling, pinned — a swapped ternary must fail this, not just the copy.
+    const link = screen.getByTestId('live-results-link')
+    expect(link).toHaveClass('border-rally-error/50', 'bg-rally-error/10')
+    expect(link).not.toHaveClass('border-rally-accent/40', 'bg-rally-accent/10')
+    const cta = screen.getByTestId('live-results-sticky-link')
+    expect(cta).toHaveClass('bg-rally-error')
+    expect(cta).not.toHaveClass('bg-rally-accent')
+  })
+})
+
 describe('TournamentDetailPage live results', () => {
   it('links to the live screen in a new tab while the tournament runs', () => {
     mockUseTournament.mockReturnValue(liveTr())

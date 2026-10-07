@@ -1,0 +1,1021 @@
+{
+ "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+ "tournament_name": "E2E Americano 1790858582",
+ "structure": "americano",
+ "club_name": "Rally Club",
+ "club_logo_url": null,
+ "sponsors": [],
+ "videos": [],
+ "groups": null,
+ "knockout_rounds": null,
+ "plate_rounds": null,
+ "league_standings": null,
+ "third_place_match": null,
+ "americano": {
+  "variant": "americano",
+  "games_per_player": 3,
+  "courts": 2,
+  "rounds_estimate": 4,
+  "current_round": 4,
+  "next_round": null,
+  "rounds": [
+   {
+    "round_number": 1,
+    "round_name": "Round 1",
+    "matches": [
+     {
+      "id": "8bbc7b93-c6e8-48ee-a151-d31825d10029",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 1,
+      "round_name": "Round 1",
+      "position_in_round": 1,
+      "match_number": 1,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "a5c3916e-8970-43c4-87de-b9c5e0b2caf6",
+        "first_name": "E2E",
+        "last_name": "Pair 03-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "0a561a71-d72d-41aa-ae6e-d25275ffe153",
+        "first_name": "E2E",
+        "last_name": "Pair 04-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "66c12a64-22db-46d2-8ae3-da45c1ecaee8",
+        "first_name": "E2E",
+        "last_name": "Pair 02-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "d387d4c7-0cf7-42f4-9210-2003e4b574b2",
+        "first_name": "E2E",
+        "last_name": "Pair 03-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": "team_a",
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 16,
+        "team_b_score": 10,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:13:06.326020+00:00",
+      "court_name": "Court 1",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #1",
+      "is_protected": true
+     },
+     {
+      "id": "bcfa0a12-18e1-44b4-ba52-78bd27456fc2",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 1,
+      "round_name": "Round 1",
+      "position_in_round": 2,
+      "match_number": 2,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 2.81,
+        "level_verified": false,
+        "level_reliability": 0,
+        "id": "b9d550c2-5a2a-49a2-b333-55779153caa3",
+        "first_name": "E2E",
+        "last_name": "Pair 04-B",
+        "is_guest": false,
+        "mapped_skill_level": "2.5 - 3.0 (C2)",
+        "skill_tier": "bronze",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "feb537c4-730e-4069-8d25-7e41eecc3677",
+        "first_name": "E2E",
+        "last_name": "Pair 01-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "536df582-5ae1-4abd-ac6e-bdd17f684872",
+        "first_name": "E2E",
+        "last_name": "Pair 05-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "6578b65b-ef75-44fc-848b-d028daab4145",
+        "first_name": "E2E",
+        "last_name": "Pair 02-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": null,
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 12,
+        "team_b_score": 12,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:13:28.598937+00:00",
+      "court_name": "Court 2",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #2",
+      "is_protected": true
+     }
+    ]
+   },
+   {
+    "round_number": 2,
+    "round_name": "Round 2",
+    "matches": [
+     {
+      "id": "21233b88-6894-42b5-8494-1d0c03826f64",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 2,
+      "round_name": "Round 2",
+      "position_in_round": 1,
+      "match_number": 3,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "536df582-5ae1-4abd-ac6e-bdd17f684872",
+        "first_name": "E2E",
+        "last_name": "Pair 05-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 2.81,
+        "level_verified": false,
+        "level_reliability": 0,
+        "id": "b9d550c2-5a2a-49a2-b333-55779153caa3",
+        "first_name": "E2E",
+        "last_name": "Pair 04-B",
+        "is_guest": false,
+        "mapped_skill_level": "2.5 - 3.0 (C2)",
+        "skill_tier": "bronze",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "a5c3916e-8970-43c4-87de-b9c5e0b2caf6",
+        "first_name": "E2E",
+        "last_name": "Pair 03-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "36277671-338c-4840-b6c7-032d4d3365c1",
+        "first_name": "E2E",
+        "last_name": "Pair 05-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": "team_a",
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 11,
+        "team_b_score": 9,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:20:11.524232+00:00",
+      "court_name": "Court 1",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #3",
+      "is_protected": true
+     },
+     {
+      "id": "c146dda6-2a99-4002-91b2-b7c103964453",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 2,
+      "round_name": "Round 2",
+      "position_in_round": 2,
+      "match_number": 4,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "6578b65b-ef75-44fc-848b-d028daab4145",
+        "first_name": "E2E",
+        "last_name": "Pair 02-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "feb537c4-730e-4069-8d25-7e41eecc3677",
+        "first_name": "E2E",
+        "last_name": "Pair 01-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "0a561a71-d72d-41aa-ae6e-d25275ffe153",
+        "first_name": "E2E",
+        "last_name": "Pair 04-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.37,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "9372557e-6524-4efd-ad7e-6447b1c33d04",
+        "first_name": "E2E",
+        "last_name": "Pair Waitlist A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": "team_b",
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 8,
+        "team_b_score": 13,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:20:45.077983+00:00",
+      "court_name": "Court 2",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #4",
+      "is_protected": true
+     }
+    ]
+   },
+   {
+    "round_number": 3,
+    "round_name": "Round 3",
+    "matches": [
+     {
+      "id": "d30df0e3-d06f-487b-96c6-1b219317afbb",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 3,
+      "round_name": "Round 3",
+      "position_in_round": 1,
+      "match_number": 5,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.37,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "9372557e-6524-4efd-ad7e-6447b1c33d04",
+        "first_name": "E2E",
+        "last_name": "Pair Waitlist A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "6578b65b-ef75-44fc-848b-d028daab4145",
+        "first_name": "E2E",
+        "last_name": "Pair 02-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "36277671-338c-4840-b6c7-032d4d3365c1",
+        "first_name": "E2E",
+        "last_name": "Pair 05-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "66c12a64-22db-46d2-8ae3-da45c1ecaee8",
+        "first_name": "E2E",
+        "last_name": "Pair 02-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": "team_a",
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 15,
+        "team_b_score": 7,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:21:09.258432+00:00",
+      "court_name": "Court 1",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #5",
+      "is_protected": true
+     },
+     {
+      "id": "2b73f267-6e13-4d8e-ae85-2f0321a45896",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 3,
+      "round_name": "Round 3",
+      "position_in_round": 2,
+      "match_number": 6,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 2.81,
+        "level_verified": false,
+        "level_reliability": 0,
+        "id": "b9d550c2-5a2a-49a2-b333-55779153caa3",
+        "first_name": "E2E",
+        "last_name": "Pair 04-B",
+        "is_guest": false,
+        "mapped_skill_level": "2.5 - 3.0 (C2)",
+        "skill_tier": "bronze",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "a5c3916e-8970-43c4-87de-b9c5e0b2caf6",
+        "first_name": "E2E",
+        "last_name": "Pair 03-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "0a561a71-d72d-41aa-ae6e-d25275ffe153",
+        "first_name": "E2E",
+        "last_name": "Pair 04-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "feb537c4-730e-4069-8d25-7e41eecc3677",
+        "first_name": "E2E",
+        "last_name": "Pair 01-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": "team_b",
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 10,
+        "team_b_score": 12,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:21:40.457717+00:00",
+      "court_name": "Court 2",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #6",
+      "is_protected": true
+     }
+    ]
+   },
+   {
+    "round_number": 4,
+    "round_name": "Round 4",
+    "matches": [
+     {
+      "id": "11135527-0626-4a4e-ab29-39428a24a752",
+      "tournament_id": "3c890766-8856-4909-9c71-e95d6d37ae8c",
+      "round_number": 4,
+      "round_name": "Round 4",
+      "position_in_round": 1,
+      "match_number": 7,
+      "match_format": "tournament_social",
+      "team_a": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "66c12a64-22db-46d2-8ae3-da45c1ecaee8",
+        "first_name": "E2E",
+        "last_name": "Pair 02-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.37,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "9372557e-6524-4efd-ad7e-6447b1c33d04",
+        "first_name": "E2E",
+        "last_name": "Pair Waitlist A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_b": {
+       "registration_id": null,
+       "team_name": null,
+       "player_1": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "536df582-5ae1-4abd-ac6e-bdd17f684872",
+        "first_name": "E2E",
+        "last_name": "Pair 05-A",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "player_2": {
+        "skill_level": 3.0,
+        "level_verified": null,
+        "level_reliability": null,
+        "id": "36277671-338c-4840-b6c7-032d4d3365c1",
+        "first_name": "E2E",
+        "last_name": "Pair 05-B",
+        "is_guest": false,
+        "mapped_skill_level": "3.0 - 3.5 (C1)",
+        "skill_tier": "silver",
+        "level_scale": 5
+       },
+       "is_lucky_loser": false
+      },
+      "team_a_placeholder": null,
+      "team_b_placeholder": null,
+      "winner_team": "team_a",
+      "status": "completed",
+      "sets": [
+       {
+        "set_number": 1,
+        "team_a_score": 10,
+        "team_b_score": 6,
+        "is_tiebreak": false
+       }
+      ],
+      "scheduled_at": null,
+      "started_at": null,
+      "completed_at": "2026-10-01 16:22:57.413397+00:00",
+      "court_name": "Court 1",
+      "next_match_id": null,
+      "next_match_slot": null,
+      "match_label": "Match #7",
+      "is_protected": true
+     }
+    ]
+   }
+  ],
+  "extras": {},
+  "resting": {
+   "1": [
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "36277671-338c-4840-b6c7-032d4d3365c1",
+     "first_name": "E2E",
+     "last_name": "Pair 05-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    {
+     "skill_level": 3.37,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "9372557e-6524-4efd-ad7e-6447b1c33d04",
+     "first_name": "E2E",
+     "last_name": "Pair Waitlist A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    }
+   ],
+   "2": [
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "66c12a64-22db-46d2-8ae3-da45c1ecaee8",
+     "first_name": "E2E",
+     "last_name": "Pair 02-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    }
+   ],
+   "3": [
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "536df582-5ae1-4abd-ac6e-bdd17f684872",
+     "first_name": "E2E",
+     "last_name": "Pair 05-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    }
+   ],
+   "4": [
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "feb537c4-730e-4069-8d25-7e41eecc3677",
+     "first_name": "E2E",
+     "last_name": "Pair 01-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "6578b65b-ef75-44fc-848b-d028daab4145",
+     "first_name": "E2E",
+     "last_name": "Pair 02-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "a5c3916e-8970-43c4-87de-b9c5e0b2caf6",
+     "first_name": "E2E",
+     "last_name": "Pair 03-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "0a561a71-d72d-41aa-ae6e-d25275ffe153",
+     "first_name": "E2E",
+     "last_name": "Pair 04-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    {
+     "skill_level": 2.81,
+     "level_verified": false,
+     "level_reliability": 0,
+     "id": "b9d550c2-5a2a-49a2-b333-55779153caa3",
+     "first_name": "E2E",
+     "last_name": "Pair 04-B",
+     "is_guest": false,
+     "mapped_skill_level": "2.5 - 3.0 (C2)",
+     "skill_tier": "bronze",
+     "level_scale": 5
+    }
+   ]
+  },
+  "owed": [],
+  "needs_rebuild_from": null,
+  "standings": [
+   {
+    "position": 1,
+    "registration_id": "a5338c02-f545-44b1-bb10-33bcf8251c7a",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "0a561a71-d72d-41aa-ae6e-d25275ffe153",
+     "first_name": "E2E",
+     "last_name": "Pair 04-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 41,
+    "points_against": 28,
+    "points_diff": 13,
+    "wins": 3,
+    "ties": 0,
+    "losses": 0,
+    "is_paused": false
+   },
+   {
+    "position": 2,
+    "registration_id": "73a27058-780b-430d-aa6a-d3343d72b914",
+    "player": {
+     "skill_level": 3.37,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "9372557e-6524-4efd-ad7e-6447b1c33d04",
+     "first_name": "E2E",
+     "last_name": "Pair Waitlist A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 38,
+    "points_against": 21,
+    "points_diff": 17,
+    "wins": 3,
+    "ties": 0,
+    "losses": 0,
+    "is_paused": false
+   },
+   {
+    "position": 3,
+    "registration_id": "266c78fd-617a-4bf9-9b7e-eec28e7a3444",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "6578b65b-ef75-44fc-848b-d028daab4145",
+     "first_name": "E2E",
+     "last_name": "Pair 02-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 35,
+    "points_against": 32,
+    "points_diff": 3,
+    "wins": 1,
+    "ties": 1,
+    "losses": 1,
+    "is_paused": false
+   },
+   {
+    "position": 4,
+    "registration_id": "1e3c295c-1b5d-422e-9372-a9f6546cf849",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "a5c3916e-8970-43c4-87de-b9c5e0b2caf6",
+     "first_name": "E2E",
+     "last_name": "Pair 03-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 35,
+    "points_against": 33,
+    "points_diff": 2,
+    "wins": 1,
+    "ties": 0,
+    "losses": 2,
+    "is_paused": false
+   },
+   {
+    "position": 5,
+    "registration_id": "32d16207-dee9-4a84-98ea-2c137f87d446",
+    "player": {
+     "skill_level": 2.81,
+     "level_verified": false,
+     "level_reliability": 0,
+     "id": "b9d550c2-5a2a-49a2-b333-55779153caa3",
+     "first_name": "E2E",
+     "last_name": "Pair 04-B",
+     "is_guest": false,
+     "mapped_skill_level": "2.5 - 3.0 (C2)",
+     "skill_tier": "bronze",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 33,
+    "points_against": 33,
+    "points_diff": 0,
+    "wins": 1,
+    "ties": 1,
+    "losses": 1,
+    "is_paused": false
+   },
+   {
+    "position": 6,
+    "registration_id": "9c94c508-fe49-4b55-982d-dd10cbf5e051",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "feb537c4-730e-4069-8d25-7e41eecc3677",
+     "first_name": "E2E",
+     "last_name": "Pair 01-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 32,
+    "points_against": 35,
+    "points_diff": -3,
+    "wins": 1,
+    "ties": 1,
+    "losses": 1,
+    "is_paused": false
+   },
+   {
+    "position": 7,
+    "registration_id": "b77a12ac-e23c-42ce-9335-69b213f58852",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "536df582-5ae1-4abd-ac6e-bdd17f684872",
+     "first_name": "E2E",
+     "last_name": "Pair 05-A",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 29,
+    "points_against": 31,
+    "points_diff": -2,
+    "wins": 1,
+    "ties": 1,
+    "losses": 1,
+    "is_paused": false
+   },
+   {
+    "position": 8,
+    "registration_id": "397e9747-e429-4d80-9dd8-70d195c9d19b",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "66c12a64-22db-46d2-8ae3-da45c1ecaee8",
+     "first_name": "E2E",
+     "last_name": "Pair 02-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 27,
+    "points_against": 37,
+    "points_diff": -10,
+    "wins": 1,
+    "ties": 0,
+    "losses": 2,
+    "is_paused": false
+   },
+   {
+    "position": 9,
+    "registration_id": "fe9d0cba-43f7-4147-ac5d-beb0a844d5d6",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "36277671-338c-4840-b6c7-032d4d3365c1",
+     "first_name": "E2E",
+     "last_name": "Pair 05-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 3,
+    "points_for": 22,
+    "points_against": 36,
+    "points_diff": -14,
+    "wins": 0,
+    "ties": 0,
+    "losses": 3,
+    "is_paused": false
+   },
+   {
+    "position": 10,
+    "registration_id": "0fb4b75f-f259-4ad0-8b4a-71f5a4d3f5c0",
+    "player": {
+     "skill_level": 3.0,
+     "level_verified": null,
+     "level_reliability": null,
+     "id": "d387d4c7-0cf7-42f4-9210-2003e4b574b2",
+     "first_name": "E2E",
+     "last_name": "Pair 03-B",
+     "is_guest": false,
+     "mapped_skill_level": "3.0 - 3.5 (C1)",
+     "skill_tier": "silver",
+     "level_scale": 5
+    },
+    "games": 1,
+    "points_for": 10,
+    "points_against": 16,
+    "points_diff": -6,
+    "wins": 0,
+    "ties": 0,
+    "losses": 1,
+    "is_paused": true
+   }
+  ],
+  "is_finished": true
+ }
+}

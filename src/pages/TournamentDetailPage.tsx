@@ -39,7 +39,7 @@ import { validateEvidenceFiles, waivedAmount } from '@/lib/evidenceRules'
 import { ctaFor } from '@/lib/tournamentCta'
 import type { FeeWaiverRequest, TournamentRegistrationResult, TournamentWaitlistEntry } from '@/types/api'
 import {
-  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
+  isRegistrationOpen, isTournamentLive, hasFinalResults, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName,
   formatTournamentCardDate, formatCurrency,
 } from '@/lib/tournamentHelpers'
@@ -453,6 +453,10 @@ function TournamentRegistrationPage() {
 
   const open = isRegistrationOpen(tr.registration_deadline)
   const live = isTournamentLive(tr)
+  // Once the evening ends, the live scoreboard becomes the final-results page —
+  // same link, calmer wording and styling (owner: "keep the link then"). Mutually
+  // exclusive with `live` by construction; see hasFinalResults' docblock.
+  const finished = hasFinalResults(tr)
   // No token ⇒ nothing to link to. Never render a dead "watch live" button.
   const liveHref = tr.share_token ? liveResultsPath(tr.share_token) : null
   const skill = parseSkillLevel(tr.skill_level)
@@ -604,27 +608,39 @@ function TournamentRegistrationPage() {
           })()}
         </section>
 
-        {/* First thing under the fold while the tournament is on: a spectator
-            watching from the stands wants the scoreboard, not the prize list.
-            New tab on purpose — players come back to this page for the draw. */}
-        {live && liveHref && (
+        {/* First thing under the fold while the tournament is on, and still here
+            once it finishes: a spectator wants the scoreboard, a player who played
+            wants the final standings. Red/live wording while it runs, calm/results
+            wording once it's over (owner: "keep the link then"). New tab on
+            purpose — players come back to this page for the draw. */}
+        {(live || finished) && liveHref && (
           <a
             href={liveHref}
             target="_blank"
             rel="noopener noreferrer"
             data-testid="live-results-link"
-            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-error/50 bg-rally-error/10 p-5 transition-colors hover:border-rally-error hover:bg-rally-error/15"
+            className={
+              live
+                ? 'flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-error/50 bg-rally-error/10 p-5 transition-colors hover:border-rally-error hover:bg-rally-error/15'
+                : 'flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-accent/40 bg-rally-accent/10 p-5 transition-colors hover:border-rally-accent hover:bg-rally-accent/15'
+            }
           >
             <div className="min-w-0">
               <p className="font-display text-lg md:text-xl font-bold text-rally-text">
-                {t('tournament.liveResultsTitle')}
+                {t(live ? 'tournament.liveResultsTitle' : 'tournament.finalResultsTitle')}
               </p>
               <p className="mt-1 text-sm text-rally-text-2">
-                {t('tournament.liveResultsSubtitle')}
+                {t(live ? 'tournament.liveResultsSubtitle' : 'tournament.finalResultsSubtitle')}
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-error text-white font-bold">
-              {t('tournament.liveResultsCta')}
+            <span
+              className={
+                live
+                  ? 'shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-error text-white font-bold'
+                  : 'shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-accent text-rally-accent-text font-bold'
+              }
+            >
+              {t(live ? 'tournament.liveResultsCta' : 'tournament.finalResultsCta')}
               <ExternalLink className="w-4 h-4" />
             </span>
           </a>
@@ -893,18 +909,23 @@ function TournamentRegistrationPage() {
               >
                 {t('tournament.tournamentPayNow')}
               </button>
-            ) : live && liveHref && (myReg || !open) ? (
+            ) : (live || finished) && liveHref && (myReg || !open) ? (
               // Where the bar would otherwise sit dead ("already registered" /
-              // "registration closed"), hand the player the live scoreboard
-              // instead — sticky CTA is action-first, never blocking.
+              // "registration closed"), hand the player the live scoreboard or,
+              // once the evening's over, the final results — sticky CTA is
+              // action-first, never blocking.
               <a
                 href={liveHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="live-results-sticky-link"
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-error text-white font-bold inline-flex items-center justify-center gap-2 hover:brightness-110 transition-all"
+                className={
+                  live
+                    ? 'min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-error text-white font-bold inline-flex items-center justify-center gap-2 hover:brightness-110 transition-all'
+                    : 'min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-accent text-rally-accent-text font-bold inline-flex items-center justify-center gap-2 hover:bg-rally-accent-hover hover:shadow-glow-electric transition-all'
+                }
               >
-                {t('tournament.liveResultsCta')}
+                {t(live ? 'tournament.liveResultsCta' : 'tournament.finalResultsCta')}
                 <ExternalLink className="w-4 h-4" />
               </a>
             ) : myReg ? (

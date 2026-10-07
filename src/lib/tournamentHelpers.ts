@@ -54,6 +54,32 @@ export function isTournamentLive(tr: {
   return start <= now && now <= end
 }
 
+/**
+ * Does this tournament have a final-results page to link to?
+ *
+ * True once `status` is `completed`, or once the end date has passed while
+ * `status` is still `in_progress` — a manager may never click "complete" on
+ * the last game of the evening, and a player who played shouldn't lose the
+ * results link because of that. Never true for `cancelled` / `rejected`
+ * (`FINISHED_STATUSES` minus `completed`), and never before the tournament
+ * has started.
+ *
+ * Mutually exclusive with `isTournamentLive` by construction: `completed`
+ * is one of `isTournamentLive`'s veto statuses, and the `in_progress`
+ * branch here requires `end < now` while `isTournamentLive` requires
+ * `now <= end` — the two can never both be true for the same tournament.
+ */
+export function hasFinalResults(tr: {
+  start_date: string
+  end_date: string
+  status?: string | null
+}): boolean {
+  if (tr.status && FINISHED_STATUSES.includes(tr.status)) return tr.status === 'completed'
+  if (tr.status !== 'in_progress') return false
+  const end = parseFlexibleDate(tr.end_date ?? '').getTime()
+  return Number.isFinite(end) && end < Date.now()
+}
+
 /** Structural shape `orderLiveFirstKeepingPromoted` needs from a placement. */
 type PlacementLike = Placement | null
 

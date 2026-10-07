@@ -27,6 +27,7 @@ const TAB_LABELS: Record<ViewMode, { labelKey: string; fallback: string }> = {
     knockout: { labelKey: 'public_bracket.view_finals', fallback: 'Finals' },
     plate: { labelKey: 'public_bracket.view_plate', fallback: 'Plate' },
     video: { labelKey: 'public_bracket.view_video', fallback: 'Video' },
+    final: { labelKey: 'public_bracket.view_final', fallback: 'Final' },
 };
 
 export function ViewTabs({ view, onSelect, isAutoRotate, onToggleAutoRotate, showAutoRotate, tabs, rotateMs }: ViewTabsProps): React.ReactElement {

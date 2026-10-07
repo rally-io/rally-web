@@ -6,7 +6,18 @@ import { RatingChip } from './RatingChip';
 import { playerFullName } from '../utils';
 import type { PublicPlayer, PublicStanding } from '../types';
 
-type StandingsTableProps = { title: string; standings: PublicStanding[]; qualifyCount?: number; large?: boolean };
+type StandingsTableProps = {
+    title: string;
+    standings: PublicStanding[];
+    qualifyCount?: number;
+    large?: boolean;
+    /**
+     * 'games' (default): a pair's W, L, games won–lost and games diff — every league and group.
+     * 'points': an individual Americano table — W, T, L, total points and points diff, read from
+     * the rows `toLiveBoard` builds (`ties`, `points`, `points_diff`).
+     */
+    mode?: 'games' | 'points';
+};
 
 function rowPlayers(s: PublicStanding): PublicPlayer[] {
     return [s.player_1, s.player_2].filter((p): p is PublicPlayer => Boolean(p));
@@ -16,8 +27,9 @@ function rowLabel(s: PublicStanding): string {
     return s.player_name ?? s.team_name ?? '';
 }
 
-export function StandingsTable({ title, standings, qualifyCount, large }: StandingsTableProps): React.ReactElement {
+export function StandingsTable({ title, standings, qualifyCount, large, mode = 'games' }: StandingsTableProps): React.ReactElement {
     const { t } = useTranslation();
+    const isPoints = mode === 'points';
     const nameText = large ? 'text-sm' : 'text-xs';
     const namePx = large ? 14 : 12;
     // Same rule as GroupBoardCard, derived the same way from the same rows, so the phone and the
@@ -28,9 +40,15 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
             <div className="flex items-center justify-between border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-2">
                 <span className={cn('font-black uppercase tracking-widest text-(--pb-text-faint)', large ? 'text-[11px]' : 'text-[10px]')}>{title}</span>
                 <span className="flex gap-3 text-[9px] font-black uppercase text-(--pb-text-faint)">
+                    {/* W, T, L: one element each, in this flex row with no direction of their own, so
+                        under RTL they reverse together with the value cells below. Never a single
+                        dir="ltr" "W–T–L" string: under an RTL header that swaps wins and losses. */}
                     <span className="w-5 text-center">{t('public_bracket.col_wins', 'W')}</span>
+                    {isPoints && <span className="w-5 text-center">{t('public_bracket.col_ties', 'T')}</span>}
                     <span className="w-5 text-center">{t('public_bracket.col_losses', 'L')}</span>
-                    <span className="w-10 text-center">{t('public_bracket.standings_headers.games', 'Games')}</span>
+                    {isPoints
+                        ? <span className="w-8 text-center">{t('public_bracket.col_points', 'Pts')}</span>
+                        : <span className="w-10 text-center">{t('public_bracket.standings_headers.games', 'Games')}</span>}
                     <span className="w-7 text-center">+/-</span>
                 </span>
             </div>
@@ -39,10 +57,15 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                 // A disqualified row is numbered last, so in a small enough group
                 // its position still falls inside qualifyCount — guard explicitly.
                 const dq = s.is_disqualified === true;
+                // A pair disqualified from a league or group had its record voided (all zeros), so
+                // its numbers render as dashes. An Americano voids nothing — the games a
+                // disqualified player played still count for everyone (rally-api Plan C) — so
+                // points mode prints the real record on the flagged row.
+                const voided = dq && !isPoints;
                 const qualifies = ranked && !dq && qualifyCount != null && s.position <= qualifyCount;
-                // Games, not sets — the TV board's diff is games-based and the two
-                // surfaces may not disagree about a pair's balance.
-                const diff = s.games_won - s.games_lost;
+                // Points mode: the Americano's points diff. Games mode: games, not sets — the TV
+                // board's diff is games-based and the two surfaces may not disagree about a pair's balance.
+                const diff = isPoints ? (s.points_diff ?? 0) : s.games_won - s.games_lost;
                 return (
                     <React.Fragment key={`${s.position}-${rowLabel(s)}`}>
                         <div className={cn(
@@ -63,13 +86,14 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                                             maxPx={namePx}
                                             minPx={9}
                                             className="min-w-0 font-bold text-(--pb-text-muted) line-through"
+                                            wrapAtFloor={!large}
                                         />
                                         <span className="shrink-0 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-widest text-(--pb-text-faint) ring-1 ring-(--pb-border)">
                                             {t('public_bracket.disqualified', 'Disqualified')}
                                         </span>
                                     </span>
                                 ) : players.length === 0 ? (
-                                    <FitText text={rowLabel(s)} maxPx={namePx} minPx={9} className="font-bold text-(--pb-text)" />
+                                    <FitText text={rowLabel(s)} maxPx={namePx} minPx={9} className="font-bold text-(--pb-text)" wrapAtFloor={!large} />
                                 ) : large ? (
                                     // TV: one line per team, broadcast-table style — halves the panel height
                                     <span className="flex min-w-0 items-center gap-1.5 font-bold text-(--pb-text)">
@@ -88,35 +112,40 @@ export function StandingsTable({ title, standings, qualifyCount, large }: Standi
                                 ) : (
                                     players.map(p => (
                                         <span key={p.id} className="flex min-w-0 items-center gap-1.5 font-bold text-(--pb-text)">
-                                            <FitText text={playerFullName(p)} maxPx={namePx} minPx={9} className="min-w-0" />
+                                            <FitText text={playerFullName(p)} maxPx={namePx} minPx={9} className="min-w-0" wrapAtFloor />
                                             <RatingChip rating={p.skill_level} />
                                         </span>
                                     ))
                                 )}
                             </span>
                             <span className={cn('flex shrink-0 items-center gap-3 font-extrabold', nameText)}>
-                                <span className="w-5 text-center text-(--pb-text)">{dq ? '—' : s.wins}</span>
-                                <span className="w-5 text-center text-(--pb-text-muted)">{dq ? '—' : s.losses}</span>
-                                {/* Won/lost as separate elements inside dir="ltr" — a joined "12-7"
-                                    would mirror in RTL. Own games green, opponents' red, every row. */}
-                                <span dir="ltr" className="flex w-10 items-center justify-center gap-px tabular-nums">
-                                    {dq ? (
-                                        <span className="text-(--pb-text-muted)">—</span>
-                                    ) : (
-                                        <>
-                                            <span className="text-(--pb-won)">{s.games_won}</span>
-                                            <span className="font-normal text-(--pb-text-faint)">–</span>
-                                            <span className="text-(--pb-lost)">{s.games_lost}</span>
-                                        </>
-                                    )}
-                                </span>
+                                <span className="w-5 text-center text-(--pb-text)">{voided ? '—' : s.wins}</span>
+                                {isPoints && <span className="w-5 text-center text-(--pb-text-muted)">{s.ties ?? 0}</span>}
+                                <span className="w-5 text-center text-(--pb-text-muted)">{voided ? '—' : s.losses}</span>
+                                {isPoints ? (
+                                    <span className="w-8 text-center tabular-nums text-(--pb-text)">{s.points ?? 0}</span>
+                                ) : (
+                                    /* Won/lost as separate elements inside dir="ltr" — a joined "12-7"
+                                       would mirror in RTL. Own games green, opponents' red, every row. */
+                                    <span dir="ltr" className="flex w-10 items-center justify-center gap-px tabular-nums">
+                                        {voided ? (
+                                            <span className="text-(--pb-text-muted)">—</span>
+                                        ) : (
+                                            <>
+                                                <span className="text-(--pb-won)">{s.games_won}</span>
+                                                <span className="font-normal text-(--pb-text-faint)">–</span>
+                                                <span className="text-(--pb-lost)">{s.games_lost}</span>
+                                            </>
+                                        )}
+                                    </span>
+                                )}
                                 {/* Muted at zero/DQ — the same token GroupBoardCard uses, so the
                                     phone and the TV cannot drift into two different greys. */}
                                 <span dir="ltr" className={cn(
                                     'w-7 text-center tabular-nums',
-                                    dq || diff === 0 ? 'text-(--pb-text-muted)' : diff > 0 ? 'text-(--pb-won)' : 'text-(--pb-lost)',
+                                    voided || diff === 0 ? 'text-(--pb-text-muted)' : diff > 0 ? 'text-(--pb-won)' : 'text-(--pb-lost)',
                                 )}>
-                                    {dq ? '—' : diff > 0 ? `+${diff}` : diff}
+                                    {voided ? '—' : diff > 0 ? `+${diff}` : diff}
                                 </span>
                             </span>
                         </div>

@@ -40,10 +40,17 @@ type GroupsViewProps = {
  * Literal class strings on purpose: Tailwind v4 only emits utilities it finds written out in
  * source, so a `grid-cols-${n}` assembled at runtime is silently absent from the stylesheet
  * and the grid falls back to one column.
+ *
+ * `oneRow` is a second mode for a caller that already capped its own count at a handful and
+ * wants every one of them on a single row instead of this function's own "never more than two
+ * rows" grid — the Americano rounds board's 5–16-court tiers, whose window already holds at
+ * most 4 (or 2) rounds. One card still centres; two or three go straight across; four — the
+ * window's own ceiling — also goes straight across.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- layout rule, not a component; the /preview.html harness renders the same grid
-export function tvGridCols(count: number): string {
+export function tvGridCols(count: number, oneRow = false): string {
     if (count <= 1) return 'mx-auto w-full max-w-2xl grid-cols-1';
+    if (oneRow) return count === 2 ? 'grid-cols-2' : count === 3 ? 'grid-cols-3' : 'grid-cols-4';
     if (count === 2) return 'grid-cols-2';
     if (count === 4) return 'grid-cols-2';
     if (count <= 6) return 'grid-cols-3';
@@ -62,7 +69,7 @@ export function GroupsView({ groups, view, isBigScreen, qualifyCount }: GroupsVi
     // a rotation that still lands on 'standings' falls through to the same board.
     if (isBigScreen) {
         return (
-            <div className={cn('grid h-full items-stretch gap-5 px-8 pb-6', tvGridCols(groups.length))}>
+            <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(groups.length))}>
                 {groups.map((g, i) => (
                     <GroupBoardCard
                         key={g.group_name}

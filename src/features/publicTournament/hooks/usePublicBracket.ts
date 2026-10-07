@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { fetchPublicBracket } from '../api/publicBracket';
+import { toLiveBoard } from '../americano';
 import type { PublicBracketData } from '../types';
 
 const POLL_INTERVAL = parseInt(import.meta.env.VITE_POLL_INTERVAL ?? '10000', 10);
@@ -21,6 +22,9 @@ export function usePublicBracket(token: string | undefined): UsePublicBracketRes
         enabled: Boolean(token),
         refetchInterval: POLL_INTERVAL,
         placeholderData: keepPreviousData,
+        // An Americano is drawn with the league's layout; every other bracket passes through as
+        // the same object. Module-level, so TanStack re-runs it only when the data changes.
+        select: toLiveBoard,
         retry: 1,
     });
     const httpStatus = isAxiosError(query.error) ? query.error.response?.status : undefined;
