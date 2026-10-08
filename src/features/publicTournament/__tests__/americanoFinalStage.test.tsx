@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 
 import { AmericanoFinalStage } from '../components/AmericanoFinalStage';
+import { AmericanoLayout } from '../components/AmericanoLayout';
 import { toLiveBoard } from '../americano';
 import type { PublicBracketData } from '../types';
 import { americanoBracket, bigEvening } from './fixtures/americanoBoard';
@@ -16,7 +17,14 @@ function finalBoard(courts: number, finalStatus: (court: number) => string): Pub
 
 function renderFinal(board: PublicBracketData, compact = false): void {
     const final = board.knockout_rounds.filter(r => r.round_number === 3);
-    render(<AmericanoFinalStage rounds={final} standings={board.league_standings ?? []} compact={compact} />);
+    render(
+        <AmericanoFinalStage
+            rounds={final}
+            standings={board.league_standings ?? []}
+            compact={compact}
+            sections={board.americano?.final_sections}
+        />,
+    );
 }
 
 /** A court's block: its "Court N · Ranked x–y" label and the card under it. */
@@ -101,5 +109,53 @@ describe('AmericanoFinalStage seeds from the seat, not the list index (W-b)', ()
     it('the phone list keys its seeds to the seat too', () => {
         renderFinal(finalBoard(4, court => (court === 2 ? 'cancelled' : 'scheduled')), true);
         expect(within(block('Court 3 · Ranked 9–12')).getByText('#9')).toBeInTheDocument();
+    });
+});
+
+describe('each final court is titled with its section (rally-api 2026-10-08)', () => {
+    /** Court 1 the Final, court 2 "Plate", courts 3–4 an unnamed section whose points don't count. */
+    const SECTIONS = [
+        { name: 'Final', courts: [1], counts: true, first_place: 1, last_place: 4 },
+        { name: 'Plate', courts: [2], counts: true, first_place: 5, last_place: 8 },
+        { name: null, courts: [3, 4], counts: false, first_place: 9, last_place: 16 },
+    ];
+    const sectioned = (): PublicBracketData => toLiveBoard(americanoBracket({
+        ...bigEvening({ rounds: 3, courts: 4, withFinal: true, status: round => (round < 3 ? 'completed' : 'scheduled') }),
+        final_sections: SECTIONS,
+    }));
+    const LABELS = [
+        'Court 1 · Ranked 1–4',
+        'Court 2 · Plate',
+        "Court 3 · Ranked 9–12 · Doesn't count",
+        "Court 4 · Ranked 13–16 · Doesn't count",
+    ];
+    const labels = (): string[] => screen.getAllByText(/^Court \d · /).map(el => el.textContent ?? '');
+
+    it('on the venue screen: court 1 keeps its places, a named court shows its name, a friendly says so', () => {
+        renderFinal(sectioned());
+        expect(labels()).toEqual(LABELS);
+        expect(document.querySelector('.w-\\[620px\\]')).toHaveTextContent('Court 1 · Ranked 1–4');
+    });
+
+    it('the phone list reads the same', () => {
+        renderFinal(sectioned(), true);
+        expect(labels()).toEqual(LABELS);
+    });
+
+    it('the seed badges still follow the seat under a section name', () => {
+        renderFinal(sectioned());
+        expect(within(block('Court 2 · Plate')).getByText('#5')).toBeInTheDocument();
+    });
+
+    it('a final without sections (an API before them) reads as it did', () => {
+        renderFinal(finalBoard(4, () => 'scheduled'));
+        expect(labels()).toEqual(['Court 1 · Ranked 1–4', 'Court 2 · Ranked 5–8', 'Court 3 · Ranked 9–12', 'Court 4 · Ranked 13–16']);
+        expect(screen.queryByText(/Doesn't count/)).toBeNull();
+    });
+
+    it('the live page hands the sections to the stage', () => {
+        render(<AmericanoLayout view="final" bracket={sectioned()} isBigScreen={false} dir="ltr" />);
+        expect(screen.getByText('Court 2 · Plate')).toBeInTheDocument();
+        expect(screen.getByText("Court 3 · Ranked 9–12 · Doesn't count")).toBeInTheDocument();
     });
 });
