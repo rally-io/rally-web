@@ -157,6 +157,19 @@ export const PublicAmericanoStandingSchema = z.object({
 export type PublicAmericanoStanding = z.infer<typeof PublicAmericanoStandingSchema>;
 
 /**
+ * One section of an Americano's final round (rally-api 2026-10-08, `AmericanoFinalSection`): its
+ * final courts (1-based), its name (null = label the courts by their places) and whether its games
+ * count. Court 1's entry is the Final. The places are not read: a court's places follow from its
+ * number. A malformed field degrades that field only.
+ */
+export const PublicAmericanoFinalSectionSchema = z.object({
+    name: z.string().nullable().catch(null),
+    courts: z.array(z.number()).catch([]),
+    counts: z.boolean().catch(true),
+});
+export type PublicAmericanoFinalSection = z.infer<typeof PublicAmericanoFinalSectionSchema>;
+
+/**
  * The `americano` block of the public bracket (rally-api `AmericanoBoard`), sent only when
  * `structure === 'americano'`. Only what the live page draws is parsed; zod drops the rest.
  * Each game is an ordinary match: four players, one set holding the points, `winner_team` null
@@ -171,6 +184,8 @@ export const PublicAmericanoSchema = z.object({
     final_round_number: z.number().nullable().catch(null),
     /** The evening ends with a final round by ranking (rally-api 2026-10-03); false from an older API. */
     final_round_enabled: z.boolean().catch(false),
+    /** rally-api 2026-10-08: the final round's sections, which title its courts; [] from an older API. */
+    final_sections: z.array(PublicAmericanoFinalSectionSchema).catch([]),
 });
 export type PublicAmericano = z.infer<typeof PublicAmericanoSchema>;
 
