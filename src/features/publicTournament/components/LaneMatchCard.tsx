@@ -4,7 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { FitText } from './FitText';
 import { PairChip } from './PairChip';
-import { isFinishedStatus, isLiveStatus, localizeTeamPlaceholder, teamLabel } from '../utils';
+import { NAME_TONE_CLASS, SCORE_TONE_CLASS, isFinishedStatus, isLiveStatus, keepNamesWhole, localizeTeamPlaceholder, nameTone, scoreTone, teamLabel } from '../utils';
 import type { PublicMatch } from '../types';
 
 type LaneMatchCardProps = { match: PublicMatch; isNext: boolean };
@@ -33,7 +33,6 @@ export function LaneMatchCard({ match, isNext }: LaneMatchCardProps): React.Reac
     const isLive = isLiveStatus(match.status);
     const isDone = isFinishedStatus(match.status);
     const state: CardState = isLive ? 'live' : isDone ? 'done' : isNext ? 'next' : 'scheduled';
-    const winner = match.winner_team ?? null;
 
     const header = isLive
         ? [t('public_bracket.status.live', 'Live'), match.court_name].filter(Boolean).join(' · ')
@@ -47,46 +46,35 @@ export function LaneMatchCard({ match, isNext }: LaneMatchCardProps): React.Reac
         const name = raw
             ? (team?.player_1 ? raw : localizeTeamPlaceholder(raw, t))
             : t('public_bracket.status.tbd', 'TBD');
-        const isWinner = winner === side;
-        const isLoser = winner !== null && !isWinner;
         return (
             <div className="flex items-center gap-1.5">
                 <PairChip pair={team} />
                 <FitText
-                    text={name}
+                    text={keepNamesWhole(name)}
                     maxPx={13}
                     minPx={9}
-                    className={cn(
-                        'min-w-0 flex-1 leading-tight',
-                        isWinner ? 'font-extrabold text-(--pb-text)'
-                            : isLoser ? 'font-semibold text-(--pb-text-muted)'
-                            : 'font-bold text-(--pb-text)',
-                    )}
+                    wrapAtFloor
+                    className={cn('min-w-0 flex-1 leading-tight', NAME_TONE_CLASS[nameTone(match, side)])}
                 />
                 {/* One element per set number. A joined "6:4" would mirror in RTL — the colon is a
                     bidi number-joiner — so the scores are never assembled into a string. */}
                 {match.sets.length > 0 && (
                     <span className="flex shrink-0 gap-1">
-                        {match.sets.map((s, i) => {
-                            const mine = side === 'team_a' ? s.team_a_score : s.team_b_score;
-                            const other = side === 'team_a' ? s.team_b_score : s.team_a_score;
-                            // During a live match both sides deliberately share the live colour
-                            // (className below tests isLive first) — the numbers sit stacked in
-                            // one column so the larger one reads without a colour cue. Do not
-                            // "restore" a leader highlight here; that would be a design change.
-                            const ahead = isWinner && mine > other;
-                            return (
-                                <b
-                                    key={i}
-                                    className={cn(
-                                        'w-[15px] text-center text-[13px] font-black leading-tight tabular-nums',
-                                        isLive ? 'text-(--pb-live)' : ahead ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)',
-                                    )}
-                                >
-                                    {mine}
-                                </b>
-                            );
-                        })}
+                        {match.sets.map((s, i) => (
+                            // During a live match both sides deliberately share the live colour —
+                            // the numbers sit stacked in one column so the larger one reads without
+                            // a colour cue. Do not "restore" a leader highlight here; that would be
+                            // a design change. Per set: the winner's lost set reads as a loser's.
+                            <b
+                                key={i}
+                                className={cn(
+                                    'w-[15px] text-center text-[13px] font-black leading-tight tabular-nums',
+                                    SCORE_TONE_CLASS[scoreTone(match, side, s)],
+                                )}
+                            >
+                                {side === 'team_a' ? s.team_a_score : s.team_b_score}
+                            </b>
+                        ))}
                     </span>
                 )}
             </div>

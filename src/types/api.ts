@@ -226,6 +226,34 @@ export interface BookingResponse {
 
 // --- Tournament registration domain (mobile parity, spec §3) ---
 
+/** Present on `MyPayment` only once a refund has been requested for the
+ *  viewer's own payment (rally-api `payment_common.py`). `pending_choice` means
+ *  money hasn't moved yet; `resolved` means it has. */
+export interface MyPaymentRefund {
+  status: 'pending_choice' | 'resolved'
+  mode_chosen?: string | null
+  deadline?: string | null
+  card_refunded?: number | null
+  credit_refunded?: number | null
+}
+
+/** Uniform payment breakdown describing the CURRENT VIEWER's own position —
+ *  same shape rally-mobile reads as `my_payment` (rally-api `payment_common.py`
+ *  `MyPayment`). `base_amount + fee_portion == gross_amount`, always
+ *  server-computed — never derive one from the others. `null`/absent for
+ *  player_2 or a guest, who never pays a tournament registration. */
+export interface MyPayment {
+  base_amount: number
+  fee_portion: number
+  gross_amount: number
+  discount_amount: number
+  credits_applied: number
+  card_charged: number
+  auto_charged_amount: number
+  payment_status: string | null
+  refund: MyPaymentRefund | null
+}
+
 export interface MyRegistration {
   id: string
   tournament_id: string
@@ -245,6 +273,9 @@ export interface MyRegistration {
   /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
    *  absent from the object — never assume both keys are present. */
   evidence_counts?: Partial<Record<'1' | '2', number>>
+  /** The viewer's own payment breakdown, including any coupon discount — null
+   *  for player_2/guest. Absent on list payloads; present on tournament detail. */
+  my_payment?: MyPayment | null
 }
 
 export interface TournamentParticipantPlayer {
@@ -287,6 +318,7 @@ export interface TournamentDetail extends Tournament {
   /** e.g. 'holon_resident'. Null when the tournament offers no fee waiver. */
   fee_waiver_type?: string | null
   is_document_required?: boolean
+  document_instructions?: string | null
 }
 
 /**
@@ -329,6 +361,8 @@ export interface RegistrationDetail {
   /** The level category the pair chose at registration, or null. */
   requested_level?: string | null
   fee_waiver_resident_count?: number | null
+  /** The viewer's own payment breakdown, including any coupon discount. */
+  my_payment?: MyPayment | null
 }
 
 // --- Tournament registration request ---
@@ -502,6 +536,54 @@ export interface SupabaseUserSummary {
   role: string
 }
 
+// --- Coupons (promo codes — rally-api `coupon_service.py`, mobile parity) ---
+
+/** One coupon as listed for the current player/context — `GET /coupons`. */
+export interface ConsumerCoupon {
+  id: string
+  account_id?: string | null
+  club_id?: string | null
+  code: string
+  name: string
+  scope_type: string
+  value_type: 'percentage' | 'fixed_amount'
+  value: number
+  max_discount_amount: number | null
+  min_order_value: number | null
+  currency: string
+  target_level?: 'all' | 'category' | 'resource'
+  target_id?: string | null
+  target_resource_id: string | null
+  split_scope: 'creator_only_global' | 'per_player' | 'not_applicable'
+  usage_limit_total: number | null
+  usage_limit_per_player: number | null
+  valid_from: string | null
+  valid_to: string | null
+  is_active: boolean
+  status: 'disabled' | 'scheduled' | 'active' | 'expired'
+  rule_points: string[]
+  target_resource_name?: string | null
+  is_applicable: boolean
+  /** Already localized server-side (`resolve_language`) — render as-is. */
+  disabled_reason?: string | null
+  discount_amount?: number | null
+}
+
+/** Resolving a typed code (or a list selection) against a purchase context —
+ *  `POST /coupons/preview`. The authoritative discount for the order; never
+ *  re-derive it from `value`/`value_type` client-side. */
+export interface CouponPreview {
+  coupon_id: string
+  code: string
+  name: string
+  scope_type?: string | null
+  discount_amount: number
+  original_amount: number
+  final_amount: number
+  currency: string
+  rule_points: string[]
+}
+
 // --- Payments ---
 
 export type PaymentEntityType =
@@ -509,9 +591,20 @@ export type PaymentEntityType =
   | 'tournament_registration'
   | 'event_participation'
   | 'tournament_waitlist_hold'
+  // A CRM-staff-sent payment link (e.g. a store-order top-up over WhatsApp) —
+  // the player has no rally-web session when Grow redirects back, so this
+  // type is polled via the unauthenticated `getPaymentLinkStatus`, keyed by
+  // the payment_transaction id rather than a booking/registration id.
+  | 'store_order'
 
 export interface InitiatePaymentResponse {
   payment_url: string | null
+}
+
+export interface PaymentLinkStatusResponse {
+  status: string
+  completed: boolean
+  failed: boolean
 }
 
 export interface WaitlistHoldStatusResponse {

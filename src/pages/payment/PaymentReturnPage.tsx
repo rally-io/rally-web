@@ -9,6 +9,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
   'tournament_registration',
   'event_participation',
   'tournament_waitlist_hold',
+  'store_order',
 ])
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

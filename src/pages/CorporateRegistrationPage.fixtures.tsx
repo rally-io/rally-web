@@ -15,6 +15,8 @@ import { vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SkillLadderContext } from '@/contexts/SkillLadderContext'
+import type { SkillLadder } from '@/lib/skillLadder'
 
 vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
 vi.mock('@/hooks/useAppSession', () => ({ useAppSession: vi.fn() }))
@@ -49,6 +51,8 @@ vi.mock('@/services/api/registrationEvidence', () => ({
   uploadRegistrationEvidence: vi.fn(),
   listRegistrationEvidence: vi.fn(),
 }))
+// The form's coupon card lists and previews coupons; no network in tests.
+vi.mock('@/services/api/coupons', () => ({ listCoupons: vi.fn(), previewCoupon: vi.fn() }))
 vi.mock('@/hooks/useEnsureProfileEssentials', async () => {
   const actual = await vi.importActual<typeof import('@/hooks/useEnsureProfileEssentials')>('@/hooks/useEnsureProfileEssentials')
   return { ...actual, useEnsureProfileEssentials: vi.fn() }
@@ -62,6 +66,7 @@ import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistra
 import { useTournamentRegistration } from '@/hooks/useTournamentRegistration'
 import { useEnsureProfileEssentials } from '@/hooks/useEnsureProfileEssentials'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
+import { listCoupons, previewCoupon } from '@/services/api/coupons'
 import {
   checkPhoneAvailable, requestPhoneVerificationOtp, verifyPhoneVerificationOtp,
 } from '@/services/api/players'
@@ -80,6 +85,8 @@ export const mockUseGate = vi.mocked(useRegistrationGate)
 export const mockUseRegistration = vi.mocked(useTournamentRegistration)
 export const mockUseEnsure = vi.mocked(useEnsureProfileEssentials)
 export const mockUploadEvidence = vi.mocked(uploadRegistrationEvidence)
+export const mockListCoupons = vi.mocked(listCoupons)
+export const mockPreviewCoupon = vi.mocked(previewCoupon)
 export const mockCheckPhone = vi.mocked(checkPhoneAvailable)
 export const mockRequestOtp = vi.mocked(requestPhoneVerificationOtp)
 export const mockVerifyOtp = vi.mocked(verifyPhoneVerificationOtp)
@@ -194,28 +201,37 @@ function Probe() {
  * that declares `feeWaiver`, which only the (deliberately unstaged) Israel Open
  * entry does in the real constants file.
  */
-export function renderPage(eventOver: Partial<CorporateTournamentEvent> = {}) {
+export function renderPage(eventOver: Partial<CorporateTournamentEvent> = {}, ladder?: SkillLadder) {
   const event = { ...EVENT, ...eventOver }
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   // Rebuilt (not captured) so `rerender()` hands React a fresh element — passing
   // the same element reference back would let React bail out of the re-render.
-  const tree = () => (
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/join/acme']}>
-        <Routes>
-          <Route path="/join/:slug" element={<CorporateRegistrationPage event={event} />} />
-          <Route path="/payment-method" element={<Probe />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
-  )
+  // `ladder` puts the page on that served ladder; left out, the context's default
+  // (the bundled 1–7 ladder) applies, exactly as the earlier tests ran.
+  const tree = (onLadder: SkillLadder | undefined = ladder) => {
+    const page = (
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/join/acme']}>
+          <Routes>
+            <Route path="/join/:slug" element={<CorporateRegistrationPage event={event} />} />
+            <Route path="/payment-method" element={<Probe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+    return onLadder
+      ? <SkillLadderContext.Provider value={{ ladder: onLadder, refresh: () => {} }}>{page}</SkillLadderContext.Provider>
+      : page
+  }
   const utils = render(tree())
   // `rerender()` takes no element: it reconstructs the identical tree (same
   // QueryClient, same route) so a test that swaps a hook mock's return value
   // mid-test can force the PAGE to re-read it — a child's own setState only
   // re-renders the child. Same rationale as TournamentDetailPage.test.tsx's
   // `pageTree()`, minus leaking the QueryClient into every test file.
-  return { ...utils, rerender: () => utils.rerender(tree()) }
+  // `rerender(nextLadder)` swaps the served ladder under a mounted page (keep both
+  // calls on a ladder, or the provider appearing remounts the page and drops its state).
+  return { ...utils, rerender: (nextLadder: SkillLadder | undefined = ladder) => utils.rerender(tree(nextLadder)) }
 }
 
 /**
@@ -240,6 +256,8 @@ export function resetPageMocks() {
   mockUseRegistration.mockReturnValue({ register, isRegistering: false, registerError: null, gateError: null, setRegisterError: vi.fn(), setGateError: vi.fn() } as any)
   mockUseEnsure.mockReturnValue({ ensure, status: 'ready', playerProfile: COMPLETE_PROFILE, phoneLocked: true, levelLocked: true } as any)
   mockUploadEvidence.mockResolvedValue([])
+  mockListCoupons.mockResolvedValue({ success: true, data: [], meta: null, error: null } as any)
+  mockPreviewCoupon.mockReset()
   refetchTournament.mockResolvedValue(undefined)
   // The happy OTP path; a test about a taken number or a wrong code overrides one.
   mockCheckPhone.mockResolvedValue({ success: true, data: { available: true }, meta: null, error: null } as any)

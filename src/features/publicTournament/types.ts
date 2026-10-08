@@ -51,6 +51,11 @@ export const PublicMatchSchema = z.object({
     status: z.string().catch('scheduled'),
     court_name: z.string().nullish().catch(null),
     scheduled_at: z.string().nullish().catch(null),
+    /**
+     * The game's seat in its round (1-based). An Americano's final seats places 4k+1…4k+4 on seat
+     * k+1, so the seat — not the game's index after cancelled games are dropped — names who plays.
+     */
+    position_in_round: z.number().nullish().catch(null),
 });
 export type PublicMatch = z.infer<typeof PublicMatchSchema>;
 
@@ -86,6 +91,15 @@ export const PublicStandingSchema = z.object({
     games_won: z.number().catch(0),
     games_lost: z.number().catch(0),
     points: z.number().nullish().catch(null),
+    /**
+     * Americano rows only — set by `toLiveBoard` (../americano.ts), never sent for a league or a
+     * group: games drawn, and points scored minus conceded. An Americano row carries its total
+     * points in `points` above.
+     */
+    ties: z.number().nullish().catch(null),
+    points_diff: z.number().nullish().catch(null),
+    /** Americano rows only (`toLiveBoard`): the final court this player would play on if it were drawn now. */
+    projected_final_court: z.number().nullish().catch(null),
 });
 export type PublicStanding = z.infer<typeof PublicStandingSchema>;
 
@@ -116,6 +130,50 @@ export const PublicVideoSchema = z.object({
 });
 export type PublicVideo = z.infer<typeof PublicVideoSchema>;
 
+/**
+ * One player's line in an Americano table (rally-api `AmericanoStandingEntry`). Every field
+ * `.catch`es: `standings` is parsed with `z.array(...).catch([])`, so one bad row must degrade
+ * that row, never blank the whole table.
+ */
+export const PublicAmericanoStandingSchema = z.object({
+    position: z.number().catch(0),
+    player: PublicPlayerSchema.nullish().catch(null),
+    games: z.number().catch(0),
+    points_for: z.number().catch(0),
+    points_against: z.number().catch(0),
+    points_diff: z.number().catch(0),
+    wins: z.number().catch(0),
+    ties: z.number().catch(0),
+    losses: z.number().catch(0),
+    /** rally-api Plan C. An API build without it sends nothing, which reads as false. */
+    is_disqualified: z.boolean().catch(false),
+    /**
+     * rally-api 2026-10-04: the court (1-based) this player would play the final on if it were
+     * drawn now. Null once it is drawn, when the evening has no final, and for anyone sitting it
+     * out (paused, disqualified, no game yet, below the last full group). Null from an older API.
+     */
+    projected_final_court: z.number().nullable().catch(null),
+});
+export type PublicAmericanoStanding = z.infer<typeof PublicAmericanoStandingSchema>;
+
+/**
+ * The `americano` block of the public bracket (rally-api `AmericanoBoard`), sent only when
+ * `structure === 'americano'`. Only what the live page draws is parsed; zod drops the rest.
+ * Each game is an ordinary match: four players, one set holding the points, `winner_team` null
+ * on a tie.
+ */
+export const PublicAmericanoSchema = z.object({
+    rounds: z.array(PublicRoundSchema).catch([]),
+    /** Round number (a string: JSON keys are) → the players sitting that round out. Every round. */
+    resting: z.record(z.string(), z.array(PublicPlayerSchema)).catch({}),
+    standings: z.array(PublicAmericanoStandingSchema).catch([]),
+    /** rally-api 2026-10-04: the final round's number once drawn; null before (or from an older API). */
+    final_round_number: z.number().nullable().catch(null),
+    /** The evening ends with a final round by ranking (rally-api 2026-10-03); false from an older API. */
+    final_round_enabled: z.boolean().catch(false),
+});
+export type PublicAmericano = z.infer<typeof PublicAmericanoSchema>;
+
 export const PublicBracketSchema = z.object({
     tournament_id: z.string(),
     tournament_name: z.string().catch(''),
@@ -129,5 +187,7 @@ export const PublicBracketSchema = z.object({
     league_standings: z.array(PublicStandingSchema).nullish().catch(null),
     groups: z.array(PublicGroupSchema).nullish().catch(null),
     third_place_match: PublicMatchSchema.nullish().catch(null),
+    /** Americano only. Malformed → null, and the page shows its ordinary empty board. */
+    americano: PublicAmericanoSchema.nullish().catch(null),
 });
 export type PublicBracketData = z.infer<typeof PublicBracketSchema>;

@@ -53,6 +53,14 @@ describe('PaymentReturnPage — UUID validation', () => {
     renderAt('?status=success&type=invalid_type&id=11111111-1111-4111-8111-111111111111')
     expect(await screen.findByText('FAILED')).toBeInTheDocument()
   })
+
+  // A staff-sent payment link (e.g. a store-order top-up) — previously fell
+  // through as an "unknown type" above and always showed FAILED, even on a
+  // genuinely successful payment, because store_order was missing here.
+  it('routes status=success + type=store_order to /payments/confirming', async () => {
+    renderAt('?status=success&type=store_order&id=11111111-1111-4111-8111-111111111111')
+    expect(await screen.findByText('CONFIRMING')).toBeInTheDocument()
+  })
 })
 
 describe('PaymentReturnPage — return_to', () => {

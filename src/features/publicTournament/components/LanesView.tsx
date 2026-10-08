@@ -5,12 +5,12 @@ import { GroupLane } from './GroupLane';
 import {
     activeRoundNumber,
     groupMatchesByRound,
-    isFinishedStatus,
-    isLiveStatus,
+    roundStateLabel,
+    roundStateOf,
     visibleRoundWindow,
 } from '../utils';
 import type { MatchRound } from '../utils';
-import type { PublicGroup } from '../types';
+import type { PublicGroup, PublicMatch } from '../types';
 
 type LanesViewProps = { groups: PublicGroup[]; accents: string[] };
 
@@ -18,18 +18,15 @@ type LanesViewProps = { groups: PublicGroup[]; accents: string[] };
 const MAX_ROUND_COLUMNS = 4;
 
 /**
- * How a round reads in the axis: finished, on court now, or still to come.
+ * One round's matches across every group, for the axis label's state (`roundStateOf`).
  *
  * The `?? 0` fallback must match `groupMatchesByRound`'s bucketing exactly — that function is
  * the source of truth for which column a null-round match lands in (bucket 0, the unlabeled
  * trailing column), and disagreeing here would let a null-round live match make a real round's
  * label lie (e.g. "Round 1 · In progress" while round 1's own cards all read "Final").
  */
-function roundState(groups: PublicGroup[], roundNumber: number): 'done' | 'live' | 'upcoming' {
-    const matches = groups.flatMap(g => g.matches.filter(m => (m.round_number ?? 0) === roundNumber));
-    if (matches.some(m => isLiveStatus(m.status))) return 'live';
-    if (matches.length > 0 && matches.every(m => isFinishedStatus(m.status))) return 'done';
-    return 'upcoming';
+function roundMatches(groups: PublicGroup[], roundNumber: number): PublicMatch[] {
+    return groups.flatMap(g => g.matches.filter(m => (m.round_number ?? 0) === roundNumber));
 }
 
 /**
@@ -99,16 +96,12 @@ export function LanesView({ groups, accents }: LanesViewProps): React.ReactEleme
                             // gutter to its left carries no round label either.
                             return <span key="unrounded" aria-hidden />;
                         }
-                        const state = roundState(groups, n);
+                        const state = roundStateOf(roundMatches(groups, n));
                         return (
                             <span key={n} className="truncate text-center text-[10px] font-black uppercase tracking-wider text-(--pb-text-faint)">
-                                {t('public_bracket.round_label', { num: n, defaultValue: `Round ${n}` })}
+                                {t('public_bracket.rounds.round_n', { num: n, defaultValue: `Round ${n}` })}
                                 <span className={cn('ms-1.5 tracking-normal', state === 'live' ? 'text-(--pb-live)' : 'text-(--pb-text-faint)')}>
-                                    {state === 'live'
-                                        ? t('public_bracket.round_live', 'In progress')
-                                        : state === 'done'
-                                            ? t('public_bracket.round_done', 'Finished')
-                                            : ''}
+                                    {roundStateLabel(state, t)}
                                 </span>
                             </span>
                         );

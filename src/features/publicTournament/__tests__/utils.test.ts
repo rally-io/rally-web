@@ -1,18 +1,29 @@
 import { describe, expect, it } from 'vitest';
+import i18n from '@/i18n';
 import {
     activeMatchIndex,
+    courtTier,
+    getRoundName,
     isDecidedTeam,
     localizeTeamPlaceholder,
     upNextMatches,
     UP_NEXT_MAX,
     groupGlyph,
     groupMatchesByRound,
+    keepNamesWhole,
     pairChipIndex,
     pairIdentity,
     pairInitials,
     PAIR_CHIP_COUNT,
+    plainNames,
+    nextRoundWindow,
+    roundStateLabel,
+    roundStateOf,
+    scoreTone,
+    upNextRoundIndex,
     visibleRoundWindow,
 } from '../utils';
+import type { RoundState } from '../utils';
 import type { PublicMatch } from '../types';
 
 function match(id: string, round: number | null, status = 'scheduled'): PublicMatch {
@@ -50,6 +61,196 @@ describe('activeMatchIndex', () => {
 
     it('is safe on an empty list', () => {
         expect(activeMatchIndex([])).toBe(0);
+    });
+});
+
+describe('roundStateOf', () => {
+    it('is live while any game is on court, even with others finished', () => {
+        expect(roundStateOf([match('a', 1, 'completed'), match('b', 1, 'in_progress')])).toBe('live');
+        expect(roundStateOf([match('a', 1, 'live')])).toBe('live');
+    });
+
+    it('is done only once every game is finished, a walkover included', () => {
+        expect(roundStateOf([match('a', 1, 'completed'), match('b', 1, 'walkover')])).toBe('done');
+        expect(roundStateOf([match('a', 1, 'completed'), match('b', 1, 'scheduled')])).toBe('upcoming');
+    });
+
+    it('is upcoming with nothing played, and for an empty round', () => {
+        expect(roundStateOf([match('a', 1), match('b', 1)])).toBe('upcoming');
+        expect(roundStateOf([])).toBe('upcoming');
+    });
+});
+
+describe('upNextRoundIndex', () => {
+    it('between rounds: the first round not done, and only it', () => {
+        expect(upNextRoundIndex(['done', 'done', 'done', 'done', 'done', 'upcoming', 'upcoming', 'upcoming'])).toBe(5);
+    });
+
+    it('at the start of the evening: round 1', () => {
+        expect(upNextRoundIndex(['upcoming', 'upcoming', 'upcoming'])).toBe(0);
+    });
+
+    it('mid-round: the round after the live one', () => {
+        expect(upNextRoundIndex(['done', 'done', 'done', 'done', 'done', 'live', 'upcoming', 'upcoming'])).toBe(6);
+    });
+
+    it('two rounds live at once: the round after the last live one', () => {
+        expect(upNextRoundIndex(['done', 'live', 'live', 'upcoming'])).toBe(3);
+    });
+
+    it('none once everything is played, or when the live round is the last', () => {
+        expect(upNextRoundIndex(['done', 'done'])).toBe(-1);
+        expect(upNextRoundIndex(['done', 'live'])).toBe(-1);
+        expect(upNextRoundIndex([])).toBe(-1);
+    });
+});
+
+describe('roundStateLabel (review fix 6)', () => {
+    it('reads the same key and default both LanesView and AmericanoRoundsBoard historically used, for every state', () => {
+        // Records (key, defaultValue) the way every call site in the module invokes `t` — the
+        // shorthand form, a plain string as the second argument, not an options object.
+        const calls: Array<[string, string]> = [];
+        const t = ((key: string, defaultValue: string) => {
+            calls.push([key, defaultValue]);
+            return defaultValue;
+        }) as never;
+        expect(roundStateLabel('live', t)).toBe('In progress');
+        expect(roundStateLabel('next', t)).toBe('Up next');
+        expect(roundStateLabel('done', t)).toBe('Finished');
+        expect(roundStateLabel('upcoming', t)).toBe('');
+        expect(calls).toEqual([
+            ['public_bracket.round_live', 'In progress'],
+            ['public_bracket.up_next', 'Up next'],
+            ['public_bracket.round_done', 'Finished'],
+        ]);
+    });
+});
+
+describe('nextRoundWindow', () => {
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    it('several live rounds that all fit alongside next: all of them, plus next', () => {
+        const states: RoundState[] = ['done', 'done', 'live', 'live', 'upcoming', 'upcoming', 'upcoming', 'upcoming', 'upcoming', 'upcoming'];
+        expect(nextRoundWindow(numbers, states, 4, 4)).toEqual([3, 4, 5, 6]);
+    });
+
+    it('more live rounds than fit: the live rounds win, so next drops off and the earliest live rounds stay (review fix 1)', () => {
+        // Was: [4, 5, 6, 7] (next kept, the two earliest live rounds dropped) — the window pulled
+        // towards `next` and let it bump a live round off screen. A live round never falls off the
+        // board (review fix 1), so the window now starts at the FIRST live round and never later:
+        // round 6 (live) and `next` (round 7) both drop instead.
+        const states: RoundState[] = ['done', 'live', 'live', 'live', 'live', 'live', 'upcoming', 'upcoming', 'upcoming', 'upcoming'];
+        expect(nextRoundWindow(numbers, states, 6, 4)).toEqual([2, 3, 4, 5]);
+    });
+
+    it('overflow at a narrow window: the live round right before next stays, next drops off instead (review fix 1)', () => {
+        // The reviewer's repro, in miniature: rounds 1-5 done, 6 and 7 live, 8 called next, but
+        // only a 2-wide window. The old formula pulled towards `next` and dropped round 6 — a live
+        // round. The fix never starts the window later than the first live round, so next (which
+        // doesn't fit) drops off instead.
+        const states: RoundState[] = ['done', 'done', 'done', 'done', 'done', 'live', 'live', 'upcoming', 'upcoming', 'upcoming'];
+        expect(nextRoundWindow(numbers, states, 7, 2)).toEqual([6, 7]);
+    });
+
+    it('next near the end of the list: the window shifts left to stay max long, next stays inside', () => {
+        const states: RoundState[] = ['done', 'done', 'done', 'done', 'done', 'done', 'done', 'live', 'live', 'upcoming'];
+        expect(nextRoundWindow(numbers, states, 9, 4)).toEqual([7, 8, 9, 10]);
+    });
+
+    it('nothing live: the window starts at next and runs forward, with nothing before it to keep', () => {
+        const states: RoundState[] = ['done', 'done', 'done', 'done', 'done', 'upcoming', 'upcoming', 'upcoming', 'upcoming', 'upcoming'];
+        expect(nextRoundWindow(numbers, states, 5, 4)).toEqual([6, 7, 8, 9]);
+    });
+});
+
+describe('courtTier', () => {
+    it.each([
+        [1, 'few'], [4, 'few'], [5, 'several'], [8, 'several'], [9, 'many'], [16, 'many'],
+    ] as const)('%i courts is the %s tier', (courts, tier) => {
+        expect(courtTier(courts)).toBe(tier);
+    });
+});
+
+describe('scoreTone', () => {
+    const scored = (a: number, b: number, over: Partial<PublicMatch> = {}): PublicMatch => ({
+        ...match('m', 1, 'completed'),
+        sets: [{ team_a_score: a, team_b_score: b, is_tiebreak: null }],
+        ...over,
+    });
+
+    it('reads a live game as live on both sides, whatever the score', () => {
+        const live = scored(5, 3, { status: 'in_progress' });
+        expect(scoreTone(live, 'team_a')).toBe('live');
+        expect(scoreTone(live, 'team_b')).toBe('live');
+    });
+
+    it('reads a decided game as winner and loser', () => {
+        const won = scored(16, 10, { winner_team: 'team_a' });
+        expect(scoreTone(won, 'team_a')).toBe('winner');
+        expect(scoreTone(won, 'team_b')).toBe('loser');
+    });
+
+    it('reads a finished level game with no winner as a tie on both sides', () => {
+        const tie = scored(12, 12, { winner_team: null });
+        expect(scoreTone(tie, 'team_a')).toBe('tie');
+        expect(scoreTone(tie, 'team_b')).toBe('tie');
+    });
+
+    it('reads an unplayed game, and a walkover\'s absent side, without a winner\'s colour', () => {
+        expect(scoreTone(match('m', 1, 'scheduled'), 'team_a')).toBe('neutral');
+        const walkover = { ...match('m', 1, 'walkover'), winner_team: 'team_a' as const };
+        expect(scoreTone(walkover, 'team_a')).toBe('winner');
+        expect(scoreTone(walkover, 'team_b')).toBe('loser');
+    });
+
+    it('per set: the winner\'s lost set reads as a loser\'s', () => {
+        const threeSets = {
+            ...match('m', 1, 'completed'),
+            winner_team: 'team_a' as const,
+            sets: [
+                { team_a_score: 6, team_b_score: 4, is_tiebreak: null },
+                { team_a_score: 3, team_b_score: 6, is_tiebreak: null },
+            ],
+        };
+        expect(scoreTone(threeSets, 'team_a', threeSets.sets[0])).toBe('winner');
+        expect(scoreTone(threeSets, 'team_a', threeSets.sets[1])).toBe('loser');
+        expect(scoreTone(threeSets, 'team_b', threeSets.sets[1])).toBe('loser');
+    });
+});
+
+describe('keepNamesWhole', () => {
+    it('leaves the break between the two players and joins each name with non-breaking spaces and hyphens', () => {
+        expect(keepNamesWhole('אלכסנדרה רוזנבלום-שטרנברג / יוסי בן דוד'))
+            .toBe('אלכסנדרה\u00A0רוזנבלום\u2011שטרנברג / יוסי\u00A0בן\u00A0דוד');
+    });
+
+    it('keeps a hyphenated Latin name and a maqaf-joined Hebrew name in one piece', () => {
+        expect(keepNamesWhole('Dan Ben-Ami / Gal Cohen-Levi')).toBe('Dan\u00A0Ben\u2011Ami / Gal\u00A0Cohen\u2011Levi');
+        expect(keepNamesWhole('בן\u05BEדוד')).toBe('בן\u05BE\u2060דוד');
+    });
+
+    it('leaves no break opportunity inside a name: only the slash separates', () => {
+        const kept = keepNamesWhole('Noa Bar-Lev / Ido Ben-David Cohen');
+        expect(kept.split(' / ')).toHaveLength(2);
+        kept.split(' / ').forEach(name => expect(name).not.toMatch(/[ -]/));
+    });
+
+    it('keeps a single name in one piece', () => {
+        expect(keepNamesWhole('Dan Levi')).toBe('Dan\u00A0Levi');
+        expect(keepNamesWhole('')).toBe('');
+    });
+});
+
+describe('plainNames', () => {
+    it('is the inverse of keepNamesWhole for ordinary names', () => {
+        ['Dan Levi', 'Dan Ben-Ami / Gal Cohen-Levi', 'Bar-Lev-Cohen', ''].forEach(x => {
+            expect(plainNames(keepNamesWhole(x))).toBe(x);
+        });
+    });
+
+    it('is the inverse of keepNamesWhole for a maqaf-joined Hebrew name too', () => {
+        const x = 'בן\u05BEדוד';
+        expect(plainNames(keepNamesWhole(x))).toBe(x);
     });
 });
 
@@ -346,5 +547,36 @@ describe('placeholder teams', () => {
         expect(isDecidedTeam(null)).toBe(false);
         expect(isDecidedTeam(undefined)).toBe(false);
         expect(isDecidedTeam(pair(''))).toBe(false);
+    });
+});
+
+describe('getRoundName', () => {
+    const he = i18n.getFixedT('he');
+    const en = i18n.getFixedT('en');
+
+    // A league's and an Americano's rounds arrive as plain "Round N" and used to stay English on
+    // the Hebrew page. Any N: an Americano evening runs 8 rounds, past the five fixed keys.
+    it.each([
+        ['Round 1', 'סיבוב 1'],
+        ['Round 8', 'סיבוב 8'],
+        ['round 12', 'סיבוב 12'],
+    ])('translates %s to %s', (name, hebrew) => {
+        expect(getRoundName(name, he)).toBe(hebrew);
+    });
+
+    it('reads Round 16 and Round 32 as round numbers, not the knockout rounds of 16 and 32', () => {
+        expect(getRoundName('Round 16', he)).toBe('סיבוב 16');
+        expect(getRoundName('Round 32', he)).toBe('סיבוב 32');
+        expect(getRoundName('Round 16', en)).toBe('Round 16');
+    });
+
+    it('leaves the knockout names as they were', () => {
+        expect(getRoundName('Round of 16', he)).toBe('שמינית גמר');
+        expect(getRoundName('Round of 32', he)).toBe('שלושים ושתיים אחרונות');
+        expect(getRoundName('Final', he)).toBe('גמר');
+        expect(getRoundName('Semi-final', he)).toBe('חצי גמר');
+        expect(getRoundName('Quarter-final', he)).toBe('רבע גמר');
+        expect(getRoundName('Plate Round 1', he)).toBe('Plate Round 1');
+        expect(getRoundName('Round of 16', en)).toBe('Round of 16');
     });
 });

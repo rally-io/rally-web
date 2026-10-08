@@ -7,9 +7,11 @@ import {
   renderPage, tr, session, gate, mockUseTournament, mockUseAppSession, mockUseGate, mockUseEnsure,
   mockUseRegistration, mockUploadEvidence, ensure, register, refetchTournament, resetPageMocks,
   completeDetails, expectDetailsModal, COMPLETE_PROFILE,
-  verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState,
+  verifyPhoneInModal, mockCheckPhone, mockRequestOtp, authState, mockPreviewCoupon,
 } from './CorporateRegistrationPage.fixtures'
 import type { TournamentRegistrationResult } from '@/types/api'
+import { FALLBACK_LADDERS } from '@/lib/skillLadder'
+import { tournamentLevelsBetween } from '@/lib/tournamentLevelBands'
 import { LevelWriteRefusedError } from '@/lib/levelWrite'
 
 beforeEach(resetPageMocks)
@@ -890,6 +892,66 @@ describe('CorporateRegistrationPage — the level category the pair enters', () 
     expect(register).toHaveBeenCalledWith({ phase: 'idle' }, undefined, 'רמה 4.5–5')
   })
 
+  /**
+   * The Israel Open's categories ARE the tournament bands. Registrations run on today's
+   * list, so on the 1–7 ladder it must not move by a character; after the switch to 1–5
+   * the served ladder decides, labelled the way tournaments are (contract §4).
+   */
+  describe('an event whose categories are the tournament bands (the Israel Open)', () => {
+    const BAND_EVENT = { competeLevels: tournamentLevelsBetween(2, 5), competeLevelsAreBands: true }
+    const optionValues = () =>
+      Array.from((levelSelect() as HTMLSelectElement).options).slice(1).map((o) => o.value)
+
+    it('on the 1–7 ladder shows today\'s list, unchanged', () => {
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      renderPage(BAND_EVENT, FALLBACK_LADDERS[7])
+      expect(optionValues()).toEqual([
+        '2.0 - 2.5 (D1)',
+        '2.5 - 3.0 (D1 - C2)',
+        '3.0 - 3.5 (C2 - C1)',
+        '3.5 - 4.0 (C1 - B2)',
+        '4.0 - 4.5 (B2 - B1)',
+        '4.5 - 5.0 (B1 - A)',
+      ])
+    })
+
+    it('on the 1–5 ladder shows one option per served band, labelled like tournaments', () => {
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      renderPage(BAND_EVENT, FALLBACK_LADDERS[5])
+      expect(optionValues()).toEqual([
+        '1.0 - 2.0 (D2)',
+        '2.0 - 2.5 (D2 - D1)',
+        '2.5 - 3.0 (D1 - C2)',
+        '3.0 - 3.5 (C2 - C1)',
+        '3.5 - 4.0 (C1 - B2)',
+        '4.0 - 4.5 (B2 - B1)',
+        '4.5 - 5.0 (B1 - A)',
+      ])
+    })
+
+    it('a choice the ladder in use no longer offers must be made again', async () => {
+      const user = userEvent.setup()
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      const { rerender } = renderPage(BAND_EVENT, FALLBACK_LADDERS[7])
+      await user.selectOptions(levelSelect(), '2.0 - 2.5 (D1)')
+      // The switch lands while the page is open.
+      rerender(FALLBACK_LADDERS[5])
+      expect((levelSelect() as HTMLSelectElement).value).toBe('')
+      await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.ctaMissingLevel') }))
+      expect(register).not.toHaveBeenCalled()
+
+      await user.selectOptions(levelSelect(), '2.0 - 2.5 (D2 - D1)')
+      await user.click(screen.getByRole('button', { name: /register & pay/i }))
+      expect(register).toHaveBeenCalledWith({ phase: 'idle' }, undefined, '2.0 - 2.5 (D2 - D1)')
+    })
+
+    it('an event\'s own categories stay as it wrote them, even on the 1–5 ladder', () => {
+      mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+      renderPage(LEVEL_EVENT, FALLBACK_LADDERS[5])
+      expect(optionValues()).toEqual(LEVELS)
+    })
+  })
+
   // The guard that keeps every OTHER corporate event exactly as it was.
   it('an event without categories shows no dropdown and registers exactly as before', async () => {
     const user = userEvent.setup()
@@ -903,3 +965,87 @@ describe('CorporateRegistrationPage — the level category the pair enters', () 
     expect(register.mock.calls[0]).toHaveLength(1)
   })
 })
+
+// The coupon card on /join (2026-10-02): the event's VIP code is 100% off, and a VIP
+// must see a free entry BEFORE registering — not "Register & pay" and a card hold.
+describe('CorporateRegistrationPage — coupons', () => {
+  beforeEach(resetPageMocks)
+
+  const preview = (over: Record<string, unknown> = {}) => ({
+    success: true, meta: null, error: null,
+    data: {
+      coupon_id: 'c-1', code: 'VIP', name: 'VIP', discount_amount: 150, original_amount: 150,
+      final_amount: 0, currency: 'ILS', rule_points: [], ...over,
+    },
+  }) as any
+
+  async function applyCode(user: ReturnType<typeof userEvent.setup>, code = 'vip') {
+    await user.type(screen.getByPlaceholderText(i18n.t('coupon.placeholder')), code)
+    await user.click(screen.getByRole('button', { name: i18n.t('coupon.apply') }))
+  }
+
+  it('a code covering the whole fee makes the price, the note and the button free — and rides along to register', async () => {
+    const user = userEvent.setup()
+    mockPreviewCoupon.mockResolvedValue(preview())
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await applyCode(user)
+
+    expect(mockPreviewCoupon).toHaveBeenCalledWith('VIP', { tournamentId: 't-1', orderValue: 150 })
+    expect(await screen.findByText('₪0')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('coupon.confirmFreeNotice'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('corporate.reg.holdNote'))).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCtaFree') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+    expect(register).toHaveBeenCalledWith(
+      { phase: 'idle' }, undefined, undefined, { id: 'c-1', code: 'VIP', coversAll: true },
+    )
+  })
+
+  it('a partial discount keeps "Register & pay" and the hold note, and still rides along', async () => {
+    const user = userEvent.setup()
+    mockPreviewCoupon.mockResolvedValue(preview({ discount_amount: 15, final_amount: 135 }))
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await applyCode(user)
+
+    expect(await screen.findByText('₪135')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.holdNote'))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCta') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+    expect((register.mock.calls[0] as unknown[])[3]).toEqual({ id: 'c-1', code: 'VIP', coversAll: false })
+  })
+
+  it('declaring a resident changes what is due, so the code is resolved again for the new amount', async () => {
+    const user = userEvent.setup()
+    mockPreviewCoupon.mockResolvedValue(preview({ discount_amount: 15, final_amount: 135 }))
+    mockUseTournament.mockReturnValue(tr({ fee_waiver_type: 'holon_resident' })) // doubles, 150
+    renderPage({ feeWaiver: { type: 'holon_resident' } })
+    await applyCode(user)
+    await screen.findByText('₪135')
+
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverOneOfUs') }))
+    await waitFor(() => expect(mockPreviewCoupon).toHaveBeenCalledTimes(2))
+    expect(mockPreviewCoupon).toHaveBeenLastCalledWith('VIP', { tournamentId: 't-1', orderValue: 75 })
+  })
+
+  it('a free entry (both residents) has nothing to discount: no coupon card', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ fee_waiver_type: 'holon_resident' }))
+    renderPage({ feeWaiver: { type: 'holon_resident' } })
+    expect(screen.getByPlaceholderText(i18n.t('coupon.placeholder'))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.waiverBoth') }))
+    expect(screen.queryByPlaceholderText(i18n.t('coupon.placeholder'))).not.toBeInTheDocument()
+  })
+
+  it('without a coupon the register call is exactly what it was', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    await user.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCta') }))
+    await waitFor(() => expect(register).toHaveBeenCalled())
+    expect(register.mock.calls[0]).toHaveLength(1)
+  })
+})
+

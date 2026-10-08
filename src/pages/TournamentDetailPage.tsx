@@ -24,8 +24,10 @@ import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMess
 import { TournamentRulesSection } from '@/components/tournaments/TournamentRulesSection'
 import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
-import { ResidencyWaiverSelector } from '@/components/tournaments/ResidencyWaiverSelector'
+import { ResidencyWaiverSelector, formatWaiverTitle } from '@/components/tournaments/ResidencyWaiverSelector'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
+import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
+import { paymentReceiptRows } from '@/lib/paymentReceipt'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
 import {
   joinTournamentWaitlist, leaveTournamentWaitlist,
@@ -37,7 +39,7 @@ import { validateEvidenceFiles, waivedAmount } from '@/lib/evidenceRules'
 import { ctaFor } from '@/lib/tournamentCta'
 import type { FeeWaiverRequest, TournamentRegistrationResult, TournamentWaitlistEntry } from '@/types/api'
 import {
-  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
+  isRegistrationOpen, isTournamentLive, hasFinalResults, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange, getSkillLevelName,
   formatTournamentCardDate, formatCurrency,
 } from '@/lib/tournamentHelpers'
@@ -95,7 +97,12 @@ function TournamentRegistrationPage() {
   // can never be replayed into a second row.
   const [partnerState, setPartnerState] = useTournamentPartnerDraft(id!, user?.id ?? '')
 
-  const isDocumentRequired = Boolean(tr?.is_document_required ?? tr?.fee_waiver_type)
+  const isDocRequired = Boolean(tr?.is_document_required)
+  const hasFeeWaiver = Boolean(tr?.fee_waiver_type)
+  // True when BOTH feeWaiverType AND isDocumentRequired are set: the fee waiver
+  // selection (residentCount) is the single source of truth for evidence upload.
+  const hasWaiverActive = isDocRequired && hasFeeWaiver
+  const showRequirementsSection = isDocRequired || hasFeeWaiver
   const seats: 1 | 2 = tr?.format === 'singles' ? 1 : 2
   const [residentCount, setResidentCount] = useState<0 | 1 | 2>(0)
   const [myFiles, setMyFiles] = useState<File[]>([])
@@ -108,18 +115,26 @@ function TournamentRegistrationPage() {
     setResidentCount(next)
     setMyEvidenceError(null)
     setPartnerEvidenceError(null)
-    if (next === 0) setMyFiles([])
+    // Partner files are only valid for 2 residents in doubles; clear them if
+    // the selection drops below 2. myFiles is preserved because player 1
+    // document upload remains valid (and optional) at residentCount === 0.
     if (next < 2) setPartnerFiles([])
   }
 
-  const residents: 0 | 1 | 2 = isDocumentRequired ? residentCount : 0
-  const effectiveFee = tr ? (residents === 0 ? tr.entry_fee : waivedAmount(tr.entry_fee, seats, residents)) : 0
+  const effectiveFee = tr
+    ? hasFeeWaiver && residentCount > 0
+      ? waivedAmount(tr.entry_fee, seats, residentCount)
+      : tr.entry_fee
+    : 0
 
   const validateEvidence = (): boolean => {
-    if (!isDocumentRequired || residents === 0) return true
+    // When both feeWaiverType and isDocumentRequired are set, the fee waiver
+    // selection drives evidence: no selection means evidence is optional.
+    const evidenceRequired = hasWaiverActive ? residentCount > 0 : isDocRequired
+    if (!evidenceRequired) return true
     let ok = true
     if (myFiles.length === 0) {
-      setMyEvidenceError(t('corporate.reg.evidenceRequired'))
+      setMyEvidenceError(t('tournament.evidenceRequired', { defaultValue: 'Please attach the required document.' }))
       ok = false
     } else {
       const badFile = validateEvidenceFiles([], myFiles)
@@ -128,9 +143,10 @@ function TournamentRegistrationPage() {
         ok = false
       }
     }
-    if (residents === 2) {
+    // If doubles and 2 waivers are claimed, partner evidence is also required
+    if (seats === 2 && residentCount === 2) {
       if (partnerFiles.length === 0) {
-        setPartnerEvidenceError(t('corporate.reg.evidenceRequired'))
+        setPartnerEvidenceError(t('tournament.evidenceRequired', { defaultValue: 'Please attach the required document.' }))
         ok = false
       } else {
         const badFile = validateEvidenceFiles([], partnerFiles)
@@ -138,6 +154,12 @@ function TournamentRegistrationPage() {
           setPartnerEvidenceError(t(`corporate.reg.${badFile}`))
           ok = false
         }
+      }
+    } else if (partnerFiles.length > 0) {
+      const badFile = validateEvidenceFiles([], partnerFiles)
+      if (badFile) {
+        setPartnerEvidenceError(t(`corporate.reg.${badFile}`))
+        ok = false
       }
     }
     return ok
@@ -279,27 +301,31 @@ function TournamentRegistrationPage() {
         }
 
         const waiverRequest: FeeWaiverRequest | undefined =
-          isDocumentRequired && residents > 0
+          hasFeeWaiver && residentCount > 0
             ? {
-                type: tr.fee_waiver_type || 'holon_resident',
-                resident_count: residents as 1 | 2,
+                type: tr.fee_waiver_type!,
+                resident_count: residentCount as 1 | 2,
               }
             : undefined
 
-        pendingUploadRef.current = waiverRequest
-          ? async (reg) => {
-              try {
-                await uploadRegistrationEvidence(reg.id, 1, myFiles)
-                if (residents === 2) {
-                  await uploadRegistrationEvidence(reg.id, 2, partnerFiles)
+        pendingUploadRef.current =
+          (isDocRequired || (hasWaiverActive && residentCount > 0)) &&
+          (myFiles.length > 0 || partnerFiles.length > 0)
+            ? async (reg) => {
+                try {
+                  if (myFiles.length > 0) {
+                    await uploadRegistrationEvidence(reg.id, 1, myFiles)
+                  }
+                  if (partnerFiles.length > 0 && (!waiverRequest || waiverRequest.resident_count === 2)) {
+                    await uploadRegistrationEvidence(reg.id, 2, partnerFiles)
+                  }
+                } catch (uploadError) {
+                  console.error('[TournamentDetailPage] evidence upload failed:', uploadError)
+                } finally {
+                  await refetch?.()
                 }
-              } catch (uploadError) {
-                console.error('[TournamentDetailPage] evidence upload failed:', uploadError)
-              } finally {
-                await refetch?.()
               }
-            }
-          : null
+            : null
 
         if (waiverRequest) {
           await register(selectedPartner, waiverRequest)
@@ -321,6 +347,14 @@ function TournamentRegistrationPage() {
       .then(async () => {
         if (!tr || !mounted.current) return
         if (!(await checkRegistrationProfile())) return
+
+        if (!validateEvidence()) {
+          document
+            .getElementById('residency-waiver-section')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+
         const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
         if (isPartneredFormat && selectedPartner.phase === 'idle') {
           document
@@ -419,6 +453,10 @@ function TournamentRegistrationPage() {
 
   const open = isRegistrationOpen(tr.registration_deadline)
   const live = isTournamentLive(tr)
+  // Once the evening ends, the live scoreboard becomes the final-results page —
+  // same link, calmer wording and styling (owner: "keep the link then"). Mutually
+  // exclusive with `live` by construction; see hasFinalResults' docblock.
+  const finished = hasFinalResults(tr)
   // No token ⇒ nothing to link to. Never render a dead "watch live" button.
   const liveHref = tr.share_token ? liveResultsPath(tr.share_token) : null
   const skill = parseSkillLevel(tr.skill_level)
@@ -461,6 +499,10 @@ function TournamentRegistrationPage() {
   // gateMessage is now ONLY the 409 safety net's note (SCREEN_MESSAGES_WEB_SPEC.md
   // §6a): a real submit reached the server with something still outstanding.
   const gateMessage = gateError
+
+  // The viewer's own settled payment receipt (coupon discount, wallet credits) —
+  // no rows for player_2/guest, before money has moved, or for a plain fee.
+  const paymentReceipt = paymentReceiptRows(myReg?.my_payment, t)
 
   return (
     <main className="min-h-screen bg-rally-bg pb-28">
@@ -566,27 +608,39 @@ function TournamentRegistrationPage() {
           })()}
         </section>
 
-        {/* First thing under the fold while the tournament is on: a spectator
-            watching from the stands wants the scoreboard, not the prize list.
-            New tab on purpose — players come back to this page for the draw. */}
-        {live && liveHref && (
+        {/* First thing under the fold while the tournament is on, and still here
+            once it finishes: a spectator wants the scoreboard, a player who played
+            wants the final standings. Red/live wording while it runs, calm/results
+            wording once it's over (owner: "keep the link then"). New tab on
+            purpose — players come back to this page for the draw. */}
+        {(live || finished) && liveHref && (
           <a
             href={liveHref}
             target="_blank"
             rel="noopener noreferrer"
             data-testid="live-results-link"
-            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-error/50 bg-rally-error/10 p-5 transition-colors hover:border-rally-error hover:bg-rally-error/15"
+            className={
+              live
+                ? 'flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-error/50 bg-rally-error/10 p-5 transition-colors hover:border-rally-error hover:bg-rally-error/15'
+                : 'flex flex-col md:flex-row md:items-center md:justify-between gap-4 rounded-2xl border border-rally-accent/40 bg-rally-accent/10 p-5 transition-colors hover:border-rally-accent hover:bg-rally-accent/15'
+            }
           >
             <div className="min-w-0">
               <p className="font-display text-lg md:text-xl font-bold text-rally-text">
-                {t('tournament.liveResultsTitle')}
+                {t(live ? 'tournament.liveResultsTitle' : 'tournament.finalResultsTitle')}
               </p>
               <p className="mt-1 text-sm text-rally-text-2">
-                {t('tournament.liveResultsSubtitle')}
+                {t(live ? 'tournament.liveResultsSubtitle' : 'tournament.finalResultsSubtitle')}
               </p>
             </div>
-            <span className="shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-error text-white font-bold">
-              {t('tournament.liveResultsCta')}
+            <span
+              className={
+                live
+                  ? 'shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-error text-white font-bold'
+                  : 'shrink-0 inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-rally-accent text-rally-accent-text font-bold'
+              }
+            >
+              {t(live ? 'tournament.liveResultsCta' : 'tournament.finalResultsCta')}
               <ExternalLink className="w-4 h-4" />
             </span>
           </a>
@@ -654,19 +708,38 @@ function TournamentRegistrationPage() {
         {myReg && myReg.fee_waiver_resident_count != null && myReg.fee_waiver_resident_count > 0 && (
           <FactCard
             icon={<FileCheck className="w-4 h-4" />}
-            label={t('corporate.reg.waiverTitle')}
+            label={
+              myReg.fee_waiver_type === 'holon_resident'
+                ? t('corporate.reg.waiverTitle')
+                : t('tournament.customWaiverTitle', {
+                    waiverTitle: formatWaiverTitle(myReg.fee_waiver_type || tr?.fee_waiver_type),
+                    defaultValue: `${formatWaiverTitle(myReg.fee_waiver_type || tr?.fee_waiver_type)} Discount`,
+                  })
+            }
             value={
               myReg.fee_waiver_status === 'approved'
                 ? t('corporate.reg.waiverApproved', { defaultValue: 'Approved' })
                 : myReg.fee_waiver_status === 'rejected'
                 ? t('corporate.reg.waiverRejected', { defaultValue: 'Rejected' })
-                : t('corporate.reg.registeredStatus_waiverPending', {
+                : myReg.fee_waiver_type === 'holon_resident'
+                ? t('corporate.reg.registeredStatus_waiverPending', {
                     residents: myReg.fee_waiver_resident_count,
                     defaultValue: `Residency review pending (${myReg.fee_waiver_resident_count}/${seats})`,
+                  })
+                : t('tournament.registeredStatus_waiverPending', {
+                    residents: myReg.fee_waiver_resident_count,
+                    seats,
+                    defaultValue: `Eligibility review pending (${myReg.fee_waiver_resident_count}/${seats})`,
                   })
             }
           />
         )}
+
+        {/* Settled payment receipt — only once money has actually moved, and
+            only when there's something beyond the plain entry fee to explain
+            (a coupon discount or wallet credits). Mirrors rally-mobile's
+            `buildPaymentSections` gate on `my_payment.payment_status`. */}
+        {paymentReceipt.length > 0 && <PriceBreakdown rows={paymentReceipt} />}
 
         {cta === 'waiting' && myWaitlistEntry && (
           <WaitlistCard
@@ -677,10 +750,15 @@ function TournamentRegistrationPage() {
         )}
 
         {!myReg &&
-          isDocumentRequired &&
+          showRequirementsSection &&
           (cta === 'register' || cta === 'join_waitlist') && (
             <ResidencyWaiverSelector
               seats={seats}
+              format={tr.format}
+              entryFee={tr.entry_fee}
+              feeWaiverType={tr.fee_waiver_type}
+              isDocumentRequired={isDocRequired}
+              documentInstructions={tr.document_instructions}
               residentCount={residentCount}
               onSelectResidents={handleSelectResidents}
               myFiles={myFiles}
@@ -811,7 +889,7 @@ function TournamentRegistrationPage() {
               <p className="text-2xl md:text-3xl font-black text-rally-accent">
                 {formatCurrency(effectiveFee)}
               </p>
-              {residents > 0 && (
+              {hasFeeWaiver && residentCount > 0 && (
                 <p className="text-xs text-rally-accent mt-0.5 leading-relaxed">
                   {t(effectiveFee < 0.01 ? 'corporate.reg.priceWaived' : 'corporate.reg.priceHalf')}
                 </p>
@@ -831,18 +909,23 @@ function TournamentRegistrationPage() {
               >
                 {t('tournament.tournamentPayNow')}
               </button>
-            ) : live && liveHref && (myReg || !open) ? (
+            ) : (live || finished) && liveHref && (myReg || !open) ? (
               // Where the bar would otherwise sit dead ("already registered" /
-              // "registration closed"), hand the player the live scoreboard
-              // instead — sticky CTA is action-first, never blocking.
+              // "registration closed"), hand the player the live scoreboard or,
+              // once the evening's over, the final results — sticky CTA is
+              // action-first, never blocking.
               <a
                 href={liveHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="live-results-sticky-link"
-                className="min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-error text-white font-bold inline-flex items-center justify-center gap-2 hover:brightness-110 transition-all"
+                className={
+                  live
+                    ? 'min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-error text-white font-bold inline-flex items-center justify-center gap-2 hover:brightness-110 transition-all'
+                    : 'min-w-[160px] md:min-w-[200px] h-12 md:h-14 px-6 rounded-full bg-rally-accent text-rally-accent-text font-bold inline-flex items-center justify-center gap-2 hover:bg-rally-accent-hover hover:shadow-glow-electric transition-all'
+                }
               >
-                {t('tournament.liveResultsCta')}
+                {t(live ? 'tournament.liveResultsCta' : 'tournament.finalResultsCta')}
                 <ExternalLink className="w-4 h-4" />
               </a>
             ) : myReg ? (
@@ -900,6 +983,8 @@ function TournamentRegistrationPage() {
                   ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
+                  : (hasWaiverActive ? residentCount > 0 : isDocRequired) && myFiles.length === 0
+                  ? t('tournament.ctaMissingDocument', { defaultValue: 'Upload required document' })
                   : t('tournament.tournamentDetailRegisterNow')}
               </button>
             )}

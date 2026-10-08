@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import type { PublicBracketData, PublicGroup, PublicMatch, PublicRound, PublicVideo } from '../../types';
-import { getRotationPhase, getRotationViews, useViewMode } from '../useViewMode';
+import { useViewMode } from '../useViewMode';
+import { getRotationPhase, getRotationViews } from '../../liveLayouts';
 
 function makeMatch(hasPlayer: boolean): PublicMatch {
     return {
@@ -234,5 +235,37 @@ describe('rotation interval', () => {
         renderHook(() => useViewMode(bracket, true));
 
         expect(setIntervalSpy).toHaveBeenCalled();
+    });
+});
+
+describe('structures drawn with the league layout', () => {
+    it('lands an Americano on standings, like a league, with no rotation and no tab bar', () => {
+        const { result } = renderHook(() => useViewMode(makeBracket({ structure: 'americano' }), true));
+        expect(result.current.view).toBe('standings');
+        expect(result.current.canAutoRotate).toBe(false);
+        expect(result.current.showTabs).toBe(false);
+    });
+
+    it('leaves a league on standings and a knockout on knockout', () => {
+        expect(renderHook(() => useViewMode(makeBracket({ structure: 'round_robin_league' }))).result.current.view).toBe('standings');
+        expect(renderHook(() => useViewMode(makeBracket({ structure: 'single_elimination' }))).result.current.view).toBe('knockout');
+    });
+});
+
+describe('the layout the hook hands the page', () => {
+    const video: PublicVideo = { id: 'v1', label: null, provider: 'YouTube', embed_url: 'https://example.com/embed', url: null, display_order: 0 };
+    const groups: PublicGroup[] = [{ group_name: 'Group A', matches: [makeMatch(true)], standings: [] }];
+
+    it('names the renderer and the tabs, Video always last', () => {
+        const { result } = renderHook(() => useViewMode(makeBracket({ groups, videos: [video] }), true));
+        expect(result.current.kind).toBe('groups');
+        expect(result.current.tabs).toEqual(['groups', 'games', 'knockout', 'video']);
+    });
+
+    it('a phone gets the standings tab where a TV gets the lanes; a knockout gets one tab and no bar', () => {
+        const phone = renderHook(() => useViewMode(makeBracket({ groups }), false));
+        expect(phone.result.current.tabs).toEqual(['groups', 'standings', 'knockout']);
+        const knockout = renderHook(() => useViewMode(makeBracket({ structure: 'single_elimination', knockout_rounds: [makeRound(true)] }), true));
+        expect(knockout.result.current).toMatchObject({ kind: 'knockout', tabs: ['knockout'], showTabs: false, canAutoRotate: false });
     });
 });

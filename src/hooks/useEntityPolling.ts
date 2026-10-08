@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getBooking } from '@/services/api/bookings'
 import { getRegistration } from '@/services/api/tournaments'
 import { getEvent } from '@/services/api/events'
-import { getWaitlistHoldStatus } from '@/services/api/payments'
+import { getPaymentLinkStatus, getWaitlistHoldStatus } from '@/services/api/payments'
 import type { PaymentEntityType } from '@/types/api'
 
 const INTERVAL_MS = 3000
@@ -68,6 +68,15 @@ async function fetchOnce(args: UseEntityPollingArgs): Promise<FetchOutcome> {
     if (!r.success) return { ok: false, confirmed: false }
     const d = r.data
     return { ok: true, confirmed: d.hold_confirmed === true, entity: d }
+  }
+  if (args.type === 'store_order') {
+    // A staff-sent payment link — the player has no rally-web session here,
+    // so this is the one entity type polled through an unauthenticated
+    // endpoint, keyed by the payment_transaction id rather than a booking id.
+    const r = await getPaymentLinkStatus(args.entityId)
+    if (!r.success) return { ok: false, confirmed: false }
+    const d = r.data
+    return { ok: true, confirmed: d.completed === true, entity: d }
   }
   if (!args.eventId) return { ok: false, confirmed: false }
   const r = await getEvent(args.eventId)

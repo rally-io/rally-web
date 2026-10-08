@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PairChip } from './PairChip';
 import { FitText } from './FitText';
+import { TvCard, TvCardColumns } from './TvCard';
+import { RankNumeral } from './RankNumeral';
 import { groupGlyph, localizeGroupName, playerFullName } from '../utils';
 import type { PublicGroup, PublicPlayer, PublicStanding } from '../types';
 
@@ -26,7 +28,7 @@ function standingLabel(s: PublicStanding): string {
 }
 
 /**
- * One group's standings, filling its whole card.
+ * One group's standings, in a card sized to its rows (owner 2026-10-04: one rule for the module).
  *
  * The games moved to the «משחקים» lanes, and the space they used to take is spent on type size:
  * this table is read from across a hall, and the previous version's paged games zone meant a
@@ -55,21 +57,22 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
     const dense = standings.length > 4;
 
     return (
-        <div className={cn(
-            'flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-(--pb-border) border-t-[3px] bg-(--pb-card) [border-top-color:var(--pb-ga,var(--pb-highlight))]',
-            accentClass,
-        )}>
-            <header className="flex shrink-0 items-center gap-2.5 border-b border-(--pb-border) bg-(--pb-card-header) px-4 py-1.5">
-                {glyph && (
-                    <span aria-hidden className="pb-display text-[26px] leading-none [color:var(--pb-ga,var(--pb-highlight))]">
-                        {glyph}
+        <TvCard
+            accentClass={accentClass}
+            header={(
+                <>
+                    {glyph && (
+                        <span aria-hidden className="pb-display text-[26px] leading-none [color:var(--pb-ga,var(--pb-highlight))]">
+                            {glyph}
+                        </span>
+                    )}
+                    <p className="truncate text-[15px] font-extrabold text-(--pb-text)">{localizeGroupName(group.group_name, t)}</p>
+                    <span className="ms-auto shrink-0 rounded-md bg-(--pb-card-raised) px-2 py-0.5 text-[11px] font-bold text-(--pb-text-muted)">
+                        <b className="text-(--pb-text)">{playedCount}/{group.matches.length}</b> {t('public_bracket.group_matches', 'Matches')}
                     </span>
-                )}
-                <p className="truncate text-[15px] font-extrabold text-(--pb-text)">{localizeGroupName(group.group_name, t)}</p>
-                <span className="ms-auto shrink-0 rounded-md bg-(--pb-card-raised) px-2 py-0.5 text-[11px] font-bold text-(--pb-text-muted)">
-                    <b className="text-(--pb-text)">{playedCount}/{group.matches.length}</b> {t('public_bracket.group_matches', 'Matches')}
-                </span>
-            </header>
+                </>
+            )}
+        >
 
             {/* The columns are up from the draw onward, reading 0 until they fill in. Held back
                 until the first result, the board was emptier before the tournament than during
@@ -82,22 +85,23 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                 bottomed out at FitText's floor and then clipped mid-word — the one thing this
                 screen must never do. `w-14` stays as-is because the «משחקונים» label, not the
                 score under it, is what sets that column's floor. */}
-            <div className="flex shrink-0 items-center gap-1.5 px-6 pt-1 text-[10px] font-black uppercase tracking-wider text-(--pb-text-faint)">
+            <TvCardColumns>
                 <span className="w-6 shrink-0" />
                 <span className="flex-1" />
                 <span className="w-6 shrink-0 text-center">{t('public_bracket.standings_headers.mp', 'MP')}</span>
                 <span className="w-6 shrink-0 text-center">{t('public_bracket.col_wins', 'W')}</span>
                 <span className="w-14 shrink-0 text-center">{t('public_bracket.standings_headers.games', 'Games')}</span>
                 <span className="w-8 shrink-0 text-center">+/-</span>
-            </div>
+            </TvCardColumns>
 
             {/* A tight cluster seated directly under the column header, NOT justify-evenly (which
                 spread four rows across the whole card and read as four islands) and NOT
                 justify-center (which stranded the header 176px above the first row, because the
-                header sits outside this box and only the rows got centred). Spare height collects
-                at the bottom, where it reads as room for more rather than as a hole in the table —
-                and if a group ever outgrows the card it now clips only the last row, instead of
-                taking the leader's row off the top at the same time. */}
+                header sits outside this box and only the rows got centred). The card is content-
+                sized now (owner 2026-10-04), so spare height only collects at the bottom when a
+                taller card shares its grid row — otherwise there is none to collect. Either way,
+                if a group ever outgrows the card it clips only the last row, instead of taking
+                the leader's row off the top at the same time. */}
             <div
                 data-testid="standings-list"
                 className={cn(
@@ -122,25 +126,9 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                                 qualifies && 'bg-(--pb-winner-bg)',
                                 dq && 'opacity-60',
                             )}>
-                                <span
-                                    aria-hidden
-                                    className={cn(
-                                        'w-6 shrink-0 text-center text-2xl font-black',
-                                        dense && 'text-xl',
-                                        // `leading-none` must land AFTER the dense size override, not
-                                        // before: Tailwind's named text-size utilities (text-xl,
-                                        // text-2xl, …) bundle their own default line-height, which
-                                        // wins over an EARLIER `leading-none` in the real cascade
-                                        // regardless of class-attribute order. twMerge mirrors that —
-                                        // putting `leading-none` first here got it silently dropped by
-                                        // twMerge whenever `dense` added `text-xl` after it, and the
-                                        // real browser would have discarded it the same way.
-                                        'leading-none',
-                                        qualifies ? 'text-(--pb-highlight)' : 'text-(--pb-text-faint)',
-                                    )}
-                                >
+                                <RankNumeral widthClass="w-6" dense={dense} highlight={qualifies}>
                                     {dq ? '—' : i + 1}
-                                </span>
+                                </RankNumeral>
                                 <PairChip pair={s} className="h-5 w-5 rounded-md text-[9px]" />
                                 <span className="flex min-w-0 flex-1 flex-col justify-center">
                                     {/* One player per line, full name always — FitText shrinks a
@@ -166,6 +154,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                                                 text={line}
                                                 maxPx={dense ? 12 : 15}
                                                 minPx={9}
+                                                wrapAtFloor
                                                 className={cn(
                                                     'min-w-0 flex-1 font-extrabold leading-tight',
                                                     dq ? 'text-(--pb-text-muted) line-through' : 'text-(--pb-text)',
@@ -230,6 +219,6 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                     );
                 })}
             </div>
-        </div>
+        </TvCard>
     );
 }

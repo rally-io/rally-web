@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { PublicBracketData, PublicMatch, PublicPlayer, PublicRound, PublicTeam, SlotPlaceholder } from './types';
+import type { PublicBracketData, PublicMatch, PublicPlayer, PublicRound, PublicTeam, SetScore, SlotPlaceholder } from './types';
 
 export function playerFullName(p: Pick<PublicPlayer, 'first_name' | 'last_name'> | null | undefined): string {
     return [p?.first_name, p?.last_name].filter(Boolean).join(' ');
@@ -11,6 +11,31 @@ export function teamLabel(team: PublicTeam | null | undefined): string {
     const p1 = playerFullName(team.player_1);
     const p2 = team.player_2 ? playerFullName(team.player_2) : '';
     return p2 ? `${p1} / ${p2}` : p1;
+}
+
+/**
+ * A pair label ("Dan Levi / Gal Cohen") whose only break point is between the two players. Inside
+ * each player's name, spaces become non-breaking spaces, hyphens become non-breaking hyphens
+ * (U+2011: "Ben-Ami", the double-barrelled surnames common in Israel), and a Hebrew maqaf (U+05BE)
+ * gets a word joiner (U+2060) after it. For `FitText`'s `wrapAtFloor` — a pair too long for one
+ * line wraps after the slash, never inside someone's name. `plainNames` is its inverse (FitText's
+ * tooltip shows the name as typed).
+ */
+export function keepNamesWhole(label: string): string {
+    return label
+        .split(' / ')
+        .map(name => name.replace(/ /g, '\u00A0').replace(/-/g, '\u2011').replace(/\u05BE/g, '\u05BE\u2060'))
+        .join(' / ');
+}
+
+/**
+ * `keepNamesWhole`'s inverse: the non-breaking space back to a plain one, the non-breaking
+ * hyphen back to a plain one, and the word joiner removed. The maqaf itself (U+05BE) is never
+ * touched by either direction, so it needs no mapping here. `FitText`'s `title` uses this
+ * instead of keeping its own copy of the same three replacements.
+ */
+export function plainNames(text: string): string {
+    return text.replace(/\u00A0/g, ' ').replace(/\u2011/g, '-').replace(/\u2060/g, '');
 }
 
 /** The backend emits English labels ("Match #31"); translate at display time. */
@@ -65,6 +90,15 @@ export function isDecidedTeam(team: PublicTeam | null | undefined): boolean {
     return name !== '' && !PLACEHOLDER_TEAM_NAME.test(name);
 }
 
+/**
+ * Structures drawn with the league's layout: the table beside the round-by-round games. An
+ * Americano is one (owner rule 2026-10-01: one view per concept — `toLiveBoard` in ./americano.ts
+ * puts its rounds and table where a league keeps them).
+ */
+export function usesLeagueLayout(structure: string): boolean {
+    return structure === 'round_robin_league' || structure === 'americano';
+}
+
 export function containsHebrew(text: string): boolean {
     return /[֐-׿]/.test(text);
 }
@@ -88,6 +122,10 @@ export function detectDir(bracket: PublicBracketData): 'rtl' | 'ltr' {
 
 export function getRoundName(name: string, t: TFunction): string {
     if (!name) return '';
+    // A league's or an Americano's plain "Round N", any N. First, before the '16'/'32' checks
+    // below: a long league's "Round 16" is its 16th round, not the knockout's round of 16.
+    const numbered = /^round\s+(\d+)$/i.exec(name.trim());
+    if (numbered) return t('public_bracket.rounds.round_n', { num: numbered[1], defaultValue: name });
     const lower = name.toLowerCase();
     // Plate branch first: "Plate Semifinal"/"Plate Quarterfinal" contain the
     // substring "final", so they must be tested before the main-bracket
@@ -137,6 +175,115 @@ export function isLiveStatus(status: string): boolean {
 export function isFinishedStatus(status: string): boolean {
     return status === 'completed' || status === 'walkover';
 }
+
+/**
+ * A finished game with level scores and no winner. Only an Americano game ends this way: its
+ * winner is derived from the points, and equal points name nobody. Every other format requires a
+ * winner, so no valid regular match satisfies this.
+ */
+export function isTieMatch(match: PublicMatch): boolean {
+    return match.status === 'completed'
+        && match.winner_team == null
+        && match.sets.length > 0
+        && match.sets.every(s => s.team_a_score === s.team_b_score);
+}
+
+/** How a round reads on the venue screen. Whether a not-yet-played round is the one called next is the caller's call. */
+export type RoundState = 'done' | 'live' | 'upcoming';
+
+/** On court now if any game is live; done once every game is finished; otherwise still to come. */
+export function roundStateOf(matches: PublicMatch[]): RoundState {
+    if (matches.some(m => isLiveStatus(m.status))) return 'live';
+    if (matches.length > 0 && matches.every(m => isFinishedStatus(m.status))) return 'done';
+    return 'upcoming';
+}
+
+/**
+ * The one round the hall is waiting for, by index, or -1. With a game live: the first round after
+ * the last live one that is not done. With nothing live: the first round not done. Only one round
+ * is ever called next — the lane card's rule.
+ */
+export function upNextRoundIndex(states: RoundState[]): number {
+    for (let i = states.lastIndexOf('live') + 1; i < states.length; i++) {
+        if (states[i] !== 'done') return i;
+    }
+    return -1;
+}
+
+/**
+ * The word a round's state reads on the venue screen. `LanesView`'s round axis and
+ * `AmericanoRoundsBoard`'s round cards each kept their own copy of this live/done/next mapping
+ * (2026-10-04 review, Minor 4) — same keys, same defaults, so one function now serves both.
+ * `upcoming` has no word; neither view ever showed one for it.
+ */
+export function roundStateLabel(state: RoundState | 'next', t: TFunction): string {
+    switch (state) {
+        case 'live': return t('public_bracket.round_live', 'In progress');
+        case 'next': return t('public_bracket.up_next', 'Up next');
+        case 'done': return t('public_bracket.round_done', 'Finished');
+        default: return '';
+    }
+}
+
+/** How one side's score reads. */
+export type ScoreTone = 'live' | 'winner' | 'tie' | 'loser' | 'neutral';
+
+/**
+ * The one decision behind every score colour on the page. With `set`, a per-set score: the
+ * winning side's lost set reads as a loser's (the lane card colours each set on its own).
+ */
+export function scoreTone(match: PublicMatch, side: 'team_a' | 'team_b', set?: SetScore): ScoreTone {
+    if (isLiveStatus(match.status)) return 'live';
+    if (isTieMatch(match)) return 'tie';
+    const winner = match.winner_team ?? null;
+    if (winner === null) return 'neutral';
+    if (winner !== side) return 'loser';
+    if (set) {
+        const mine = side === 'team_a' ? set.team_a_score : set.team_b_score;
+        const other = side === 'team_a' ? set.team_b_score : set.team_a_score;
+        if (mine <= other) return 'loser';
+    }
+    return 'winner';
+}
+
+/**
+ * The colour of each tone. A tie is in the regular text colour on both sides: the faint loser
+ * colour on both reads as "both lost" from across a hall. A card that marks a live game with its
+ * own frame (MatchCard) reads `live` as `neutral`.
+ */
+export const SCORE_TONE_CLASS: Record<ScoreTone, string> = {
+    live: 'text-(--pb-live)',
+    winner: 'text-(--pb-highlight)',
+    tie: 'text-(--pb-text)',
+    loser: 'text-(--pb-text-faint)',
+    neutral: 'text-(--pb-text-faint)',
+};
+
+/** How a side's NAME reads — the sibling of `ScoreTone`, but only three states: a name is never
+ *  painted "live" or "tie" the way a score is, so this is never routed through `scoreTone`. */
+export type NameTone = 'winner' | 'loser' | 'neutral';
+
+/**
+ * A side's name weight-and-colour, from the match's recorded winner alone. `LaneMatchCard` and
+ * `GameLine` each repeated this exact winner/loser/neutral ternary (2026-10-04 review, Minor 5) —
+ * checked byte-identical in every state before unifying. Built from `winner_team` directly, not
+ * `scoreTone`: `scoreTone` reads a live or tied game as its own tone, and if the API ever sent a
+ * `winner_team` on a still-live match, routing through it would flip that name's weight — a
+ * silent visible change on LaneMatchCard, a regular (non-Americano) view.
+ */
+export function nameTone(match: PublicMatch, side: 'team_a' | 'team_b'): NameTone {
+    const winner = match.winner_team ?? null;
+    if (winner === side) return 'winner';
+    if (winner !== null) return 'loser';
+    return 'neutral';
+}
+
+/** The class each `NameTone` paints, identical in `LaneMatchCard` and `GameLine`. */
+export const NAME_TONE_CLASS: Record<NameTone, string> = {
+    winner: 'font-extrabold text-(--pb-text)',
+    loser: 'font-semibold text-(--pb-text-muted)',
+    neutral: 'font-bold text-(--pb-text)',
+};
 
 export function collectMatches(bracket: PublicBracketData): PublicMatch[] {
     return [
@@ -194,6 +341,31 @@ export function groupMatchesByRound(matches: PublicMatch[]): { rounds: MatchRoun
     return { rounds, hasRealRounds: true };
 }
 
+export type CourtTier = 'few' | 'several' | 'many';
+
+/**
+ * How many courts a round or the final spreads over, in the TV's three layouts: up to 4, 5–8,
+ * 9–16 (the API's maximum). The rounds board and the final both lay out by it (2026-10-04 review)
+ * — one rule instead of each keeping its own `<= 4` / `<= 8` ternary, which let a breakpoint
+ * changed in one view leave the other's untouched.
+ */
+export function courtTier(courts: number): CourtTier {
+    if (courts <= 4) return 'few';
+    if (courts <= 8) return 'several';
+    return 'many';
+}
+
+/** A window's start, kept inside `[0, length - max]` — the one clamp both window flavours share. */
+function clampWindowStart(start: number, length: number, max: number): number {
+    return Math.min(Math.max(start, 0), length - max);
+}
+
+/** The `max`-long slice of `roundNumbers` starting at `start`, or the whole list if it already fits. */
+function sliceWindow(roundNumbers: number[], start: number, max: number): number[] {
+    if (roundNumbers.length <= max) return roundNumbers;
+    return roundNumbers.slice(start, start + max);
+}
+
 /**
  * The slice of rounds a lane shows when there are more than `max`.
  *
@@ -202,13 +374,34 @@ export function groupMatchesByRound(matches: PublicMatch[]): { rounds: MatchRoun
  * one nobody may lose, and a slice needs no layout measurement to stay correct.
  */
 export function visibleRoundWindow(roundNumbers: number[], activeRound: number, max = 4): number[] {
-    if (roundNumbers.length <= max) return roundNumbers;
     const activeIdx = Math.max(roundNumbers.indexOf(activeRound), 0);
-    const start = Math.min(
-        Math.max(0, activeIdx - Math.floor((max - 1) / 2)),
-        roundNumbers.length - max,
-    );
-    return roundNumbers.slice(start, start + max);
+    const start = clampWindowStart(activeIdx - Math.floor((max - 1) / 2), roundNumbers.length, max);
+    return sliceWindow(roundNumbers, start, max);
+}
+
+/**
+ * The window once a round is called "next" (`next`, an index into `roundNumbers`/`states`): the
+ * `max`-long span starting at the first live round — or, with nothing live, at `next` itself —
+ * then clamped to the list exactly like `visibleRoundWindow`'s own clamp. The live rounds win over
+ * "next": the module's rule is that a live round is the one nobody may lose (see the comment above
+ * `visibleRoundWindow`), so the window never starts later than the first live round, whatever that
+ * costs `next`.
+ *
+ * This reproduces the window you'd get by pulling left towards `next` in every case where the live
+ * rounds plus `next` all fit inside `max` — the two rules agree exactly when
+ * `next - firstLive + 1 <= max`. Past that point they diverge: `next` drops off the right edge
+ * rather than ever bumping a live round off the left. (If there are MORE live rounds than `max`
+ * itself, only the earliest `max` of them show; a later live round and `next` both drop, because
+ * nothing here picks one live round over another — a shape no real evening takes outside a test.)
+ *
+ * Pass `next = -1` (nothing is called next — everything's played, or the evening's last round is
+ * the one still live) and use `visibleRoundWindow` instead: this function only knows how to centre
+ * a NEXT round, not a live-but-not-next one.
+ */
+export function nextRoundWindow(roundNumbers: number[], states: RoundState[], next: number, max = 4): number[] {
+    const firstLive = states.indexOf('live');
+    const start = clampWindowStart(firstLive === -1 ? next : firstLive, roundNumbers.length, max);
+    return sliceWindow(roundNumbers, start, max);
 }
 
 /** The round the day is on: the first with anything unfinished, else the last. */

@@ -35,6 +35,37 @@ describe('axios client request interceptor', () => {
     expect(config.headers['X-Rally-Client']).toBe('web')
     expect(config.headers.Authorization).toBeUndefined()
   })
+
+  it("sends the site's language as Accept-Language, not the browser's", async () => {
+    const { default: client } = await import('./client')
+    const { default: i18n } = await import('@/i18n')
+    // @ts-expect-error — private but stable.
+    const handler = client.interceptors.request.handlers[0].fulfilled
+
+    await i18n.changeLanguage('en')
+    expect((await handler({ headers: {} as any })).headers['Accept-Language']).toBe('en')
+
+    await i18n.changeLanguage('he')
+    expect((await handler({ headers: {} as any })).headers['Accept-Language']).toBe('he')
+  })
+
+  it('also sends it on unauthenticated (skip-auth) requests', async () => {
+    const { default: client } = await import('./client')
+    // @ts-expect-error — private but stable.
+    const handler = client.interceptors.request.handlers[0].fulfilled
+    const config = await handler({ headers: { 'X-Skip-Auth': '1' } as any })
+
+    expect(config.headers['Accept-Language']).toBeTruthy()
+  })
+
+  it('leaves an explicit per-call Accept-Language alone', async () => {
+    const { default: client } = await import('./client')
+    // @ts-expect-error — private but stable.
+    const handler = client.interceptors.request.handlers[0].fulfilled
+    const config = await handler({ headers: { 'Accept-Language': 'en' } as any })
+
+    expect(config.headers['Accept-Language']).toBe('en')
+  })
 })
 
 describe('axios client response interceptor — profile-edit redirect bridge', () => {

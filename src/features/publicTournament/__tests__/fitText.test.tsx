@@ -1,3 +1,4 @@
+import { Profiler } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 
@@ -51,6 +52,121 @@ describe('FitText', () => {
         Object.defineProperty(el, 'scrollWidth', { configurable: true, get: () => 0 });
         rerender(<FitText text="ok" maxPx={15} minPx={9} />);
         expect(screen.getByTitle('ok').style.fontSize).toBe('15px');
+    });
+});
+
+describe('FitText never cuts a name (owner 2026-10-03)', () => {
+    it('with wrapAtFloor, a line still too wide at minPx wraps instead of clipping', () => {
+        const { rerender } = render(<FitText text="first" maxPx={15} minPx={9} wrapAtFloor />);
+        mockMeasure(screen.getByTitle('first'), 400, 100, 15);
+        rerender(<FitText text="an extremely long name" maxPx={15} minPx={9} wrapAtFloor />);
+        const el = screen.getByTitle('an extremely long name');
+        expect(el.style.fontSize).toBe('9px');
+        expect(el.className).toContain('whitespace-normal');
+        expect(el.className).not.toContain('overflow-hidden');
+    });
+
+    it('without it, the floor still clips (every other caller is unchanged)', () => {
+        const { rerender } = render(<FitText text="first" maxPx={15} minPx={9} />);
+        mockMeasure(screen.getByTitle('first'), 400, 100, 15);
+        rerender(<FitText text="an extremely long name" maxPx={15} minPx={9} />);
+        const el = screen.getByTitle('an extremely long name');
+        expect(el.className).toContain('whitespace-nowrap');
+        expect(el.className).toContain('overflow-hidden');
+    });
+
+    it('a wrapped line goes back to one line when its text changes', () => {
+        const { rerender } = render(<FitText text="first" maxPx={15} minPx={9} wrapAtFloor />);
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 400, 100, 15);
+        rerender(<FitText text="an extremely long name" maxPx={15} minPx={9} wrapAtFloor />);
+        expect(el.className).toContain('whitespace-normal');
+        Object.defineProperty(el, 'scrollWidth', { configurable: true, get: () => 0 });
+        rerender(<FitText text="ok" maxPx={15} minPx={9} wrapAtFloor />);
+        expect(screen.getByTitle('ok').className).toContain('whitespace-nowrap');
+        expect(screen.getByTitle('ok').style.fontSize).toBe('15px');
+    });
+
+    it('refits when a parent narrows its box in a re-render, with no ResizeObserver to say so', () => {
+        // jsdom has no ResizeObserver here — the court rail's case: its tiles switch to a fixed
+        // width in the same render that re-renders the line, and a background tab may never
+        // deliver an observer callback.
+        const { rerender } = render(<FitText text="a longer name" maxPx={15} minPx={9} />);
+        const el = screen.getByTitle('a longer name');
+        mockMeasure(el, 120, 200, 15);
+        rerender(<FitText text="a longer name" maxPx={15} minPx={9} />);
+        expect(el.style.fontSize).toBe('15px');
+        Object.defineProperty(el, 'clientWidth', { configurable: true, get: () => 100 });
+        rerender(<FitText text="a longer name" maxPx={15} minPx={9} />);
+        expect(el.style.fontSize).toBe('12px');
+    });
+
+    it('shows plain spaces in the tooltip when the caller kept names whole', () => {
+        render(<FitText text={'Dan\u00A0Levi / Gal\u00A0Cohen'} maxPx={15} minPx={9} />);
+        expect(screen.getByTitle('Dan Levi / Gal Cohen')).toBeInTheDocument();
+    });
+});
+
+describe('FitText tooltip', () => {
+    it('reads as typed: plain hyphens and no word joiners from a name kept whole', () => {
+        render(<FitText text={'Dan\u00A0Ben\u2011Ami / X\u05BE\u2060Y'} maxPx={15} minPx={9} />);
+        expect(screen.getByTitle('Dan Ben-Ami / X\u05BEY')).toBeInTheDocument();
+    });
+});
+
+describe('FitText fits a new text in one pass (W-e)', () => {
+    // The 2026-10-04 review's repro: LeaderBar and Podium reuse one FitText instance, so a new
+    // leader's name arrives as a text change in place, not a fresh mount.
+    it('old text sat exactly at the floor unwrapped; new, longer text fits from maxPx down and wraps at the floor', () => {
+        // Old text: 220px at 20px in a 110px box -> floor(20*110/220) = 10 = minPx, 110px at 10px fits exactly.
+        const { rerender } = render(<FitText text="first" maxPx={20} minPx={10} wrapAtFloor />);
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 220, 110, 20);
+        rerender(<FitText text="old leader name" maxPx={20} minPx={10} wrapAtFloor />);
+        expect(el.style.fontSize).toBe('10px');
+        expect(el.className).toContain('whitespace-nowrap');
+        // New leader with a longer name: 300px at 20px -> 150px at the 10px floor, still too wide -> wraps AT 10px.
+        mockMeasure(el, 300, 110, 20);
+        rerender(<FitText text="a new and much longer leader name" maxPx={20} minPx={10} wrapAtFloor />);
+        expect(el.style.fontSize).toBe('10px');
+        expect(el.className).toContain('whitespace-normal');
+    });
+
+    it('commits at most twice per text change, and a poll with the same text adds no commit of its own', () => {
+        let commits = 0;
+        const count = (): void => { commits += 1; };
+        const tree = (text: string): React.ReactElement => (
+            <Profiler id="fit" onRender={count}>
+                <FitText text={text} maxPx={20} minPx={10} wrapAtFloor />
+            </Profiler>
+        );
+        const { rerender } = render(tree('first'));
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 300, 110, 20);
+        commits = 0;
+        rerender(tree('a new and much longer leader name'));
+        expect(el.style.fontSize).toBe('10px');
+        expect(commits).toBeLessThanOrEqual(2);
+        commits = 0;
+        rerender(tree('a new and much longer leader name'));
+        expect(commits).toBe(1);                // the parent's own re-render, nothing on top of it
+        expect(el.style.fontSize).toBe('10px');
+    });
+
+    it('a new cap restarts the fit from it, in the same pass', () => {
+        const { rerender } = render(<FitText text="a longer name" maxPx={15} minPx={9} />);
+        const el = screen.getByTitle('a longer name');
+        mockMeasure(el, 120, 100, 15);
+        rerender(<FitText text="a longer name" maxPx={15} minPx={9} />);
+        expect(el.style.fontSize).toBe('12px');
+        // A bigger cap (a board switching size tier): 160px at 20px in the 100px box -> 12px again.
+        mockMeasure(el, 160, 100, 20);
+        rerender(<FitText text="a longer name" maxPx={20} minPx={9} />);
+        expect(el.style.fontSize).toBe('12px');
+        // A cap the text fits at outright.
+        mockMeasure(el, 40, 100, 5);
+        rerender(<FitText text="a longer name" maxPx={5} minPx={4} />);
+        expect(el.style.fontSize).toBe('5px');
     });
 });
 
@@ -177,5 +293,119 @@ describe('FitText container resizing', () => {
         expect(ro.disconnected).toBe(false);
         unmount();
         expect(ro.disconnected).toBe(true);
+    });
+});
+
+describe('FitText (fix): stays correct across two observer callbacks in the same batch', () => {
+    beforeEach(() => {
+        StubResizeObserver.instances = [];
+        vi.stubGlobal('ResizeObserver', StubResizeObserver);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function latestObserver(): StubResizeObserver {
+        const ro = StubResizeObserver.instances[StubResizeObserver.instances.length - 1];
+        if (!ro) throw new Error('FitText never constructed a ResizeObserver');
+        return ro;
+    }
+
+    it('a grow callback then a narrow callback in one batch must not strand the DOM at the grown size', () => {
+        // The 2026-10-05 review's repro: `latest.current` was only refreshed by the per-render
+        // effect, so a second same-batch callback reads the fit from BEFORE the first callback's
+        // write. Here the first callback (grow to 1000) writes 15px straight to the element; the
+        // second (narrow to 500) reads a stale `fit.size` of 9, takes the read-only fast path
+        // because the (actual, unread-by-it) DOM still shows 15px which fits a 500px box, and
+        // commits 9 without ever writing it — so state says 9 while the DOM still says 15.
+        const { rerender } = render(<FitText text="first" maxPx={15} minPx={9} />);
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 400, 100, 15);
+        rerender(<FitText text="long" maxPx={15} minPx={9} />);
+        act(() => { latestObserver().callback([{ contentRect: { width: 100 } }]); });
+        expect(el.style.fontSize).toBe('9px');
+
+        act(() => {
+            setBoxWidth(el, 1000);
+            latestObserver().callback([{ contentRect: { width: 1000 } }]);
+            setBoxWidth(el, 500);
+            latestObserver().callback([{ contentRect: { width: 500 } }]);
+        });
+
+        // No observer callback here — a later parent re-render arriving on its own, same box as
+        // the one that forced 9px originally. The regression's real symptom: a name frozen at
+        // the grown size, over-clipped, because the floor guard trusted the (wrong) state instead
+        // of the (correct) DOM.
+        setBoxWidth(el, 100);
+        rerender(<FitText text="long" maxPx={15} minPx={9} />);
+        expect(el.style.fontSize).toBe('9px');
+    });
+
+    it('widening the box while wrapped at the floor un-wraps and grows back', () => {
+        const { rerender } = render(<FitText text="first" maxPx={15} minPx={9} wrapAtFloor />);
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 400, 100, 15);
+        rerender(<FitText text="long" maxPx={15} minPx={9} wrapAtFloor />);
+        act(() => { latestObserver().callback([{ contentRect: { width: 100 } }]); });
+        expect(el.style.fontSize).toBe('9px');
+        expect(el.className).toContain('whitespace-normal');
+
+        setBoxWidth(el, 500);
+        act(() => { latestObserver().callback([{ contentRect: { width: 500 } }]); });
+        expect(el.style.fontSize).toBe('15px');
+        expect(el.className).toContain('whitespace-nowrap');
+    });
+});
+
+describe('FitText restarts on a minPx-only change (the spec requires it)', () => {
+    it('a minPx-only change restarts the fit from maxPx, in the same pass', () => {
+        const { rerender } = render(<FitText text="first" maxPx={15} minPx={9} />);
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 400, 100, 15);
+        rerender(<FitText text="long" maxPx={15} minPx={9} />);
+        expect(el.style.fontSize).toBe('9px');
+        rerender(<FitText text="long" maxPx={15} minPx={4} />);
+        expect(el.style.fontSize).toBe('4px');
+        rerender(<FitText text="long" maxPx={15} minPx={12} />);
+        expect(el.style.fontSize).toBe('12px');
+    });
+});
+
+describe('FitText refits when a webfont finishes loading', () => {
+    let addEventListener: ReturnType<typeof vi.fn>;
+    let removeEventListener: ReturnType<typeof vi.fn>;
+    let fire: (() => void) | undefined;
+
+    beforeEach(() => {
+        fire = undefined;
+        addEventListener = vi.fn((type: string, fn: () => void) => {
+            if (type === 'loadingdone') fire = fn;
+        });
+        removeEventListener = vi.fn();
+        Object.defineProperty(document, 'fonts', {
+            configurable: true,
+            value: { addEventListener, removeEventListener },
+        });
+    });
+
+    afterEach(() => {
+        delete (document as { fonts?: unknown }).fonts;
+    });
+
+    it('re-measures against the real face once document.fonts reports loadingdone', () => {
+        const { rerender, unmount } = render(<FitText text="first" maxPx={15} minPx={9} />);
+        const el = screen.getByTitle('first');
+        mockMeasure(el, 90, 100, 15);
+        rerender(<FitText text="first" maxPx={15} minPx={9} />);
+        expect(el.style.fontSize).toBe('15px');
+
+        mockMeasure(el, 120, 100, 15);
+        act(() => { fire?.(); });
+        expect(el.style.fontSize).toBe('12px');
+
+        const addedFn = addEventListener.mock.calls[0]?.[1];
+        unmount();
+        expect(removeEventListener).toHaveBeenCalledWith('loadingdone', addedFn);
     });
 });

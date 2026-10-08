@@ -477,6 +477,82 @@ function liveTr(over: Record<string, unknown> = {}) {
   })
 }
 
+/** A tournament that finished the evening, with a live-results token. */
+function finishedTr(over: Record<string, unknown> = {}) {
+  const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString()
+  return tr({
+    start_date: hours(-30),
+    end_date: hours(-25),
+    registration_deadline: hours(-48),
+    share_token: 'abc123',
+    status: 'completed',
+    ...over,
+  })
+}
+
+describe('TournamentDetailPage final results (owner: "keep the link then")', () => {
+  it('keeps the results link once the tournament has completed, with results wording', () => {
+    mockUseTournament.mockReturnValue(finishedTr())
+    renderPage()
+    const link = screen.getByTestId('live-results-link')
+    expect(link).toHaveAttribute('href', '/live/abc123')
+    expect(screen.getByText(i18n.t('tournament.finalResultsTitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.liveResultsTitle'))).toBeNull()
+    expect(screen.queryByText(i18n.t('tournament.liveBadge'))).toBeNull()
+    // Calm styling, never the live red treatment.
+    expect(link).toHaveClass('border-rally-accent/40', 'bg-rally-accent/10')
+    expect(link).not.toHaveClass('border-rally-error/50', 'bg-rally-error/10')
+  })
+
+  it('shows the sticky results CTA to a registered player while registration is still open', () => {
+    // Isolates the `myReg` arm of (myReg || !open): open registration, so the
+    // CTA can only be showing because the player is registered.
+    mockUseTournament.mockReturnValue(
+      finishedTr({
+        registration_deadline: new Date(Date.now() + 48 * 3_600_000).toISOString(),
+        my_registration: { id: 'r-1', status: 'registered', payment_status: 'completed' },
+      }),
+    )
+    renderPage()
+    const cta = screen.getByTestId('live-results-sticky-link')
+    expect(cta).toHaveAttribute('href', '/live/abc123')
+    expect(cta).toHaveClass('bg-rally-accent')
+    expect(cta).not.toHaveClass('bg-rally-error')
+  })
+
+  it('shows the sticky results CTA to a non-registered viewer once registration is closed', () => {
+    // Isolates the `!open` arm: no registration at all, closed deadline (finishedTr's
+    // default) — the CTA can only be showing because registration closed.
+    mockUseTournament.mockReturnValue(finishedTr())
+    renderPage()
+    expect(screen.getByTestId('live-results-sticky-link')).toHaveAttribute(
+      'href',
+      '/live/abc123',
+    )
+  })
+
+  it('shows no results link for a cancelled tournament', () => {
+    mockUseTournament.mockReturnValue(finishedTr({ status: 'cancelled' }))
+    renderPage()
+    expect(screen.queryByTestId('live-results-link')).toBeNull()
+    expect(screen.queryByTestId('live-results-sticky-link')).toBeNull()
+  })
+
+  it('leaves a live tournament exactly as before — red styling, live wording', () => {
+    mockUseTournament.mockReturnValue(liveTr())
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.liveResultsTitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.finalResultsTitle'))).toBeNull()
+    // Red styling, pinned — a swapped ternary must fail this, not just the copy.
+    const link = screen.getByTestId('live-results-link')
+    expect(link).toHaveClass('border-rally-error/50', 'bg-rally-error/10')
+    expect(link).not.toHaveClass('border-rally-accent/40', 'bg-rally-accent/10')
+    const cta = screen.getByTestId('live-results-sticky-link')
+    expect(cta).toHaveClass('bg-rally-error')
+    expect(cta).not.toHaveClass('bg-rally-accent')
+  })
+})
+
 describe('TournamentDetailPage live results', () => {
   it('links to the live screen in a new tab while the tournament runs', () => {
     mockUseTournament.mockReturnValue(liveTr())
@@ -1051,17 +1127,116 @@ describe('TournamentDetailPage — residency fee waiver & document upload', () =
     expect(document.getElementById('tournament-evidence-2')).toBeInTheDocument()
   })
 
-  it('blocks registration and displays error if resident selected but no files uploaded', async () => {
+  it('blocks registration and displays error if document is required but no files uploaded', async () => {
     mockUseTournament.mockReturnValue(
       tr({ format: 'singles', is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
     )
     renderPage()
     fireEvent.click(screen.getByTestId('waiver-option-1'))
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.ctaMissingDocument') }))
     await waitFor(() => {
-      expect(screen.getByText(i18n.t('corporate.reg.evidenceRequired'))).toBeInTheDocument()
+      expect(screen.getByText(i18n.t('tournament.evidenceRequired'))).toBeInTheDocument()
     })
     expect(mockRegisterTournament).not.toHaveBeenCalled()
+  })
+
+  it('Scenario 2: document required without fee waiver blocks without doc and registers + uploads evidence', async () => {
+    const file = new File(['proof'], 'medical_cert.pdf', { type: 'application/pdf' })
+    mockUseTournament.mockReturnValue(
+      tr({
+        format: 'singles',
+        is_document_required: true,
+        fee_waiver_type: null,
+        entry_fee: 150,
+        refetch: vi.fn(),
+      }),
+    )
+    mockRegisterTournament.mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'reg-doc-only-1',
+        tournament_id: 't-1',
+        status: 'registered',
+        amount_to_pay: 150,
+      } as any,
+    } as any)
+
+    renderPage()
+    // No waiver pills exist
+    expect(screen.queryByTestId('waiver-option-0')).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.t('tournament.documentRequiredTitle'))).toBeInTheDocument()
+
+    // Try submit without file -> blocked
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.ctaMissingDocument') }))
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t('tournament.evidenceRequired'))).toBeInTheDocument()
+    })
+    expect(mockRegisterTournament).not.toHaveBeenCalled()
+
+    // Attach file -> submit succeeds without waiver payload, and uploads file
+    const input = document.getElementById('tournament-evidence-1') as HTMLInputElement
+    expect(input).toBeInTheDocument()
+    fireEvent.change(input, { target: { files: [file] } })
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+    await waitFor(() => {
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.not.objectContaining({ fee_waiver: expect.anything() }),
+      )
+    })
+    await waitFor(() => {
+      expect(mockUploadEvidence).toHaveBeenCalledWith('reg-doc-only-1', 1, [file])
+    })
+  })
+
+  it('Scenario 3: fee waiver added without document requirement applies discount and registers without uploading files', async () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        format: 'singles',
+        is_document_required: false,
+        fee_waiver_type: 'club_member',
+        entry_fee: 100,
+        refetch: vi.fn(),
+      }),
+    )
+    mockRegisterTournament.mockResolvedValueOnce({
+      success: true,
+      data: {
+        id: 'reg-waiver-nodoc-1',
+        tournament_id: 't-1',
+        status: 'registered',
+        amount_to_pay: 0,
+      } as any,
+    } as any)
+    mockConfirmZeroPayment.mockResolvedValueOnce({ success: true, data: {} } as any)
+
+    renderPage()
+    // Dynamic title is rendered
+    expect(screen.getByText('Club Member Discount')).toBeInTheDocument()
+    // No evidence pickers rendered
+    expect(document.getElementById('tournament-evidence-1')).not.toBeInTheDocument()
+
+    // Select waiver
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    expect(screen.getByText('₪0')).toBeInTheDocument()
+
+    // Register now - should NOT be blocked by evidence validation!
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }))
+
+    await waitFor(() => {
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.objectContaining({
+          fee_waiver: {
+            type: 'club_member',
+            resident_count: 1,
+          },
+        }),
+      )
+    })
+    // No evidence upload attempted
+    expect(mockUploadEvidence).not.toHaveBeenCalled()
   })
 
   it('registers successfully with fee waiver and uploads evidence files', async () => {
@@ -1144,6 +1319,118 @@ describe('TournamentDetailPage entry fee label', () => {
     renderPage()
     expect(screen.getByText(i18n.t('tournament.tournamentsEntryFee'))).toBeInTheDocument()
     expect(screen.queryByText(i18n.t('tournament.tournamentsEntryFeePlayer'))).not.toBeInTheDocument()
+  })
+})
+
+describe('TournamentDetailPage settled payment breakdown', () => {
+  it('shows entry fee, coupon discount and total paid once the payment is completed', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          payment_status: 'completed',
+          // rally-api's shape (get_my_payment): gross = fee − coupon, base = gross − service fee.
+          my_payment: {
+            base_amount: 135,
+            fee_portion: 0,
+            gross_amount: 135,
+            discount_amount: 15,
+            credits_applied: 0,
+            card_charged: 135,
+            auto_charged_amount: 0,
+            payment_status: 'completed',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.getByText(i18n.t('coupon.entryFee'))).toBeInTheDocument()
+    // The sticky CTA footer also shows the base entry fee — ₪150 appears twice.
+    expect(screen.getAllByText('₪150').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(i18n.t('coupon.discount'))).toBeInTheDocument()
+    expect(screen.getByText('-₪15')).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('coupon.totalPaid'))).toBeInTheDocument()
+    expect(screen.getByText('₪135')).toBeInTheDocument()
+  })
+
+  it('also shows credits applied when both credits and a coupon were used', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          payment_status: 'completed',
+          // rally-api's shape: credits pay part of the gross, they are not taken out of it.
+          my_payment: {
+            base_amount: 135,
+            fee_portion: 0,
+            gross_amount: 135,
+            discount_amount: 15,
+            credits_applied: 35,
+            card_charged: 100,
+            auto_charged_amount: 0,
+            payment_status: 'completed',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.getByText(i18n.t('coupon.creditsApplied'))).toBeInTheDocument()
+    expect(screen.getByText('-₪35')).toBeInTheDocument()
+    // 150 − 35 − 15: the rows add up to what reached the card.
+    expect(screen.getByText('₪100')).toBeInTheDocument()
+  })
+
+  it('stays hidden while payment is still pending, even if a discount is already known', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'payment_pending',
+          my_payment: {
+            base_amount: 150,
+            fee_portion: 0,
+            gross_amount: 135,
+            discount_amount: 15,
+            credits_applied: 0,
+            card_charged: 0,
+            auto_charged_amount: 0,
+            payment_status: 'pending',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.queryByText(i18n.t('coupon.totalPaid'))).not.toBeInTheDocument()
+  })
+
+  it('stays hidden when nothing beyond the plain entry fee was applied', () => {
+    mockUseTournament.mockReturnValue(
+      tr({
+        my_registration: {
+          id: 'my-reg-1',
+          status: 'registered',
+          payment_status: 'completed',
+          my_payment: {
+            base_amount: 150,
+            fee_portion: 0,
+            gross_amount: 150,
+            discount_amount: 0,
+            credits_applied: 0,
+            card_charged: 150,
+            auto_charged_amount: 0,
+            payment_status: 'completed',
+            refund: null,
+          },
+        },
+      }),
+    )
+    renderPage()
+    expect(screen.queryByText(i18n.t('coupon.totalPaid'))).not.toBeInTheDocument()
   })
 })
 

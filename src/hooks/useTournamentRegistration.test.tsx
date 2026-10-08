@@ -222,6 +222,51 @@ describe('useTournamentRegistration', () => {
     expect(lastPath).toBe('/tournaments/t-1?')
   })
 
+  // A coupon applied before registering (the /join page). Not part of the register
+  // call — rally-api applies it when payment starts — so the hook carries it.
+  describe('with a coupon applied before registering', () => {
+    const VIP = { id: 'c-1', code: 'PADEL TIME VIP CLUB', coversAll: true }
+
+    it('covering the whole amount: confirms with the coupon, no card screen', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 300 } } as any)
+      mockZero.mockResolvedValue({ success: true, data: {} } as any)
+      const { result } = renderHook(() => useTournamentRegistration(T, gate()), { wrapper })
+      await act(() => result.current.register(PARTNER as any, undefined, undefined, VIP))
+      expect(mockZero).toHaveBeenCalledWith('r-1', 'c-1')
+      expect(lastPath).toMatch(/^\/payments\/confirming\?/)
+    })
+
+    it('refused by the server (no longer applies): falls through to the payment page with the code', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 300 } } as any)
+      mockZero.mockRejectedValue({ status: 400, message: 'Coupon is not valid or applicable' })
+      const { result } = renderHook(() => useTournamentRegistration(T, gate()), { wrapper })
+      await act(() => result.current.register(PARTNER as any, undefined, undefined, VIP))
+      expect(lastPath).toMatch(/^\/payment-method\?/)
+      expect(new URLSearchParams(lastPath.split('?')[1]).get('coupon')).toBe('PADEL TIME VIP CLUB')
+      expect(result.current.registerError).toBeNull()
+    })
+
+    it('covering part of it: the payment page, carrying the code — nothing confirmed here', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 300 } } as any)
+      const { result } = renderHook(() => useTournamentRegistration(T, gate()), { wrapper })
+      await act(() => result.current.register(PARTNER as any, undefined, undefined, { ...VIP, coversAll: false }))
+      expect(mockZero).not.toHaveBeenCalled()
+      const sp = new URLSearchParams(lastPath.split('?')[1])
+      expect(lastPath).toMatch(/^\/payment-method\?/)
+      expect(sp.get('coupon')).toBe('PADEL TIME VIP CLUB')
+      expect(sp.get('amount')).toBe('300')
+    })
+
+    it('already free without it (a residency waiver): the coupon is never sent, so never spent', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-0', amount_to_pay: 0 } } as any)
+      mockZero.mockResolvedValue({ success: true, data: {} } as any)
+      const { result } = renderHook(() => useTournamentRegistration(T, gate()), { wrapper })
+      await act(() => result.current.register(PARTNER as any, undefined, undefined, VIP))
+      expect(mockZero).toHaveBeenCalledTimes(1)
+      expect(mockZero).toHaveBeenCalledWith('r-0')
+    })
+  })
+
   it('waits for an async onRegistered before navigating', async () => {
     mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150 } } as any)
     let resolveOnRegistered: () => void = () => {}

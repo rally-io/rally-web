@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
-  isRegistrationOpen, isTournamentLive, liveResultsPath, parseSkillLevel,
+  isRegistrationOpen, isTournamentLive, hasFinalResults, liveResultsPath, parseSkillLevel,
   formatTournamentSkillRange,
   getSkillLevelName, formatTournamentDateRange, formatCurrency,
   registrationSummaryKey,
@@ -66,6 +66,42 @@ describe('isTournamentLive', () => {
   })
   it('is not live on unparseable dates', () => {
     expect(isTournamentLive({ start_date: '', end_date: '' })).toBe(false)
+  })
+})
+
+describe('hasFinalResults', () => {
+  it('completed always has final results', () => {
+    expect(hasFinalResults({
+      start_date: hoursFromNow(-30), end_date: hoursFromNow(-25), status: 'completed',
+    })).toBe(true)
+  })
+  it('in_progress past the end date counts — a manager may never score the last game', () => {
+    expect(hasFinalResults({
+      start_date: hoursFromNow(-30), end_date: hoursFromNow(-1), status: 'in_progress',
+    })).toBe(true)
+  })
+  it('in_progress during the event is not final yet', () => {
+    expect(hasFinalResults({
+      start_date: hoursFromNow(-1), end_date: hoursFromNow(3), status: 'in_progress',
+    })).toBe(false)
+  })
+  it('cancelled or rejected never has final results', () => {
+    for (const status of ['cancelled', 'rejected']) {
+      expect(hasFinalResults({
+        start_date: hoursFromNow(-30), end_date: hoursFromNow(-25), status,
+      })).toBe(false)
+    }
+  })
+  it('not final before the tournament starts', () => {
+    expect(hasFinalResults({
+      start_date: hoursFromNow(2), end_date: hoursFromNow(4),
+    })).toBe(false)
+    // Bracket published early (isTournamentLive's own gotcha): in_progress with a
+    // future window is not final either — the in_progress branch gates on
+    // end < now, not on start, so this exercises that branch directly.
+    expect(hasFinalResults({
+      start_date: hoursFromNow(2), end_date: hoursFromNow(4), status: 'in_progress',
+    })).toBe(false)
   })
 })
 

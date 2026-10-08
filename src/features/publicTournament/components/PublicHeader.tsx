@@ -46,7 +46,9 @@ export function PublicHeader({ tournamentName, isReconnecting, updatedAt, theme,
                     <ThemeSwitcher theme={theme} onCycle={onCycleTheme} />
                     {clubLogoUrl && (
                         <div className="flex flex-col items-center gap-1">
-                            <img src={clubLogoUrl} alt={clubName ?? 'Club'} className="h-18 w-auto rounded-xl" />
+                            {/* The Rally logo's h-14, not taller: at h-18 the caption below ran ~12 px past the
+                                header's bottom and painted over the first round pill on a league board. */}
+                            <img src={clubLogoUrl} alt={clubName ?? 'Club'} className="h-14 w-auto rounded-xl" />
                             {clubName && (
                                 <span className="max-w-[8rem] truncate text-[10px] font-black text-(--pb-text-faint)">
                                     {clubName}

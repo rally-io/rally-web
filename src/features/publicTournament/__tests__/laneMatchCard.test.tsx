@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 import { LaneMatchCard } from '../components/LaneMatchCard';
+import { GameLine } from '../components/GameLine';
 import type { PublicMatch } from '../types';
 
 const player = (id: string, first: string, last: string) => ({
@@ -75,5 +76,44 @@ describe('LaneMatchCard', () => {
         const name = screen.getByText('Gal T / Noa B');
         expect(name.className).not.toContain('truncate');
         expect(name.title).toBe('Gal T / Noa B');
+    });
+});
+
+describe('LaneMatchCard and GameLine share one name-tone rule (review fix 7)', () => {
+    // Both components already compute isWinner/isLoser from `winner_team` alone (never through
+    // `scoreTone`'s live/tie branches), and were byte-identical in every state before this refactor
+    // — no STOP needed. This pins that identity for winner, loser and neutral (live and tie both
+    // fall into neutral in both, since `winner_team` is null for either).
+    const nameClass = (match: PublicMatch, nameText: string): { lane: string; line: string } => {
+        const { container: laneContainer } = render(<LaneMatchCard match={match} isNext={false} />);
+        const { container: lineContainer } = render(<GameLine match={match} size="md" />);
+        const laneName = within(laneContainer).getByText(nameText);
+        const lineName = within(lineContainer).getByText(nameText);
+        return { lane: laneName.className, line: lineName.className };
+    };
+
+    it('winner: extrabold, the regular text colour, in both', () => {
+        const match = base({ status: 'completed', winner_team: 'team_a', sets: [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }] });
+        const { lane, line } = nameClass(match, 'Gal T / Noa B');
+        expect(lane).toBe(line);
+        expect(lane).toContain('font-extrabold');
+        expect(lane).toContain('text-(--pb-text)');
+    });
+
+    it('loser: semibold, the muted text colour, in both', () => {
+        const match = base({ status: 'completed', winner_team: 'team_a', sets: [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }] });
+        const { lane, line } = nameClass(match, 'Adi S / Lian K');
+        expect(lane).toBe(line);
+        expect(lane).toContain('font-semibold');
+        expect(lane).toContain('text-(--pb-text-muted)');
+    });
+
+    it('neutral — no winner yet (scheduled or live): bold, the regular text colour, in both', () => {
+        const match = base({});
+        const { lane, line } = nameClass(match, 'Gal T / Noa B');
+        expect(lane).toBe(line);
+        expect(lane).toContain('font-bold');
+        expect(lane).not.toContain('font-extrabold');
+        expect(lane).toContain('text-(--pb-text)');
     });
 });
