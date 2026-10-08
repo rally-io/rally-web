@@ -65,7 +65,7 @@ export function AmericanoFinalStage({ rounds, standings, compact, roundNote, sec
     const contenders = standings.filter(s => !s.is_disqualified && s.player_1);
     const note = round && roundNote ? roundNote(round) : null;
     // The lowest seat still on the board is the hero, under its own label: with court 1 cancelled,
-    // court 2's game takes the stage as "ranked 5–8".
+    // court 2's game takes the stage as "ranked 5–8", or under its section's name when it has one.
     const [hero, ...rest] = seated;
 
     const title = (
@@ -138,7 +138,7 @@ function CourtBlock({ match, group, seeds, section, variant }: {
     /** 0-based seat: the final seats group k (places 4k+1…4k+4 at the draw) on seat k+1. */
     group: number;
     seeds: ReadonlyMap<string, number>;
-    /** `line`: the rounds board's compact game line, for finals too wide for cards. It shows no seed badges; the label carries the places. */
+    /** `line`: the rounds board's compact game line, for finals too wide for cards. It shows no seed badges; the label carries the places, or the section's name. */
     variant: 'stage' | 'hero' | 'default' | 'line';
     /** This court's section; undefined from an API before sections, or for a court no section seats. */
     section?: PublicAmericanoFinalSection;
