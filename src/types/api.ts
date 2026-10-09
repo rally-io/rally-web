@@ -360,6 +360,8 @@ export interface RegistrationDetail {
   fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
   /** The level category the pair chose at registration, or null. */
   requested_level?: string | null
+  /** The weekday the pair prefers to play on, or null. */
+  preferred_day?: PreferredDay | null
   fee_waiver_resident_count?: number | null
   /** The viewer's own payment breakdown, including any coupon discount. */
   my_payment?: MyPayment | null
@@ -385,9 +387,14 @@ export interface FeeWaiverRequest {
   resident_count: 1 | 2
 }
 
+/** The weekdays an event can offer as a preference (rally-api `TournamentRegistrationCreate.preferred_day`). */
+export type PreferredDay = 'wednesday' | 'thursday'
+
 export type RegisterPayload = {
   acknowledged_messages: AcknowledgedMessageRef[]
   fee_waiver?: FeeWaiverRequest
+  /** The weekday the pair prefers to play on (rally-api: optional, Wed|Thu). */
+  preferred_day?: PreferredDay
   /** The level category the pair asks to compete in (rally-api: optional, ≤64). */
   requested_level?: string
   /** Sent only by the event page (/join/<slug>). rally-api refuses a registration
