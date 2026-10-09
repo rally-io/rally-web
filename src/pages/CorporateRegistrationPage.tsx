@@ -44,7 +44,7 @@ import type { CorporateFeeWaiver } from '@/constants/corporateFeeWaiver'
 import type { CorporateTournamentEvent } from '@/constants/corporateEvents'
 import type { PartnerSelectionState } from '@/types/partner'
 import type {
-  ConsumerCoupon, FeeWaiverRequest, MyRegistration, TournamentDetail, TournamentRegistrationResult,
+  ConsumerCoupon, FeeWaiverRequest, MyRegistration, PreferredDay, TournamentDetail, TournamentRegistrationResult,
 } from '@/types/api'
 
 // The only gate action web can reach — same constant TournamentDetailPage uses.
@@ -261,6 +261,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         feeWaiver={event.feeWaiver}
         competeLevels={event.competeLevels}
         competeLevelsAreBands={event.competeLevelsAreBands}
+        preferredDays={event.preferredDays}
         pendingUpload={pendingUploadRef}
         refetchTournament={refetch}
         onEvidenceFailed={setEvidenceError}
@@ -626,6 +627,8 @@ interface RegistrationFormProps {
   competeLevels?: string[]
   /** Those categories are the tournament bands: follow the served ladder (lib/competeLevels.ts). */
   competeLevelsAreBands?: boolean
+  /** The weekdays the event offers as a preference, if any. Set ⇒ an OPTIONAL choice. */
+  preferredDays?: PreferredDay[]
   /** Where the form parks the evidence upload for the page's `onRegistered`. */
   pendingUpload: MutableRefObject<((reg: TournamentRegistrationResult) => Promise<void | 'stay'>) | null>
   refetchTournament: () => Promise<unknown>
@@ -636,6 +639,7 @@ interface RegistrationFormProps {
     feeWaiver?: FeeWaiverRequest,
     requestedLevel?: string,
     coupon?: RegistrationCoupon,
+    preferredDay?: PreferredDay,
   ) => Promise<void>
   isRegistering: boolean
   registerError: string | null
@@ -650,7 +654,7 @@ const WAIVER_OPTIONS: { value: 0 | 1 | 2; key: string }[] = [
 ]
 
 function RegistrationForm({
-  tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
+  tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, preferredDays, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
 }: RegistrationFormProps) {
   const { t, i18n } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
@@ -663,6 +667,9 @@ function RegistrationForm({
   // meaningful when the event offers categories; see `levelMissing`.
   const [competeLevel, setCompeteLevel] = useState('')
   const [competeLevelError, setCompeteLevelError] = useState(false)
+  // The weekday the pair prefers — null until one is picked. Only meaningful when the
+  // event offers days; see `dayMissing`.
+  const [preferredDay, setPreferredDay] = useState<PreferredDay | null>(null)
   const [myFiles, setMyFiles] = useState<File[]>([])
   const [partnerFiles, setPartnerFiles] = useState<File[]>([])
   const [myEvidenceError, setMyEvidenceError] = useState<string | null>(null)
@@ -711,6 +718,11 @@ function RegistrationForm({
   const chosenLevel = levelOptions.includes(competeLevel) ? competeLevel : ''
   const offersLevels = levelOptions.length > 0
   const levelMissing = offersLevels && !chosenLevel
+  // The weekday is OPTIONAL: it never blocks the submit. A pick the event no
+  // longer lists counts as none, so it can never be sent.
+  const dayOptions = preferredDays ?? []
+  const chosenDay = preferredDay && dayOptions.includes(preferredDay) ? preferredDay : null
+  const offersDays = dayOptions.length > 0
   const busy = isRegistering
   // `waivedAmount(fee, seats, 0)` is the same number, but it would round a fee
   // that today is rendered verbatim — a no-waiver price stays untouched.
@@ -866,7 +878,8 @@ function RegistrationForm({
     const couponArg: RegistrationCoupon | undefined = appliedCoupon && discount > 0
       ? { id: appliedCoupon.coupon_id, code: appliedCoupon.code, coversAll: couponCoversAll }
       : undefined
-    if (couponArg) await register(partnerState, waiverRequest, offersLevels ? chosenLevel : undefined, couponArg)
+    if (chosenDay) await register(partnerState, waiverRequest, offersLevels ? chosenLevel : undefined, couponArg, chosenDay)
+    else if (couponArg) await register(partnerState, waiverRequest, offersLevels ? chosenLevel : undefined, couponArg)
     else if (offersLevels) await register(partnerState, waiverRequest, chosenLevel)
     else if (waiverRequest) await register(partnerState, waiverRequest)
     else await register(partnerState)
@@ -948,6 +961,44 @@ function RegistrationForm({
                 {t('corporate.reg.competeLevelHint')}
               </p>
             )}
+          </section>
+        )}
+
+        {offersDays && (
+          /* Which weekday the PAIR would rather play on. A preference the manager reads
+             when building the schedule, not a booking. Optional: a second tap on the
+             chosen day clears it, and the submit never waits on it. */
+          <section id="preferred-day-section" aria-labelledby="cr-preferred-day-heading">
+            <h3 id="cr-preferred-day-heading" className="font-display font-bold text-sm text-rally-text mb-2">
+              {t('corporate.reg.preferredDayTitle')}
+            </h3>
+            <div
+              role="group"
+              aria-labelledby="cr-preferred-day-heading"
+              aria-describedby="cr-preferred-day-hint"
+              className="grid grid-cols-2 gap-2"
+            >
+              {dayOptions.map((day) => (
+                <button
+                  key={day}
+                  type="button"
+                  aria-pressed={chosenDay === day}
+                  disabled={busy}
+                  onClick={() => setPreferredDay(chosenDay === day ? null : day)}
+                  className={cn(
+                    'rounded-md border px-3 py-3 text-center text-sm font-bold transition-colors disabled:opacity-50',
+                    chosenDay === day
+                      ? 'border-rally-accent bg-rally-accent/10 text-rally-accent'
+                      : 'border-rally-border bg-rally-surface-2 text-rally-text hover:border-rally-border-strong',
+                  )}
+                >
+                  {t(`corporate.reg.preferredDay_${day}`)}
+                </button>
+              ))}
+            </div>
+            <p id="cr-preferred-day-hint" className="text-xs text-rally-text-muted mt-1.5 leading-relaxed">
+              {t('corporate.reg.preferredDayHint')}
+            </p>
           </section>
         )}
 

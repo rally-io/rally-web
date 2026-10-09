@@ -34,6 +34,8 @@ const REQUIRED_REG_KEYS = [
   'signedInAs', 'switchAccount', 'useExistingAccount',
   // The level category a pair enters (תקנון §4.1)
   'competeLevelTitle', 'competeLevelPlaceholder', 'competeLevelHint', 'competeLevelRequired', 'ctaMissingLevel',
+  // The weekday a pair prefers to play on
+  'preferredDayTitle', 'preferredDayHint', 'preferredDay_wednesday', 'preferredDay_thursday',
 ]
 
 describe('corporate copy parity', () => {

@@ -10,6 +10,7 @@ import type { PartnerSelectionState } from '@/types/partner'
 import type {
   AcknowledgedMessageRef,
   FeeWaiverRequest,
+  PreferredDay,
   RegisterPayload,
   TournamentRegistrationResult,
 } from '@/types/api'
@@ -40,6 +41,8 @@ export function buildRegisterPayload(
   requestedLevel?: string,
   /** 'event_page' when the event page (/join/<slug>) is registering. */
   registrationSource?: 'event_page',
+  /** The weekday the pair prefers, for an event that offers a choice. */
+  preferredDay?: PreferredDay,
 ): RegisterPayload {
   // The optional fields every partner shape carries, built ONCE. Each is only
   // present when there is one: a plain registration's payload stays exactly
@@ -48,6 +51,7 @@ export function buildRegisterPayload(
     ...(feeWaiver ? { fee_waiver: feeWaiver } : {}),
     ...(requestedLevel ? { requested_level: requestedLevel } : {}),
     ...(registrationSource ? { registration_source: registrationSource } : {}),
+    ...(preferredDay ? { preferred_day: preferredDay } : {}),
   }
   const needsPartner = format === 'doubles' || format === 'mixed'
   if (!needsPartner) {
@@ -171,6 +175,7 @@ export function useTournamentRegistration(
       feeWaiver?: FeeWaiverRequest,
       requestedLevel?: string,
       coupon?: RegistrationCoupon,
+      preferredDay?: PreferredDay,
     ): Promise<void> => {
       if (!tournament) return
       const gate = gateRef.current
@@ -179,7 +184,7 @@ export function useTournamentRegistration(
       setGateError(null)
       try {
         const payload = buildRegisterPayload(
-          tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel, registrationSource,
+          tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel, registrationSource, preferredDay,
         )
         const result = skipProfileRedirect
           ? await registerTournament(tournament.id, payload, { skipProfileRedirect: true })
