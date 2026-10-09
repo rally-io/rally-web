@@ -1256,6 +1256,7 @@
       "lucky_loser": "Lucky loser"
     },
     "status": {
+      "cancelled": "Cancelled",
       "live": "Live",
       "scheduled": "Scheduled",
       "tbd": "TBD",
