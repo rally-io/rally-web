@@ -8,7 +8,7 @@ import { GameLine } from './GameLine';
 import { GROUP_ACCENTS } from './GroupsView';
 import { courtTier, playerFullName, roundStateOf } from '../utils';
 import type { CourtTier } from '../utils';
-import type { PublicMatch, PublicRound, PublicStanding } from '../types';
+import type { PublicAmericanoFinalSection, PublicMatch, PublicRound, PublicStanding } from '../types';
 
 /** `courtTier`'s three buckets, named for this stage's own three layouts (2026-10-04 review). */
 const FINAL_LAYOUT: Record<CourtTier, 'cards' | 'lines' | 'grid'> = { few: 'cards', several: 'lines', many: 'grid' };
@@ -19,21 +19,27 @@ type AmericanoFinalStageProps = {
     /** Phone: one column. TV: court 1 centre stage, the other courts beside it. */
     compact: boolean;
     roundNote?: (round: PublicRound) => string | null;
+    /** The final's sections (rally-api 2026-10-08): each court's name and whether it counts. None = places only. */
+    sections?: PublicAmericanoFinalSection[];
 };
 
 /**
  * An Americano's final round, staged the way the knockout final is on the venue screen
  * (BracketTreeTV's centre column): the trophy, «הגמר», the top court as the glowing hero card.
- * The other courts sit beside it, each labelled with the places in the table its four players came
- * from — "ranked 5–8", which is who is playing, not what is at stake: whether final points add up
- * or decide places inside a group is still the organiser's call.
+ * The other courts sit beside it, each labelled with its section (rally-api 2026-10-08): a named
+ * section shows its name ("Plate"), an unnamed one the places in the table its four players came
+ * from ("ranked 5–8"). Each court decides its own four places, the winning pair above the losing
+ * pair, and a court whose section doesn't count says so. Court 1 keeps its places: the title
+ * already says it is the Final.
  *
  * Under it, the evening's leader while the final is on, and a podium once every final game is in.
  * Both read the table the API sends, so they follow whichever rule the API ranks by.
  */
-export function AmericanoFinalStage({ rounds, standings, compact, roundNote }: AmericanoFinalStageProps): React.ReactElement {
+export function AmericanoFinalStage({ rounds, standings, compact, roundNote, sections = [] }: AmericanoFinalStageProps): React.ReactElement {
     const { t } = useTranslation();
     const round = rounds[0];
+    // A court's section, by its seat: group k is final court k + 1.
+    const sectionOf = (group: number) => sections.find(s => s.courts.includes(group + 1));
     // Each game's group is its seat in the round (0-based), never its index in the list: a
     // cancelled game is dropped before it gets here (toLiveBoard), and the courts after it must keep
     // the places they were seated with. An API without seats falls back to the order it sends,
@@ -59,7 +65,7 @@ export function AmericanoFinalStage({ rounds, standings, compact, roundNote }: A
     const contenders = standings.filter(s => !s.is_disqualified && s.player_1);
     const note = round && roundNote ? roundNote(round) : null;
     // The lowest seat still on the board is the hero, under its own label: with court 1 cancelled,
-    // court 2's game takes the stage as "ranked 5–8".
+    // court 2's game takes the stage as "ranked 5–8", or under its section's name when it has one.
     const [hero, ...rest] = seated;
 
     const title = (
@@ -84,7 +90,7 @@ export function AmericanoFinalStage({ rounds, standings, compact, roundNote }: A
                 {outcome}
                 {note && <p data-testid="round-note" className="text-xs font-bold text-(--pb-text-muted)">{note}</p>}
                 {seated.map(({ match, group }, k) => (
-                    <CourtBlock key={match.id} match={match} group={group} seeds={seeds} variant={k === 0 ? 'hero' : 'default'} />
+                    <CourtBlock key={match.id} match={match} group={group} seeds={seeds} section={sectionOf(group)} variant={k === 0 ? 'hero' : 'default'} />
                 ))}
             </div>
         );
@@ -103,20 +109,20 @@ export function AmericanoFinalStage({ rounds, standings, compact, roundNote }: A
             <div className={cn('flex min-h-0 w-full flex-1 flex-col items-center gap-4', courts === 'cards' ? 'justify-evenly' : 'justify-center')}>
                 {courts !== 'grid' && hero && (
                     <div className="w-[620px] shrink-0">
-                        <CourtBlock match={hero.match} group={hero.group} seeds={seeds} variant="stage" />
+                        <CourtBlock match={hero.match} group={hero.group} seeds={seeds} section={sectionOf(hero.group)} variant="stage" />
                     </div>
                 )}
                 {courts === 'cards' && rest.length > 0 && (
                     <div className={cn('grid w-full shrink-0 gap-4', rest.length >= 3 ? 'grid-cols-3' : rest.length === 2 ? 'max-w-5xl grid-cols-2' : 'max-w-md grid-cols-1')}>
                         {rest.map(({ match, group }) => (
-                            <CourtBlock key={match.id} match={match} group={group} seeds={seeds} variant="default" />
+                            <CourtBlock key={match.id} match={match} group={group} seeds={seeds} section={sectionOf(group)} variant="default" />
                         ))}
                     </div>
                 )}
                 {courts !== 'cards' && (
                     <div className="grid w-full shrink-0 grid-cols-4 gap-3">
                         {(courts === 'grid' ? seated : rest).map(({ match, group }) => (
-                            <CourtBlock key={match.id} match={match} group={group} seeds={seeds} variant="line" />
+                            <CourtBlock key={match.id} match={match} group={group} seeds={seeds} section={sectionOf(group)} variant="line" />
                         ))}
                     </div>
                 )}
@@ -127,16 +133,22 @@ export function AmericanoFinalStage({ rounds, standings, compact, roundNote }: A
     );
 }
 
-function CourtBlock({ match, group, seeds, variant }: {
+function CourtBlock({ match, group, seeds, section, variant }: {
     match: PublicMatch;
     /** 0-based seat: the final seats group k (places 4k+1…4k+4 at the draw) on seat k+1. */
     group: number;
     seeds: ReadonlyMap<string, number>;
-    /** `line`: the rounds board's compact game line, for finals too wide for cards. It shows no seed badges; the label carries the places. */
+    /** `line`: the rounds board's compact game line, for finals too wide for cards. It shows no seed badges; the label carries the places, or the section's name. */
     variant: 'stage' | 'hero' | 'default' | 'line';
+    /** This court's section; undefined from an API before sections, or for a court no section seats. */
+    section?: PublicAmericanoFinalSection;
 }): React.ReactElement {
     const { t } = useTranslation();
     const from = group * 4 + 1;
+    const places = t('public_bracket.seeded_range', { from, to: from + 3, defaultValue: 'Ranked {{from}}–{{to}}' });
+    // Court 1 keeps its places: the stage's title already says it is the Final.
+    const title = group > 0 && section?.name ? section.name : places;
+    const friendly = section && !section.counts ? t('public_bracket.final_friendly', "Doesn't count") : null;
     return (
         <div className={cn('flex flex-col gap-1.5', GROUP_ACCENTS[group % GROUP_ACCENTS.length])}>
             <p className={cn(
@@ -144,7 +156,7 @@ function CourtBlock({ match, group, seeds, variant }: {
                 variant === 'stage' ? 'text-[15px]' : 'text-[11px]',
             )}>
                 <span className="h-2 w-2 rounded-full [background:var(--pb-ga)]" />
-                {[match.court_name, t('public_bracket.seeded_range', { from, to: from + 3, defaultValue: 'Ranked {{from}}–{{to}}' })].filter(Boolean).join(' · ')}
+                {[match.court_name, title, friendly].filter(Boolean).join(' · ')}
             </p>
             {variant === 'line' ? <GameLine match={match} size="sm" /> : <MatchCard match={match} variant={variant} seeds={seeds} />}
         </div>

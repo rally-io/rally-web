@@ -1317,6 +1317,7 @@
     "final_court_band": "Final · court {{num}}",
     "not_in_final": "Not in the final",
     "seeded_range": "Ranked {{from}}–{{to}}",
+    "final_friendly": "Doesn't count",
     "evening_leader": "Leading the evening",
     "evening_champion": "Champion of the evening",
     "open_on_provider": "Watch on {{provider}}",

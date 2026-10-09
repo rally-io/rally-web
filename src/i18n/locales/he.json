@@ -1330,6 +1330,7 @@
     "final_court_band": "גמר · מגרש {{num}}",
     "not_in_final": "לא בגמר",
     "seeded_range": "מדורגים {{from}}–{{to}}",
+    "final_friendly": "לא נספר",
     "evening_leader": "מוביל הערב",
     "evening_champion": "אלוף הערב",
     "open_on_provider": "צפייה ב-{{provider}}",
