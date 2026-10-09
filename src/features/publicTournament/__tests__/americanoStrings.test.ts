@@ -8,7 +8,7 @@ import he from '@/i18n/locales/he.json';
  * entry is Hebrew (Hebrew is the default language, and an English string pasted into he.json
  * passes the presence check), and that the interpolation slot survived translation.
  */
-const KEYS = ['tie', 'col_ties', 'col_points', 'resting', 'not_in_final'].map(k => `public_bracket.${k}`);
+const KEYS = ['tie', 'col_ties', 'col_points', 'resting', 'not_in_final', 'final_friendly'].map(k => `public_bracket.${k}`);
 
 const read = (bundle: unknown, path: string): string =>
     String(path.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], bundle) ?? '');

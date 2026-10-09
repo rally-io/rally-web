@@ -43,7 +43,15 @@ export function AmericanoLayout({ view, bracket, isBigScreen, dir }: AmericanoLa
     };
 
     if (view === 'final' && finalRounds.length > 0) {
-        return <AmericanoFinalStage rounds={finalRounds} standings={standings} compact={!isBigScreen} roundNote={restingLine} />;
+        return (
+            <AmericanoFinalStage
+                rounds={finalRounds}
+                standings={standings}
+                compact={!isBigScreen}
+                roundNote={restingLine}
+                sections={bracket.americano?.final_sections}
+            />
+        );
     }
     if (view === 'games') {
         return isBigScreen ? (

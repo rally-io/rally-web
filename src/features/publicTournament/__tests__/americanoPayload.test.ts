@@ -21,7 +21,7 @@ describe('the americano block of the public bracket', () => {
 
     it('keeps only what the page draws', () => {
         const board = americanoBracket().americano!;
-        expect(Object.keys(board).sort()).toEqual(['final_round_enabled', 'final_round_number', 'resting', 'rounds', 'standings']);
+        expect(Object.keys(board).sort()).toEqual(['final_round_enabled', 'final_round_number', 'final_sections', 'resting', 'rounds', 'standings']);
     });
 
     it('reads final_round_enabled as false from an API that does not send it', () => {
@@ -93,5 +93,31 @@ describe('the fields the review fixes read (rally-api 2026-10-04)', () => {
         expect(board.final_round_number).toBeNull();
         expect(board.standings).toHaveLength(9);
         expect(board.standings[0]).toMatchObject({ projected_final_court: null, points_for: 16 });
+    });
+});
+
+describe('the final round sections (rally-api 2026-10-08)', () => {
+    it("reads each section's name, courts and whether it counts; the places are not kept", () => {
+        const final_sections = [
+            { name: 'Final', courts: [1], counts: true, first_place: 1, last_place: 4 },
+            { name: null, courts: [2, 3], counts: false, first_place: 5, last_place: 12 },
+        ];
+        expect(americanoBracket({ ...FINAL_BOARD, final_sections }).americano!.final_sections).toEqual([
+            { name: 'Final', courts: [1], counts: true },
+            { name: null, courts: [2, 3], counts: false },
+        ]);
+    });
+
+    it('an older API that sends none reads as no sections', () => {
+        expect('final_sections' in RAW_BOARD).toBe(false);                     // the older API's shape
+        expect(americanoBracket().americano!.final_sections).toEqual([]);
+    });
+
+    it('a malformed field degrades that field; a malformed entry drops the list, never the board', () => {
+        const odd = americanoBracket({ ...FINAL_BOARD, final_sections: [{ name: 'Plate', courts: [2], counts: 'no' }] }).americano!;
+        expect(odd.final_sections).toEqual([{ name: 'Plate', courts: [2], counts: true }]);
+        const broken = americanoBracket({ ...FINAL_BOARD, final_sections: ['x'] }).americano!;
+        expect(broken.final_sections).toEqual([]);
+        expect(broken.final_round_number).toBe(4);
     });
 });
