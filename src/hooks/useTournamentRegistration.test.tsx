@@ -89,6 +89,13 @@ describe('buildRegisterPayload', () => {
       acknowledged_messages: [], fee_waiver: waiver,
     })
   })
+  it('sends preferred_day only when a day was chosen', () => {
+    expect(buildRegisterPayload('singles', { phase: 'idle' }, [])).not.toHaveProperty('preferred_day')
+    expect(
+      buildRegisterPayload('singles', { phase: 'idle' }, [], undefined, undefined, undefined, 'wednesday'),
+    ).toMatchObject({ preferred_day: 'wednesday' })
+  })
+
   it('does not add requested_level when there is no level category', () => {
     expect(buildRegisterPayload('singles', { phase: 'idle' }, [])).not.toHaveProperty('requested_level')
     expect(buildRegisterPayload('singles', { phase: 'idle' }, [], undefined, '')).not.toHaveProperty('requested_level')

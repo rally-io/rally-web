@@ -843,6 +843,67 @@ describe('CorporateRegistrationPage — details modal: phone verification and th
 })
 
 /**
+ * The weekday a pair prefers to play on. Offered only by an event that declares
+ * `preferredDays`; for every other event nothing about registration may change.
+ */
+describe('CorporateRegistrationPage — the weekday the pair prefers', () => {
+  beforeEach(resetPageMocks)
+
+  const DAY_EVENT = { preferredDays: ['wednesday', 'thursday'] as ('wednesday' | 'thursday')[] }
+  const wednesday = () => screen.getByRole('button', { name: i18n.t('corporate.reg.preferredDay_wednesday') })
+  const thursday = () => screen.getByRole('button', { name: i18n.t('corporate.reg.preferredDay_thursday') })
+
+  it('an event with days shows exactly those two choices, none picked', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(DAY_EVENT)
+    expect(wednesday()).toHaveAttribute('aria-pressed', 'false')
+    expect(thursday()).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('registers without a day, sending none', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(DAY_EVENT)
+
+    await user.click(screen.getByRole('button', { name: /register & pay/i }))
+
+    expect(register).toHaveBeenCalledWith({ phase: 'idle' })
+  })
+
+  it('a second tap on the chosen day clears it', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(DAY_EVENT)
+
+    await user.click(wednesday())
+    await user.click(wednesday())
+    expect(wednesday()).toHaveAttribute('aria-pressed', 'false')
+    await user.click(screen.getByRole('button', { name: /register & pay/i }))
+
+    expect(register).toHaveBeenCalledWith({ phase: 'idle' })
+  })
+
+  it('sends the chosen day with the registration', async () => {
+    const user = userEvent.setup()
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage(DAY_EVENT)
+
+    await user.click(thursday())
+    expect(thursday()).toHaveAttribute('aria-pressed', 'true')
+    expect(wednesday()).toHaveAttribute('aria-pressed', 'false')
+    await user.click(screen.getByRole('button', { name: /register & pay/i }))
+
+    expect(register).toHaveBeenCalledWith({ phase: 'idle' }, undefined, undefined, undefined, 'thursday')
+  })
+
+  it('an event without days shows no such section', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    expect(screen.queryByText(i18n.t('corporate.reg.preferredDayTitle'), { exact: false })).not.toBeInTheDocument()
+  })
+})
+
+/**
  * The level category a pair enters — the rulebook's "each pair marks its level at
  * registration". Offered only by an event that declares `competeLevels`; for every
  * other event (the fixture's default) nothing about registration may change.
