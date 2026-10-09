@@ -1212,7 +1212,7 @@
       "competeLevelHint": "The level your pair asks to compete in. The tournament manager makes the final placement.",
       "competeLevelRequired": "Choose the level you want to compete in",
       "ctaMissingLevel": "Choose a level to continue",
-      "preferredDayTitle": "Which day would you rather play on? (optional)",
+      "preferredDayTitle": "Which day would you rather play on? (optional - leave empty if both days are fine)",
       "preferredDayHint": "A preference, not a booking. The tournament manager builds the schedule and does their best to give you this day.",
       "preferredDay_wednesday": "Wednesday",
       "preferredDay_thursday": "Thursday",
