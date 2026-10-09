@@ -1,5 +1,6 @@
 import type { CorporateFeeWaiver } from './corporateFeeWaiver'
 import type { TermsSection } from './eventTerms'
+import type { PreferredDay } from '../types/api'
 // `.js`, because api/join-og.ts imports this module and Vercel functions run as
 // ESM, where Node's resolver throws ERR_MODULE_NOT_FOUND on an extensionless
 // relative specifier — at module load, before the handler runs, so every
@@ -139,6 +140,13 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    */
   competeLevelsAreBands?: boolean
   /**
+   * The weekdays a pair can say it prefers to play on. When set, the page shows an
+   * OPTIONAL section and sends the pick as `preferred_day`; the manager reads it when
+   * building the schedule. A preference, not a booking. Omit it and nothing changes:
+   * no section, no field sent.
+   */
+  preferredDays?: PreferredDay[]
+  /**
    * Send the tournament's regular web page (/tournaments/<id>) here instead — for a
    * tournament listed publicly whose event page is the full way in (the residents'
    * waiver, its documents and the level choice exist only here; the regular page can
@@ -259,6 +267,9 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
     // They are the tournament bands, so after the 1–7 → 1–5 switch the page lists the
     // served bands instead of these 1–7 strings (lib/competeLevels.ts).
     competeLevelsAreBands: true,
+    // Wednesday or Thursday — §5.2 has each pair play two of the three days; the pair
+    // says which weekday it would rather have.
+    preferredDays: ['wednesday', 'thursday'],
     // Listed publicly from 2026-09-28. Web visitors land here for the full flow; the
     // app registers plain entries (no waiver, no level) and its banner and the
     // tournament description point residents to rallypadel.app/holon (vercel.json).
