@@ -57,7 +57,11 @@ Run a single test file: `npx vitest run src/path/to/file.test.tsx`
 `http://localhost:5174/preview.html` (dev only — `src/preview.tsx`, not routed, not emitted into
 `dist`) renders the public live board's real components in the real TV shell at the real 1600×900
 canvas, driven by fixture data. Query params, also togglable from the on-page controls:
-`?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=he|en&cols=N&played=0&phone=1`
+`?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=he|en&cols=N&played=0&phone=1&cancel=1`
+
+`cancel=1` only does anything alongside `dq=1` — it voids the disqualified pair's unplayed
+fixtures — so `?dq=1&cancel=1` is the voided board and adding `&played=0` is what produces the
+dense case of several voided fixtures at once.
 
 `played=0` is the pre-start board (draw made, nothing scored) and `phone=1` swaps the TV canvas
 for the phone layout — which renders a *different* component (`StandingsTable`, not

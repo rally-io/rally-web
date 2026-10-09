@@ -109,7 +109,7 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
                     // wording lives on the card's own label. `--pb-text-faint` is the board's
                     // deadest text token — the one an empty scoreline and a loser's score already
                     // use — so the marker reads as struck out rather than as a result.
-                    <Ban size={stage ? 20 : 12} className="shrink-0 text-(--pb-text-faint)" aria-label={t('public_bracket.status.cancelled', 'Cancelled')} />
+                    <Ban role="img" size={stage ? 20 : 12} className="shrink-0 text-(--pb-text-faint)" aria-label={t('public_bracket.status.cancelled', 'Cancelled')} />
                 ) : status === 'walkover' ? (
                     <span>{isWinner ? t('public_bracket.status.walkover', 'W/O') : ''}</span>
                 ) : scores.length > 0 ? (
@@ -150,7 +150,11 @@ export function MatchCard({ match, variant = 'default', className, seeds }: Matc
         )}>
             <div className="flex items-center justify-between gap-2 border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-1.5">
                 <span className="truncate text-[10px] font-black uppercase tracking-widest text-(--pb-text-faint)">
-                    {[localizeMatchLabel(match.match_label, t), match.court_name].filter(Boolean).join(' · ')}
+                    {/* No court once voided, the same way the lane card drops it: the court was
+                        given back to the tournament, and a dead fixture still naming one has the
+                        hall reading that court as committed to a game nobody will play. The match
+                        label stays — it is how the fixture is referred to, voided or not. */}
+                    {[localizeMatchLabel(match.match_label, t), isVoided ? null : match.court_name].filter(Boolean).join(' · ')}
                 </span>
                 {/* Voided goes first: the branches are mutually exclusive anyway — a voided fixture
                     has no result and is not being played, so it can never be live, done or a tie —

@@ -24,9 +24,10 @@ function matchTime(match: PublicMatch): string {
 }
 
 /**
- * One match on a group's lane. The four states are what make the lane readable as a timeline at a
- * glance — finished recedes, live burns, next is called out, the rest stay quiet — so each one
- * carries its own frame, header and emphasis rather than only a colour.
+ * One match on a group's lane. The five states are what make the lane readable as a timeline at a
+ * glance — finished recedes, live burns, next is called out, voided is struck out as a game nobody
+ * will play, the rest stay quiet — so each one carries its own frame, header and emphasis rather
+ * than only a colour.
  */
 export function LaneMatchCard({ match, isNext }: LaneMatchCardProps): React.ReactElement {
     const { t } = useTranslation();

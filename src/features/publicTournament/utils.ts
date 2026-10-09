@@ -182,8 +182,10 @@ export function isFinishedStatus(status: string): boolean {
  * row says it is dead. It has no result and will never be played, so it is neither "finished"
  * (there is no score to print) nor "pending" (there is nothing to announce) — which is why it is
  * kept apart from `isFinishedStatus` above rather than folded into it: that one gates score
- * rendering, and widening it would paint an empty scoreline on the venue board. The one place in
- * this feature that knows the status string; everything else asks here.
+ * rendering, and widening it would paint an empty scoreline on the venue board. The one place the
+ * group/knockout path spells the status; everything else on it asks here. The deliberate exception
+ * is `americano.ts`, whose own `!== 'cancelled'` filter keeps that path HIDING a cancelled game
+ * rather than marking it.
  */
 export function isVoidedStatus(status: string): boolean {
     return status === 'cancelled';

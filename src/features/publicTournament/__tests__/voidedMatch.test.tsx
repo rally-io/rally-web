@@ -69,6 +69,8 @@ describe('MatchCard — a disqualification-voided fixture', () => {
         expect(within(container).getByText('Cancelled')).toBeInTheDocument();
         // Not a kick-off time for a game nobody will play.
         expect(within(container).queryByText(CLOCK)).toBeNull();
+        // Nor a court: the court was given back to the tournament.
+        expect(within(container).queryByText(/Court 1/)).toBeNull();
     });
 
     it.each(variants)('demotes both pairs in the %s variant', variant => {
