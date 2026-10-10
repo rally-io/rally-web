@@ -20,7 +20,7 @@
  *     document.querySelectorAll('[data-testid="standings-list"]')
  *       .forEach(l => console.log(l.scrollHeight - l.clientHeight))   // 0 = fits
  *
- * /preview.html?theme=dark|light|gradient&groups=N&pairs=N&dq=1&long=0&lang=en&cols=2
+ * /preview.html?theme=dark|light|gradient&groups=N&pairs=N&dq=1&cancel=1&long=0&lang=en&cols=2
  *              &played=0&phone=1&view=games
  *
  * `view=games` swaps the standings grid for the «משחקים» lanes — the other TV screen the group
@@ -31,6 +31,10 @@
  * spends the whole first hour in and the hardest one to reach with real data, since a tournament
  * only passes through it once. `phone=1` swaps the TV canvas for the phone layout, which renders
  * a different component (StandingsTable, not GroupBoardCard) for the same group.
+ *
+ * `cancel=1` needs `dq=1` to do anything: it voids the disqualified pair's unplayed fixtures, the
+ * only way to get a `cancelled` card onto the board here — no real tournament in the database has
+ * one, and a voided row is what a layout change to the score column has to be measured against.
  */
 /* eslint-disable react-refresh/only-export-components -- an entry point like main.tsx, not a
    module anything imports; fast refresh has nothing to preserve here. */
@@ -58,6 +62,7 @@ const theme = (q.get('theme') ?? 'dark') as BracketTheme;
 const groupCount = Number(q.get('groups') ?? 4);
 const pairCount = Number(q.get('pairs') ?? 4);
 const withDq = q.get('dq') === '1';
+const withCancel = q.get('cancel') === '1';
 const longNames = q.get('long') !== '0';
 const lang = q.get('lang') ?? 'he';
 const colsParam = q.get('cols');
@@ -116,15 +121,20 @@ function grp(name: string, n: number, dqIndex: number): PublicGroup {
     const matches = rounds.flatMap((pairs, r) => pairs.map(([a, b]) => {
         const done = played && r < rounds.length - 1;
         const live = played && r === rounds.length - 1;
+        // Override on top of the derivation above, mirroring MatchService.cascade_disqualification:
+        // only the DQ'd pair's *unplayed* fixtures are voided — a played result is never revoked —
+        // and both registrations keep their slots, so a cancelled card still carries both teams.
+        const voided = withCancel && !done && (a === dqIndex || b === dqIndex);
         return mk({
             round_number: r + 1,
             team_a: { team_name: null, is_lucky_loser: null, ...pair(a) },
             team_b: { team_name: null, is_lucky_loser: null, ...pair(b) },
-            sets: done ? [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }, { team_a_score: 6, team_b_score: 4, is_tiebreak: null }]
+            sets: voided ? []
+                : done ? [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }, { team_a_score: 6, team_b_score: 4, is_tiebreak: null }]
                 : live ? [{ team_a_score: 4, team_b_score: 2, is_tiebreak: null }] : [],
             winner_team: done ? 'team_a' : null,
-            status: done ? 'completed' : live ? 'in_progress' : 'scheduled',
-            court_name: live ? `מגרש ${(a % 4) + 1}` : null,
+            status: voided ? 'cancelled' : done ? 'completed' : live ? 'in_progress' : 'scheduled',
+            court_name: live && !voided ? `מגרש ${(a % 4) + 1}` : null,
         });
     }));
     return {
@@ -187,6 +197,7 @@ function Controls(): React.ReactElement {
                 <button key={v} className={btn((colsParam ?? 'auto') === v)} onClick={() => set('cols', v === 'auto' ? '' : v)}>{v}</button>
             ))}
             <button className={btn(withDq)} onClick={() => set('dq', withDq ? '0' : '1')}>dq</button>
+            <button className={btn(withCancel)} onClick={() => set('cancel', withCancel ? '0' : '1')}>cancel</button>
             <button className={btn(longNames)} onClick={() => set('long', longNames ? '0' : '1')}>long names</button>
             <button className={btn(played)} onClick={() => set('played', played ? '0' : '1')}>{played ? 'played' : 'pre-start'}</button>
             <button className={btn(phone)} onClick={() => set('phone', phone ? '0' : '1')}>{phone ? 'phone' : 'tv'}</button>

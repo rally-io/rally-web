@@ -164,7 +164,7 @@ export function groupGlyph(name: string): string | null {
 export function activeMatchIndex(matches: PublicMatch[]): number {
     const live = matches.findIndex(m => isLiveStatus(m.status));
     if (live !== -1) return live;
-    const next = matches.findIndex(m => !isFinishedStatus(m.status));
+    const next = matches.findIndex(m => !isFinishedStatus(m.status) && !isVoidedStatus(m.status));
     return next === -1 ? 0 : next;
 }
 
@@ -174,6 +174,21 @@ export function isLiveStatus(status: string): boolean {
 
 export function isFinishedStatus(status: string): boolean {
     return status === 'completed' || status === 'walkover';
+}
+
+/**
+ * A fixture a disqualification voided: rally-api's `cascade_disqualification` cancels the pair's
+ * unplayed group fixtures but leaves both registrations in their slots, so nothing else about the
+ * row says it is dead. It has no result and will never be played, so it is neither "finished"
+ * (there is no score to print) nor "pending" (there is nothing to announce) — which is why it is
+ * kept apart from `isFinishedStatus` above rather than folded into it: that one gates score
+ * rendering, and widening it would paint an empty scoreline on the venue board. The one place the
+ * group/knockout path spells the status; everything else on it asks here. The deliberate exception
+ * is `americano.ts`, whose own `!== 'cancelled'` filter keeps that path HIDING a cancelled game
+ * rather than marking it.
+ */
+export function isVoidedStatus(status: string): boolean {
+    return status === 'cancelled';
 }
 
 /**
@@ -191,10 +206,15 @@ export function isTieMatch(match: PublicMatch): boolean {
 /** How a round reads on the venue screen. Whether a not-yet-played round is the one called next is the caller's call. */
 export type RoundState = 'done' | 'live' | 'upcoming';
 
-/** On court now if any game is live; done once every game is finished; otherwise still to come. */
+/**
+ * On court now if any game is live; done once every game is finished or voided; otherwise still
+ * to come. A voided game counts towards done because a round a disqualification emptied is over —
+ * read as unfinished it pinned the games axis and the phone round stepper to that round for the
+ * rest of the evening, neither of which works out completeness of its own.
+ */
 export function roundStateOf(matches: PublicMatch[]): RoundState {
     if (matches.some(m => isLiveStatus(m.status))) return 'live';
-    if (matches.length > 0 && matches.every(m => isFinishedStatus(m.status))) return 'done';
+    if (matches.length > 0 && matches.every(m => isFinishedStatus(m.status) || isVoidedStatus(m.status))) return 'done';
     return 'upcoming';
 }
 
@@ -302,7 +322,7 @@ export function liveMatches(bracket: PublicBracketData): PublicMatch[] {
 }
 
 export function activeRoundIndex(rounds: PublicRound[]): number {
-    const idx = rounds.findIndex(r => r.matches.some(m => !isFinishedStatus(m.status)));
+    const idx = rounds.findIndex(r => r.matches.some(m => !isFinishedStatus(m.status) && !isVoidedStatus(m.status)));
     return idx === -1 ? Math.max(rounds.length - 1, 0) : idx;
 }
 
@@ -408,7 +428,7 @@ export function nextRoundWindow(roundNumbers: number[], states: RoundState[], ne
 export function activeRoundNumber(rounds: MatchRound[]): number {
     const live = rounds.find(r => r.matches.some(m => isLiveStatus(m.status)));
     if (live) return live.roundNumber;
-    const next = rounds.find(r => r.matches.some(m => !isFinishedStatus(m.status)));
+    const next = rounds.find(r => r.matches.some(m => !isFinishedStatus(m.status) && !isVoidedStatus(m.status)));
     return next?.roundNumber ?? rounds[rounds.length - 1]?.roundNumber ?? 1;
 }
 
@@ -505,7 +525,10 @@ export function upNextMatches(bracket: PublicBracketData, max = UP_NEXT_MAX): Pu
     // announcing a fixture between two matches. A tile a spectator cannot act on is worse than
     // no tile.
     const playable = (m: PublicMatch): boolean => isDecidedTeam(m.team_a) && isDecidedTeam(m.team_b);
-    const unfinished = collectMatches(bracket).filter(m => !isFinishedStatus(m.status) && playable(m));
+    // A voided fixture passes `playable()` — a disqualification leaves both registrations in their
+    // slots — so without this the court rail announced to the hall a game nobody would play.
+    const unfinished = collectMatches(bracket)
+        .filter(m => !isFinishedStatus(m.status) && !isVoidedStatus(m.status) && playable(m));
     const live = unfinished.filter(m => isLiveStatus(m.status));
     const upcoming = unfinished.filter(m => !isLiveStatus(m.status)).sort(byScheduledAt);
     return [...live, ...upcoming].slice(0, max);

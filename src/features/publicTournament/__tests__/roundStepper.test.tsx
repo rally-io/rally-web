@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 import { RoundStepper } from '../components/RoundStepper';
-import type { PublicRound } from '../types';
+import type { PublicMatch, PublicRound } from '../types';
 
 /**
  * The stepper is a horizontally scrolling strip: 5 rounds already overflow a 390 px phone, and an
@@ -14,6 +14,23 @@ import type { PublicRound } from '../types';
  * the strip, a BUTTON read is the active pill (the only button whose box the stepper reads).
  */
 const rounds: PublicRound[] = [1, 2, 3, 4, 5].map(n => ({ round_number: n, round_name: `Round ${n}`, matches: [] }));
+
+/** A fixture for the completeness pill, which reads nothing but the status. */
+function match(id: string, round: number, status: string): PublicMatch {
+    return {
+        id,
+        match_label: null,
+        round_number: round,
+        team_a: null,
+        team_b: null,
+        sets: [],
+        winner_team: null,
+        next_match_id: null,
+        status,
+        court_name: null,
+        scheduled_at: null,
+    };
+}
 
 type Box = { left: number; right: number };
 const STRIP: Box = { left: 16, right: 374 };
@@ -69,6 +86,19 @@ describe('RoundStepper keeps the round on screen inside the strip', () => {
         rerender(<RoundStepper rounds={rounds} activeIndex={4} onSelect={vi.fn()} />);
         expect(scrollBy).toHaveBeenCalledTimes(1);
         expect(scrollBy).toHaveBeenCalledWith({ left: -85 });
+    });
+
+    it('ticks a round whose only unfinished fixture a disqualification voided', () => {
+        // Round 1 is a scored game plus one a mid-tournament disqualification cancelled: nobody
+        // will ever play it, so the round is over and its pill must carry the ✓ the phone reads
+        // completeness from. Round 2 is the active one, which is where the strip has moved on to.
+        const league: PublicRound[] = [
+            { round_number: 1, round_name: 'Round 1', matches: [match('m1', 1, 'completed'), match('m2', 1, 'cancelled')] },
+            { round_number: 2, round_name: 'Round 2', matches: [match('m3', 2, 'scheduled')] },
+        ];
+        render(<RoundStepper rounds={league} activeIndex={1} onSelect={vi.fn()} />);
+
+        expect(screen.getByText('Round 1 ✓')).toBeInTheDocument();
     });
 
     it('never scrolls the page', () => {

@@ -5,7 +5,7 @@ import { PairChip } from './PairChip';
 import { FitText } from './FitText';
 import { TvCard, TvCardColumns } from './TvCard';
 import { RankNumeral } from './RankNumeral';
-import { groupGlyph, localizeGroupName, playerFullName } from '../utils';
+import { groupGlyph, isVoidedStatus, localizeGroupName, playerFullName } from '../utils';
 import type { PublicGroup, PublicPlayer, PublicStanding } from '../types';
 
 type GroupBoardCardProps = { group: PublicGroup; accentClass?: string; qualifyCount?: number };
@@ -39,6 +39,11 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
     const glyph = groupGlyph(group.group_name);
     const standings = group.standings;
     const playedCount = group.matches.filter(m => m.sets.length > 0 || m.status === 'walkover').length;
+    // The denominator is the fixtures that will ever be played, not every row in the table: a
+    // disqualification voids the pair's unplayed fixtures, and counting those left a group that
+    // was finished with sitting at 4/6 for the rest of the evening. The numerator above is
+    // untouched — a voided fixture has no result, so it was never counted there.
+    const playableCount = group.matches.filter(m => !isVoidedStatus(m.status)).length;
     // The qualifying tint is the one thing on this card that points at two SPECIFIC pairs. Before
     // a ball is hit the row order is the draw order, so tinting the top two tells the hall those
     // two are through on the strength of where the draw put them. The numerals and the cutoff line
@@ -68,7 +73,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                     )}
                     <p className="truncate text-[15px] font-extrabold text-(--pb-text)">{localizeGroupName(group.group_name, t)}</p>
                     <span className="ms-auto shrink-0 rounded-md bg-(--pb-card-raised) px-2 py-0.5 text-[11px] font-bold text-(--pb-text-muted)">
-                        <b className="text-(--pb-text)">{playedCount}/{group.matches.length}</b> {t('public_bracket.group_matches', 'Matches')}
+                        <b className="text-(--pb-text)">{playedCount}/{playableCount}</b> {t('public_bracket.group_matches', 'Matches')}
                     </span>
                 </>
             )}

@@ -1269,6 +1269,7 @@
       "lucky_loser": "לאקי לוזר"
     },
     "status": {
+      "cancelled": "בוטל",
       "live": "בשידור חי",
       "scheduled": "מתוזמן",
       "tbd": "טרם נקבע",
