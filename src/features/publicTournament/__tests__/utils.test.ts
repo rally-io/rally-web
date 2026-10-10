@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import i18n from '@/i18n';
 import {
     activeMatchIndex,
+    activeRoundIndex,
+    activeRoundNumber,
     courtTier,
     getRoundName,
     isDecidedTeam,
+    isFinishedStatus,
+    isVoidedStatus,
     localizeTeamPlaceholder,
     upNextMatches,
     UP_NEXT_MAX,
@@ -24,7 +28,7 @@ import {
     visibleRoundWindow,
 } from '../utils';
 import type { RoundState } from '../utils';
-import type { PublicMatch } from '../types';
+import type { PublicMatch, PublicRound } from '../types';
 
 function match(id: string, round: number | null, status = 'scheduled'): PublicMatch {
     return {
@@ -41,6 +45,27 @@ function match(id: string, round: number | null, status = 'scheduled'): PublicMa
         scheduled_at: null,
     };
 }
+
+describe('status predicates', () => {
+    it('reads only a cancelled fixture as voided', () => {
+        expect(isVoidedStatus('cancelled')).toBe(true);
+        ['completed', 'walkover', 'scheduled', 'in_progress', 'live', 'not_scheduled']
+            .forEach(status => expect(isVoidedStatus(status)).toBe(false));
+    });
+
+    // The two predicates answer different questions and must stay apart. `isFinishedStatus` is
+    // what `scoreSummary` and `MatchCard` branch on to decide whether to print a scoreline, and a
+    // voided fixture has no score: widening it to cover 'cancelled' would paint an empty
+    // scoreline on the venue board instead of taking the fixture off it.
+    it('keeps isFinishedStatus meaning "has a result", which a voided fixture has not', () => {
+        expect(isFinishedStatus('completed')).toBe(true);
+        expect(isFinishedStatus('walkover')).toBe(true);
+        expect(isFinishedStatus('cancelled')).toBe(false);
+        expect(isFinishedStatus('scheduled')).toBe(false);
+        expect(isFinishedStatus('in_progress')).toBe(false);
+        expect(isFinishedStatus('live')).toBe(false);
+    });
+});
 
 describe('activeMatchIndex', () => {
     it('prefers the live game', () => {
@@ -62,6 +87,17 @@ describe('activeMatchIndex', () => {
     it('is safe on an empty list', () => {
         expect(activeMatchIndex([])).toBe(0);
     });
+
+    it('skips a fixture a disqualification voided and highlights the next real one', () => {
+        expect(activeMatchIndex([
+            match('a', 1, 'completed'), match('b', 1, 'cancelled'), match('c', 1, 'scheduled'),
+        ])).toBe(2);
+    });
+
+    it('lands on the first game when every game left is voided', () => {
+        expect(activeMatchIndex([match('a', 1, 'completed'), match('b', 1, 'cancelled')])).toBe(0);
+        expect(activeMatchIndex([match('a', 1, 'cancelled'), match('b', 1, 'cancelled')])).toBe(0);
+    });
 });
 
 describe('roundStateOf', () => {
@@ -78,6 +114,22 @@ describe('roundStateOf', () => {
     it('is upcoming with nothing played, and for an empty round', () => {
         expect(roundStateOf([match('a', 1), match('b', 1)])).toBe('upcoming');
         expect(roundStateOf([])).toBe('upcoming');
+    });
+
+    it('is done once the only games left unplayed were voided', () => {
+        // A round the disqualification emptied is over — nothing in it will ever be played. Read
+        // as 'upcoming' it froze there forever, and with it both the games axis and the phone
+        // round stepper, which take their completeness from here.
+        expect(roundStateOf([match('a', 1, 'completed'), match('b', 1, 'cancelled')])).toBe('done');
+        expect(roundStateOf([match('a', 1, 'cancelled'), match('b', 1, 'cancelled')])).toBe('done');
+    });
+
+    it('is still live when a game is on court beside a voided one', () => {
+        expect(roundStateOf([match('a', 1, 'cancelled'), match('b', 1, 'in_progress')])).toBe('live');
+    });
+
+    it('is still upcoming while a real fixture remains beside a voided one', () => {
+        expect(roundStateOf([match('a', 1, 'cancelled'), match('b', 1, 'scheduled')])).toBe('upcoming');
     });
 });
 
@@ -374,6 +426,70 @@ describe('pair identity and chip colour', () => {
     });
 });
 
+describe('activeRoundIndex', () => {
+    const round = (n: number, matches: PublicMatch[]): PublicRound => ({
+        round_number: n, round_name: `Round ${n}`, matches,
+    });
+
+    it('is the first round holding something still to play', () => {
+        expect(activeRoundIndex([
+            round(1, [match('a', 1, 'completed')]),
+            round(2, [match('b', 2, 'scheduled')]),
+            round(3, [match('c', 3, 'scheduled')]),
+        ])).toBe(1);
+    });
+
+    it('advances past a round whose remaining fixtures were all voided', () => {
+        expect(activeRoundIndex([
+            round(1, [match('a', 1, 'completed')]),
+            round(2, [match('b', 2, 'completed'), match('c', 2, 'cancelled')]),
+            round(3, [match('d', 3, 'scheduled')]),
+        ])).toBe(2);
+    });
+
+    it('still falls back to the last round when nothing anywhere is left to play', () => {
+        expect(activeRoundIndex([
+            round(1, [match('a', 1, 'completed')]),
+            round(2, [match('b', 2, 'cancelled')]),
+        ])).toBe(1);
+        expect(activeRoundIndex([])).toBe(0);
+    });
+});
+
+describe('activeRoundNumber', () => {
+    const round = (n: number, matches: PublicMatch[]) => ({ roundNumber: n, matches });
+
+    it('is the first round holding something still to play', () => {
+        expect(activeRoundNumber([
+            round(1, [match('a', 1, 'completed')]),
+            round(2, [match('b', 2, 'scheduled')]),
+        ])).toBe(2);
+    });
+
+    it('advances past a round whose remaining fixtures were all voided', () => {
+        expect(activeRoundNumber([
+            round(1, [match('a', 1, 'completed')]),
+            round(2, [match('b', 2, 'walkover'), match('c', 2, 'cancelled')]),
+            round(3, [match('d', 3, 'scheduled')]),
+        ])).toBe(3);
+    });
+
+    it('still prefers a live round over everything else', () => {
+        expect(activeRoundNumber([
+            round(1, [match('a', 1, 'scheduled')]),
+            round(2, [match('b', 2, 'cancelled'), match('c', 2, 'in_progress')]),
+        ])).toBe(2);
+    });
+
+    it('still falls back to the last round number when nothing is left to play', () => {
+        expect(activeRoundNumber([
+            round(1, [match('a', 1, 'completed')]),
+            round(7, [match('b', 7, 'cancelled')]),
+        ])).toBe(7);
+        expect(activeRoundNumber([])).toBe(1);
+    });
+});
+
 describe('upNextMatches', () => {
     // The shared `match()` helper leaves both teams null, which the queue now treats as an
     // undecided knockout slot and skips — so anything meant to BE queued has to carry pairs.
@@ -503,6 +619,25 @@ describe('upNextMatches', () => {
         expect(upNextMatches(bracket([named])).map(m => m.id)).toEqual(['named']);
     });
 
+    it('drops a fixture a disqualification voided, however early it was due', () => {
+        // The live defect, exactly as the hall saw it. `cascade_disqualification` voids the pair's
+        // unplayed group fixtures but leaves both registrations in their slots, so the game is
+        // still fully decided and still carries the evening's earliest start — it led the court
+        // rail, announcing a game nobody would ever come out to play.
+        const ids = upNextMatches(bracket([
+            at('voided', 'Court 1', '2026-08-11T09:00:00Z', 'cancelled'),
+            at('next', 'Court 2', '2026-08-11T10:00:00Z'),
+        ])).map(m => m.id);
+        expect(ids).toEqual(['next']);
+    });
+
+    it('leaves nothing to queue when every remaining fixture was voided', () => {
+        expect(upNextMatches(bracket([
+            at('v1', 'Court 1', '2026-08-11T09:00:00Z', 'cancelled'),
+            at('v2', 'Court 2', '2026-08-11T10:00:00Z', 'cancelled'),
+        ]))).toEqual([]);
+    });
+
     it('sees plate matches, which are played on real courts like any other', () => {
         const ids = upNextMatches(plateBracket([at('plate', 'Court 5', '2026-08-11T10:00:00Z')])).map(m => m.id);
         expect(ids).toEqual(['plate']);
@@ -578,5 +713,41 @@ describe('getRoundName', () => {
         expect(getRoundName('Quarter-final', he)).toBe('רבע גמר');
         expect(getRoundName('Plate Round 1', he)).toBe('Plate Round 1');
         expect(getRoundName('Round of 16', en)).toBe('Round of 16');
+    });
+});
+
+describe('a draw with nothing voided reads exactly as it did before', () => {
+    // Every selector the voided branch touches, pinned together on a clean evening. A tournament
+    // that disqualified nobody is the overwhelmingly common case, and the new branch has to be
+    // invisible to it — these are the answers the five gave before it existed.
+    const pair = (name: string) => ({ team_name: name, player_1: null, player_2: null, is_lucky_loser: null });
+    const timed = (id: string, round: number, when: string, status = 'scheduled'): PublicMatch => ({
+        ...match(id, round, status),
+        team_a: pair(`${id} A`), team_b: pair(`${id} B`), court_name: 'Court 1', scheduled_at: when,
+    });
+    const r1 = timed('r1', 1, '2026-08-11T09:00:00Z', 'completed');
+    const r2 = timed('r2', 2, '2026-08-11T10:00:00Z');
+    const r3 = timed('r3', 3, '2026-08-11T11:00:00Z');
+
+    it('gives the same answer from all five selectors', () => {
+        expect(activeMatchIndex([r1, r2, r3])).toBe(1);
+        expect(roundStateOf([r1])).toBe('done');
+        expect(roundStateOf([r2, r3])).toBe('upcoming');
+        expect(activeRoundIndex([
+            { round_number: 1, round_name: 'Round 1', matches: [r1] },
+            { round_number: 2, round_name: 'Round 2', matches: [r2] },
+            { round_number: 3, round_name: 'Round 3', matches: [r3] },
+        ])).toBe(1);
+        expect(activeRoundNumber([
+            { roundNumber: 1, matches: [r1] },
+            { roundNumber: 2, matches: [r2] },
+            { roundNumber: 3, matches: [r3] },
+        ])).toBe(2);
+        expect(upNextMatches({
+            tournament_id: 't', tournament_name: 'T', structure: 'group_then_knockout',
+            club_name: null, club_logo_url: null, sponsors: [], videos: [],
+            knockout_rounds: [], plate_rounds: [], league_standings: null, third_place_match: null,
+            groups: [{ group_name: 'Group A', matches: [r1, r2, r3], standings: [] }],
+        }).map(m => m.id)).toEqual(['r2', 'r3']);
     });
 });

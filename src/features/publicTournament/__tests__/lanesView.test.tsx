@@ -141,6 +141,21 @@ describe('LanesView', () => {
         expect(screen.queryByText('In progress')).toBeNull();
     });
 
+    it('reads a round whose only unfinished fixture a disqualification voided as finished', () => {
+        // Round 1's second fixture was cancelled by a mid-tournament disqualification, so it will
+        // never be played: the axis must call round 1 over rather than leaving it "to come" — and
+        // reading it as unfinished pinned this label to round 1 for the rest of the evening.
+        const g = group('Group E', [
+            match('m1', 1, 'completed', 'Alpha', 'Bravo'),
+            match('m2', 1, 'cancelled', 'Charlie', 'Delta'),
+            match('m3', 2, 'scheduled', 'Echo', 'Foxtrot'),
+        ]);
+        render(<LanesView groups={[g]} accents={ACCENTS} />);
+
+        expect(screen.getByText('Round 1')).toBeInTheDocument();
+        expect(screen.getByText('Finished')).toBeInTheDocument();
+    });
+
     it('renders a placeholder instead of an empty row when a lane has no matches inside the shared window', () => {
         // A deep 6-round group whose active round is 5 (rounds 1-4 finished, 5 still open)
         // centres the shared 4-column window on rounds 3-6 — reproducing the reviewer's probe

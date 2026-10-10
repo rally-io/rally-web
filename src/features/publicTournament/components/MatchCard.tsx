@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
-import { Trophy } from 'lucide-react';
+import { Ban, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FitText } from './FitText';
 import { RatingChip } from './RatingChip';
 import { TieLabel } from './TieLabel';
-import { SCORE_TONE_CLASS, isLiveStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName, scoreTone, slotPlaceholderLabel, type ScoreTone } from '../utils';
+import { SCORE_TONE_CLASS, isLiveStatus, isVoidedStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName, scoreTone, slotPlaceholderLabel, type ScoreTone } from '../utils';
 import type { PublicMatch, PublicPlayer, PublicTeam, SetScore, SlotPlaceholder } from '../types';
 
 export type MatchCardVariant = 'default' | 'node' | 'hero' | 'stage';
@@ -68,6 +68,7 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
     const { t } = useTranslation();
     const isWinner = winner === side;
     const isLoser = winner !== null && !isWinner;
+    const isVoided = isVoidedStatus(status);
     const scores = sets.map(s => (side === 'team_a' ? s.team_a_score : s.team_b_score));
     // The same three-step ladder as the row's own text size below, in px: FitText needs a
     // number, and two copies of a variant ladder drift the moment one variant is retuned.
@@ -78,6 +79,11 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
                 'flex min-w-0 flex-1 items-center gap-1.5 font-bold text-(--pb-text)',
                 stage ? 'px-5 py-3 text-[22px]' : small ? 'px-3 py-2 text-xs' : large ? 'px-4 py-3 text-[15px]' : 'px-3 py-2 text-[13px]',
                 isLoser && 'text-(--pb-text-muted)',
+                // Both sides are demoted, after the loser clause so it wins on either row: a
+                // voided fixture has no winner and no loser, so neither name may stay at full
+                // strength. Struck through and muted is already how this board draws a dead
+                // entry (the disqualified standings row), so a viewer has seen it before.
+                isVoided && 'text-(--pb-text-muted) line-through',
             )}>
                 {team ? (
                     <TeamNames team={team} maxPx={namePx} seeds={seeds} />
@@ -95,7 +101,16 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
                 stage ? 'min-w-20 justify-center px-4 text-[34px]' : small ? 'min-w-9 text-xs' : large ? 'min-w-12 px-3 text-[15px]' : 'min-w-10 text-[13px]',
                 SCORE_TONE_CLASS[tone === 'live' ? 'neutral' : tone],
             )}>
-                {status === 'walkover' ? (
+                {isVoided ? (
+                    // An icon, not the translated word: `min-w` above is a floor, not a cap, so a
+                    // 9-character "Cancelled" would grow this column and eat the name column on the
+                    // 1600×900 canvas, where there is no scrollbar to show what was pushed out. The
+                    // walkover sibling below is abbreviated for exactly the same reason; the full
+                    // wording lives on the card's own label. `--pb-text-faint` is the board's
+                    // deadest text token — the one an empty scoreline and a loser's score already
+                    // use — so the marker reads as struck out rather than as a result.
+                    <Ban role="img" size={stage ? 20 : 12} className="shrink-0 text-(--pb-text-faint)" aria-label={t('public_bracket.status.cancelled', 'Cancelled')} />
+                ) : status === 'walkover' ? (
                     <span>{isWinner ? t('public_bracket.status.walkover', 'W/O') : ''}</span>
                 ) : scores.length > 0 ? (
                     scores.map((s, i) => <span key={i}>{s}</span>)
@@ -114,6 +129,7 @@ export function MatchCard({ match, variant = 'default', className, seeds }: Matc
     const stage = variant === 'stage';
     const isLive = isLiveStatus(match.status);
     const isDone = match.status === 'completed' || match.status === 'walkover';
+    const isVoided = isVoidedStatus(match.status);
     const isTie = scoreTone(match, 'team_a') === 'tie';
     const time = match.scheduled_at ? format(parseISO(match.scheduled_at), 'HH:mm') : null;
 
@@ -134,9 +150,26 @@ export function MatchCard({ match, variant = 'default', className, seeds }: Matc
         )}>
             <div className="flex items-center justify-between gap-2 border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-1.5">
                 <span className="truncate text-[10px] font-black uppercase tracking-widest text-(--pb-text-faint)">
-                    {[localizeMatchLabel(match.match_label, t), match.court_name].filter(Boolean).join(' · ')}
+                    {/* No court once voided, the same way the lane card drops it: the court was
+                        given back to the tournament, and a dead fixture still naming one has the
+                        hall reading that court as committed to a game nobody will play. The match
+                        label stays — it is how the fixture is referred to, voided or not. */}
+                    {[localizeMatchLabel(match.match_label, t), isVoided ? null : match.court_name].filter(Boolean).join(' · ')}
                 </span>
-                {isLive ? (
+                {/* Voided goes first: the branches are mutually exclusive anyway — a voided fixture
+                    has no result and is not being played, so it can never be live, done or a tie —
+                    which leaves placement a question of reading order. It is the one fact that
+                    changes how everything else on the card should be read, and putting it first
+                    also keeps it visibly ahead of `time`, which is what it has to beat: the bug was
+                    a dead fixture advertising a kick-off time for a game nobody will play. */}
+                {isVoided ? (
+                    // Muted, not faint: one step above the label beside it, because this word is
+                    // what explains the struck-through rows under it. Same token as the names, and
+                    // as the lane card's own cancelled header.
+                    <span className="shrink-0 text-[9px] font-black uppercase tracking-widest text-(--pb-text-muted)">
+                        {t('public_bracket.status.cancelled', 'Cancelled')}
+                    </span>
+                ) : isLive ? (
                     <span className="flex shrink-0 items-center gap-1">
                         <span className="pb-live-dot h-1.5 w-1.5 rounded-full bg-(--pb-live)" />
                         <span className="text-[9px] font-black uppercase tracking-widest text-(--pb-live)">
