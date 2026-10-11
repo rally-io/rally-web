@@ -655,7 +655,8 @@
     "tournamentLeaveWaitlist": "עזיבת רשימת ההמתנה",
     "tournamentLeaveWaitlistConfirmTitle": "לעזוב את רשימת ההמתנה?",
     "tournamentLeaveWaitlistConfirmBody": "תאבד/י את מקומך במקום #{{position}}.",
-    "tournamentLeaveWaitlistCancelCta": "ביטול"
+    "tournamentLeaveWaitlistCancelCta": "ביטול",
+    "tournamentWaitlistNoWaiverNote": "הפטור מדמי הרשמה אינו זמין ברשימת ההמתנה — אם יתפנה מקום, ההרשמה תהיה במחיר המלא."
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
@@ -1201,6 +1202,8 @@
       "terminalBody": "לשאלות על ההרשמה פנו למארגני הטורניר בחברה.",
       "fullTitle": "כל המקומות נתפסו",
       "fullBody": "הטורניר מלא. פנו למארגני הטורניר בחברה — אולי יתפנה מקום.",
+      "waitlistTitle": "הטורניר מלא — אפשר להצטרף לרשימת המתנה",
+      "waitlistBody": "אם יתפנה מקום, תועברו מרשימת ההמתנה להרשמה. ההצטרפות נעשית בעמוד הטורניר באתר Rally: נבצע החזקה זמנית בכרטיס ונחייב רק אם יתפנה מקום.",
       "profileSaveError": "לא הצלחנו לשמור את הפרטים. נסו שוב בעוד רגע.",
       "sessionError": "משהו השתבש בטעינת הפרופיל.",
       "retry": "נסו שוב",

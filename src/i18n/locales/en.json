@@ -642,7 +642,8 @@
     "tournamentLeaveWaitlist": "Leave Waiting List",
     "tournamentLeaveWaitlistConfirmTitle": "Leave the waiting list?",
     "tournamentLeaveWaitlistConfirmBody": "You'll lose your spot at position #{{position}}.",
-    "tournamentLeaveWaitlistCancelCta": "Cancel"
+    "tournamentLeaveWaitlistCancelCta": "Cancel",
+    "tournamentWaitlistNoWaiverNote": "The fee waiver isn't available on the waiting list — if a spot opens up, registration is at the full price."
   },
   "profile": {
     "completeTitle": "Complete Your Profile",
@@ -1188,6 +1189,8 @@
       "terminalBody": "For questions about your registration, ask your tournament organiser.",
       "fullTitle": "All spots are taken",
       "fullBody": "The tournament is full. Ask your tournament organiser — a spot may free up.",
+      "waitlistTitle": "The tournament is full — you can join the waiting list",
+      "waitlistBody": "If a spot opens up, you move from the waiting list into the tournament. You join on the tournament's page on Rally: we place a temporary hold on your card and only charge it if a spot opens.",
       "profileSaveError": "We couldn't save your details. Try again in a moment.",
       "sessionError": "Something went wrong loading your profile.",
       "retry": "Try again",

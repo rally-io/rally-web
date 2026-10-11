@@ -94,10 +94,17 @@ function CategoryCard({ category }: { category: CorporateTournamentEvent }) {
   const fill = tr ? registrationSummary(tr) : null
   // `is_full` is what the category's own page acts on, so it wins; the count is
   // only the fallback for an API build that predates the field (it is optional).
-  const soldOut = tr != null && (tr.is_full ?? (fill != null && fill.registered >= fill.capacity))
-  const closed = tr != null && !soldOut && !(
-    isRegistrationOpen(tr.registration_deadline) && (tr.status == null || tr.status === 'registration_open')
-  )
+  const full = tr != null && (tr.is_full ?? (fill != null && fill.registered >= fill.capacity))
+  const registrationOpen = tr != null
+    && isRegistrationOpen(tr.registration_deadline)
+    && (tr.status == null || tr.status === 'registration_open')
+  // A full category whose registration is still open takes a waiting-list entry —
+  // the API refuses one on a closed tournament and when the switch is off
+  // (`waitlist_enabled` is that global switch; absent means on, like the API).
+  // Only a full category that cannot take one is "sold out".
+  const waitlist = tr != null && full && registrationOpen && (tr.waitlist_enabled ?? true)
+  const soldOut = full && !waitlist
+  const closed = tr != null && !full && !registrationOpen
   const unit = t(
     tr?.format === 'singles'
       ? 'tournament.tournamentsRegisteredUnitPlayers'
@@ -109,6 +116,7 @@ function CategoryCard({ category }: { category: CorporateTournamentEvent }) {
       to={`/join/${category.slug}`}
       data-testid={`hub-category-${category.slug}`}
       data-sold-out={soldOut ? 'true' : undefined}
+      data-waitlist={waitlist ? 'true' : undefined}
       className={cn(
         'block rounded-2xl bg-rally-surface border p-4 sm:p-5 transition-colors',
         soldOut || closed
@@ -125,7 +133,14 @@ function CategoryCard({ category }: { category: CorporateTournamentEvent }) {
             {category.levelLabel}
           </p>
         </div>
-        {soldOut ? (
+        {waitlist ? (
+          <span
+            data-testid="hub-waitlist"
+            className="shrink-0 inline-flex items-center rounded-full bg-rally-accent/10 border border-rally-accent/40 px-2.5 py-1 text-[11px] font-black text-rally-accent"
+          >
+            {t('tournament.tournamentCardJoinWaitlist')}
+          </span>
+        ) : soldOut ? (
           <span
             data-testid="hub-sold-out"
             className="shrink-0 inline-flex items-center rounded-full bg-rally-error/15 border border-rally-error/40 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-rally-error"
@@ -160,7 +175,11 @@ function CategoryCard({ category }: { category: CorporateTournamentEvent }) {
           </p>
         ) : <span />}
         <span className="inline-flex items-center gap-1.5 text-sm font-bold text-rally-accent">
-          {soldOut || closed ? t('corporate.hub.viewCta') : t('corporate.hub.registerCta')}
+          {waitlist
+            ? t('tournament.tournamentJoinWaitlist')
+            : soldOut || closed
+              ? t('corporate.hub.viewCta')
+              : t('corporate.hub.registerCta')}
           <ArrowLeft aria-hidden className="h-4 w-4 ltr:rotate-180" />
         </span>
       </div>

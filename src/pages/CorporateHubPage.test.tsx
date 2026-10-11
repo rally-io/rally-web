@@ -68,30 +68,48 @@ describe('CorporateHubPage', () => {
     expect(within(card).getByText('pairs registered')).toBeInTheDocument()
   })
 
-  it('badges exactly the full categories as sold out, and keeps their link', () => {
+  it('badges exactly the full categories as a waiting list, with the way to join it, and keeps their link', () => {
     renderHub()
-    const soldOut = screen.getAllByTestId('hub-sold-out')
-    expect(soldOut).toHaveLength(2)
+    expect(screen.getAllByTestId('hub-waitlist')).toHaveLength(2)
+    // Registration is open and the waiting list is on, so nothing here is "sold out".
+    expect(screen.queryByTestId('hub-sold-out')).not.toBeInTheDocument()
     for (const slug of ['holon-israel-open-2026-d1-c2', 'holon-israel-open-2026-c2-c1']) {
       const card = screen.getByTestId(`hub-category-${slug}`)
-      expect(within(card).getByTestId('hub-sold-out')).toBeInTheDocument()
+      expect(within(card).getByTestId('hub-waitlist')).toHaveTextContent('Waiting List')
+      expect(within(card).getByText('Join Waiting List')).toBeInTheDocument()
       expect(card).toHaveAttribute('href', `/join/${slug}`)
     }
     const openCard = screen.getByTestId('hub-category-holon-israel-open-2026-d2-d1')
-    expect(within(openCard).queryByTestId('hub-sold-out')).not.toBeInTheDocument()
+    expect(within(openCard).queryByTestId('hub-waitlist')).not.toBeInTheDocument()
+    expect(within(openCard).getByText('Register')).toBeInTheDocument()
+  })
+
+  it('says sold out only when a full category cannot take a waiting-list entry', () => {
+    // The global switch is off: the API would answer a join with a 409.
+    tournaments.byId[ID.d1c2] = open(32, 32, { is_full: true, waitlist_enabled: false })
+    // Full and registration already closed: the queue is closed with it.
+    tournaments.byId[ID.c2c1] = open(32, 32, { is_full: true, registration_deadline: '2000-01-01T00:00:00Z' })
+    renderHub()
+    expect(screen.queryByTestId('hub-waitlist')).not.toBeInTheDocument()
+    for (const slug of ['holon-israel-open-2026-d1-c2', 'holon-israel-open-2026-c2-c1']) {
+      const card = screen.getByTestId(`hub-category-${slug}`)
+      expect(within(card).getByTestId('hub-sold-out')).toBeInTheDocument()
+      expect(within(card).getByText('Details')).toBeInTheDocument()
+    }
   })
 
   it('falls back to the count when the API predates is_full', () => {
     tournaments.byId[ID.b2a] = open(16, 16) // no is_full field
     renderHub()
     const card = screen.getByTestId('hub-category-holon-israel-open-2026-b2-a')
-    expect(within(card).getByTestId('hub-sold-out')).toBeInTheDocument()
+    expect(within(card).getByTestId('hub-waitlist')).toBeInTheDocument()
   })
 
   it('trusts is_full over the count, as the category\'s own page does', () => {
     tournaments.byId[ID.b2a] = open(16, 16, { is_full: false })
     renderHub()
     const card = screen.getByTestId('hub-category-holon-israel-open-2026-b2-a')
+    expect(within(card).queryByTestId('hub-waitlist')).not.toBeInTheDocument()
     expect(within(card).queryByTestId('hub-sold-out')).not.toBeInTheDocument()
   })
 
@@ -99,6 +117,7 @@ describe('CorporateHubPage', () => {
     tournaments.byId = {}
     renderHub()
     expect(screen.queryByTestId('hub-sold-out')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('hub-waitlist')).not.toBeInTheDocument()
     expect(screen.queryByText('pairs registered')).not.toBeInTheDocument()
     const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/join/'))
     expect(links).toHaveLength(5)
@@ -110,5 +129,6 @@ describe('CorporateHubPage', () => {
     const card = screen.getByTestId('hub-category-holon-israel-open-2026-c1-b2')
     expect(within(card).getByTestId('hub-closed')).toBeInTheDocument()
     expect(within(card).queryByTestId('hub-sold-out')).not.toBeInTheDocument()
+    expect(within(card).queryByTestId('hub-waitlist')).not.toBeInTheDocument()
   })
 })

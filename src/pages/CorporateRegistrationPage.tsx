@@ -192,7 +192,46 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
       />
     )
   } else if (isFull) {
-    body = <InfoCard title={t('corporate.reg.fullTitle')} body={t('corporate.reg.fullBody')} />
+    // This page has no waiting-list form of its own — joining queues the pair
+    // behind a card hold, which the tournament page already runs end to end — so a
+    // full tournament that can take a queue entry sends the pair there. `open` is
+    // true on this branch, and `waitlist_enabled` is the API's global switch
+    // (absent means on, like the API). The residents' waiver is refused on the
+    // waiting list, so a waiver tournament says so before the pair taps through.
+    const waitlistOffered = tr.waitlist_enabled ?? true
+    const queued = tr.my_waitlist_entry ?? null
+    const toTournament = (label: string) => (
+      <Link
+        to={`/tournaments/${tr.id}`}
+        data-testid="corporate-waitlist-link"
+        className="mt-5 w-full h-12 rounded-full font-display font-bold inline-flex items-center justify-center bg-rally-accent text-rally-accent-text hover:bg-rally-accent-hover transition-colors"
+      >
+        {label}
+      </Link>
+    )
+    if (queued) {
+      body = (
+        <InfoCard
+          title={t('tournament.tournamentWaitlistPosition', { position: queued.position })}
+          body={t('tournament.tournamentWaitlistOrderNote')}
+        >
+          {toTournament(t('corporate.reg.viewTournament'))}
+        </InfoCard>
+      )
+    } else if (waitlistOffered) {
+      body = (
+        <InfoCard title={t('corporate.reg.waitlistTitle')} body={t('corporate.reg.waitlistBody')}>
+          {tr.fee_waiver_type && (
+            <p data-testid="corporate-waitlist-waiver-note" className="mt-3 text-sm font-bold text-rally-text">
+              {t('tournament.tournamentWaitlistNoWaiverNote')}
+            </p>
+          )}
+          {toTournament(t('tournament.tournamentJoinWaitlist'))}
+        </InfoCard>
+      )
+    } else {
+      body = <InfoCard title={t('corporate.reg.fullTitle')} body={t('corporate.reg.fullBody')} />
+    }
   } else if (sessionStatus === 'signed_out') {
     body = (
       <div className="rounded-2xl bg-rally-surface border border-rally-border p-6 sm:p-8 text-center shadow-lg">
