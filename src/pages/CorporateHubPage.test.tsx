@@ -53,11 +53,13 @@ describe('CorporateHubPage', () => {
     expect(within(notice).getByText(/relevant tournament by your skill level and preferred day/i)).toBeInTheDocument()
   })
 
-  it('links every category to its own registration page, lowest level first', () => {
+  it('links every category straight to its real tournament page, lowest level first', () => {
     renderHub()
-    const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/join/'))
-    expect(links.map((a) => a.getAttribute('href'))).toEqual(hub().categories.map((slug) => `/join/${slug}`))
+    const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/tournaments/'))
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([ID.d2d1, ID.d1c2, ID.c2c1, ID.c1b2, ID.b2a].map((id) => `/tournaments/${id}`))
     expect(links).toHaveLength(5)
+    // The event pages stay reachable by their own links, but the hub does not route through them.
+    expect(screen.queryAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/join/'))).toHaveLength(0)
   })
 
   it('shows registered / capacity per category', () => {
@@ -73,11 +75,11 @@ describe('CorporateHubPage', () => {
     expect(screen.getAllByTestId('hub-waitlist')).toHaveLength(2)
     // Registration is open and the waiting list is on, so nothing here is "sold out".
     expect(screen.queryByTestId('hub-sold-out')).not.toBeInTheDocument()
-    for (const slug of ['holon-israel-open-2026-d1-c2', 'holon-israel-open-2026-c2-c1']) {
+    for (const [slug, id] of [['holon-israel-open-2026-d1-c2', ID.d1c2], ['holon-israel-open-2026-c2-c1', ID.c2c1]]) {
       const card = screen.getByTestId(`hub-category-${slug}`)
       expect(within(card).getByTestId('hub-waitlist')).toHaveTextContent('Waiting List')
       expect(within(card).getByText('Join Waiting List')).toBeInTheDocument()
-      expect(card).toHaveAttribute('href', `/join/${slug}`)
+      expect(card).toHaveAttribute('href', `/tournaments/${id}`)
     }
     const openCard = screen.getByTestId('hub-category-holon-israel-open-2026-d2-d1')
     expect(within(openCard).queryByTestId('hub-waitlist')).not.toBeInTheDocument()
@@ -119,7 +121,7 @@ describe('CorporateHubPage', () => {
     expect(screen.queryByTestId('hub-sold-out')).not.toBeInTheDocument()
     expect(screen.queryByTestId('hub-waitlist')).not.toBeInTheDocument()
     expect(screen.queryByText('pairs registered')).not.toBeInTheDocument()
-    const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/join/'))
+    const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('/tournaments/'))
     expect(links).toHaveLength(5)
   })
 

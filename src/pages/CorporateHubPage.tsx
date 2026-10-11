@@ -13,10 +13,12 @@ import { AppDownloadFooter } from '@/components/corporate/AppDownloadFooter'
 
 /**
  * /join/<slug> in hub mode: an event split into level categories, each its own
- * tournament with its own registration page. Nobody registers HERE — the page
- * says so, then lists the categories with how full each one is and a link to its
- * page. The same brief as the other two modes: no site navigation, the client's
- * hero, the rulebook last.
+ * tournament. Nobody registers HERE — the page says so, then lists the categories
+ * with how full each one is and a link straight to that category's tournament page
+ * (/tournaments/<id>), the tournament as it is in Rally, which takes the
+ * registration, the residents' waiver with its proof, and the waiting list. The same
+ * brief as the other two modes: no site navigation, the client's hero, the rulebook
+ * last.
  */
 export default function CorporateHubPage({ event }: { event: CorporateHubEvent }) {
   const { t } = useTranslation()
@@ -113,7 +115,7 @@ function CategoryCard({ category }: { category: CorporateTournamentEvent }) {
 
   return (
     <Link
-      to={`/join/${category.slug}`}
+      to={`/tournaments/${category.tournamentId}`}
       data-testid={`hub-category-${category.slug}`}
       data-sold-out={soldOut ? 'true' : undefined}
       data-waitlist={waitlist ? 'true' : undefined}
