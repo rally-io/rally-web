@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { CORPORATE_EVENTS, eventPagePathForTournament, getCorporateEvent, type CorporateEvent } from './corporateEvents'
+import {
+  CORPORATE_EVENTS, eventPagePathForTournament, getCorporateEvent,
+  type CorporateEvent, type CorporateHubEvent, type CorporateTournamentEvent,
+} from './corporateEvents'
 
 describe('corporateEvents', () => {
   it('every entry declares a mode, and the two legacy entries are lead-mode', () => {
     for (const [slug, ev] of Object.entries(CORPORATE_EVENTS)) {
       expect(ev.slug).toBe(slug)
-      expect(['lead', 'tournament']).toContain(ev.mode)
+      expect(['lead', 'tournament', 'hub']).toContain(ev.mode)
     }
     expect(getCorporateEvent('samsung-fold8')?.mode).toBe('lead')
     expect(getCorporateEvent('dani-shoval')?.mode).toBe('lead')
@@ -14,7 +17,7 @@ describe('corporateEvents', () => {
   it('a lead entry carries a corporate_ sheet source; a tournament entry carries a tournament id', () => {
     for (const ev of Object.values(CORPORATE_EVENTS)) {
       if (ev.mode === 'lead') expect(ev.sheetSource).toMatch(/^corporate_[a-z0-9_]{1,40}$/)
-      else expect(ev.tournamentId).toMatch(/^[0-9a-f-]{36}$/)
+      else if (ev.mode === 'tournament') expect(ev.tournamentId).toMatch(/^[0-9a-f-]{36}$/)
     }
   })
 
@@ -28,8 +31,14 @@ describe('corporateEvents', () => {
       company: 'Y', tournamentName: 'Y Cup', clubName: 'C', clubAddress: 'A', heroImage: '/y.jpg',
       dateLabel: 'd', timeLabel: '10:00–12:00',
     }
+    const hub: CorporateEvent = {
+      mode: 'hub', slug: 'z', categories: ['y'],
+      company: 'Z', tournamentName: 'Z Cup', clubName: 'C', clubAddress: 'A', heroImage: '/z.jpg',
+      dateLabel: 'd', timeLabel: '10:00–12:00',
+    }
     expect(lead.mode).toBe('lead')
     expect(tournament.mode).toBe('tournament')
+    expect(hub.mode).toBe('hub')
   })
 
   // A local heroImage is served from public/ AND is the link preview's og:image
@@ -67,17 +76,62 @@ describe('corporateEvents', () => {
   })
 })
 
-describe('the Holon Israel Open level categories', () => {
-  it('offers every tournament band from 2 to 5, as tournaments write them', () => {
+describe('the Holon Israel Open hub', () => {
+  const hub = () => {
     const event = getCorporateEvent('holon-israel-open-2026')
-    expect(event?.mode).toBe('tournament')
-    expect(event && event.mode === 'tournament' ? event.competeLevels : undefined).toEqual([
-      '2.0 - 2.5 (D1)',
-      '2.5 - 3.0 (D1 - C2)',
-      '3.0 - 3.5 (C2 - C1)',
-      '3.5 - 4.0 (C1 - B2)',
-      '4.0 - 4.5 (B2 - B1)',
-      '4.5 - 5.0 (B1 - A)',
+    if (event?.mode !== 'hub') throw new Error('the Israel Open hub is missing')
+    return event as CorporateHubEvent
+  }
+  const categories = () => hub().categories.map((slug) => {
+    const event = getCorporateEvent(slug)
+    if (event?.mode !== 'tournament') throw new Error(`${slug} is not a tournament entry`)
+    return event as CorporateTournamentEvent
+  })
+
+  it('is a hub with the five level categories, lowest level first', () => {
+    expect(categories().map((c) => c.levelLabel)).toEqual([
+      '2.0–2.5 (D2–D1)',
+      '2.5–3.0 (D1–C2)',
+      '3.0–3.5 (C2–C1)',
+      '3.5–4.0 (C1–B2)',
+      '4.0–5.0 (B2–A)',
     ])
+  })
+
+  it('points every category at a different tournament, never at the original one', () => {
+    const ids = categories().map((c) => c.tournamentId)
+    expect(new Set(ids).size).toBe(ids.length)
+    // 7acb6027-… is the closed parent the registrations were split out of.
+    expect(ids).not.toContain('7acb6027-33df-456a-8d3c-6ba4073b72ef')
+  })
+
+  it('links each category back to the hub, which links to it', () => {
+    for (const category of categories()) {
+      expect(category.hubSlug).toBe('holon-israel-open-2026')
+    }
+    for (const ev of Object.values(CORPORATE_EVENTS)) {
+      if (ev.mode === 'tournament' && ev.hubSlug) {
+        const hubEvent = getCorporateEvent(ev.hubSlug)
+        expect(hubEvent?.mode, `${ev.slug} names ${ev.hubSlug}`).toBe('hub')
+        expect(hubEvent?.mode === 'hub' ? hubEvent.categories : []).toContain(ev.slug)
+      }
+    }
+  })
+
+  it('keeps the residents\' waiver on every category — it only exists on the event page', () => {
+    for (const category of categories()) {
+      expect(category.feeWaiver).toEqual({ type: 'holon_resident' })
+    }
+  })
+
+  it('asks no level and no day on a category page — the category is both', () => {
+    for (const category of categories()) {
+      expect(category.competeLevels).toBeUndefined()
+      expect(category.preferredDays).toBeUndefined()
+    }
+  })
+
+  it('has no category that is itself a hub', () => {
+    for (const slug of hub().categories) expect(getCorporateEvent(slug)?.mode).toBe('tournament')
   })
 })

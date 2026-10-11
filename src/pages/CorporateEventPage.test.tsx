@@ -7,6 +7,9 @@ vi.mock('./CorporateSignupPage', () => ({ default: () => <div>LEAD PAGE</div> })
 vi.mock('./CorporateRegistrationPage', () => ({
   default: ({ event }: { event: { slug: string } }) => <div>REG PAGE {event.slug}</div>,
 }))
+vi.mock('./CorporateHubPage', () => ({
+  default: ({ event }: { event: { slug: string } }) => <div>HUB PAGE {event.slug}</div>,
+}))
 
 import CorporateEventPage from './CorporateEventPage'
 import { getCorporateEvent } from '@/constants/corporateEvents'
@@ -25,6 +28,7 @@ beforeEach(() => {
   vi.mocked(getCorporateEvent).mockImplementation((slug) => {
     if (slug === 'lead-co') return { mode: 'lead', slug, sheetSource: 'corporate_lead' } as any
     if (slug === 'reg-co') return { mode: 'tournament', slug, tournamentId: 't-1' } as any
+    if (slug === 'hub-co') return { mode: 'hub', slug, categories: ['reg-co'] } as any
     return null
   })
 })
@@ -37,6 +41,10 @@ describe('CorporateEventPage', () => {
   it('renders the registration page for a tournament-mode slug', () => {
     renderAt('reg-co')
     expect(screen.getByText('REG PAGE reg-co')).toBeInTheDocument()
+  })
+  it('renders the category hub for a hub-mode slug', () => {
+    renderAt('hub-co')
+    expect(screen.getByText('HUB PAGE hub-co')).toBeInTheDocument()
   })
   it('falls through to the lead page (which renders not-found) for an unknown slug', () => {
     renderAt('nope')

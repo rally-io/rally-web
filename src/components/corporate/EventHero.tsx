@@ -55,6 +55,17 @@ export function EventHero({ event, fallbackImage }: {
       <h1 className="font-display text-3xl sm:text-4xl font-black tracking-tight leading-[1.1] text-rally-text whitespace-pre-line">
         {event.tournamentName}
       </h1>
+      {event.levelLabel && (
+        // One category of a bigger event. LTR on purpose: the page's RTL would
+        // mirror a range like "2.0–2.5" so it reads 2.5–2.0 (the tournament card
+        // isolates a level the same way).
+        <p className="mt-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-rally-accent/40 bg-rally-accent/10 px-3 py-1.5 text-sm font-bold text-rally-accent">
+            <span>{t('corporate.hub.levelLabel')}</span>
+            <span dir="ltr" data-testid="event-level">{event.levelLabel}</span>
+          </span>
+        </p>
+      )}
       {event.hostedAtLine !== false && (
         <p className="text-sm sm:text-base text-rally-text-2 mt-2">
           {t('corporate.hostedAt')} {event.clubName}

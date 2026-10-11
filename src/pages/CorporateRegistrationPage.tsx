@@ -5,7 +5,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, CreditCard, Info, Users } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CreditCard, Info, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTournament } from '@/hooks/useTournament'
 import { useAuthGate } from '@/hooks/useAuthGate'
@@ -114,7 +114,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
     }
   }, [])
 
-  const flatName = event.tournamentName.replace(/\s+/g, ' ').trim()
+  const flatName = [event.tournamentName.replace(/\s+/g, ' ').trim(), event.levelLabel].filter(Boolean).join(' · ')
   useEffect(() => {
     const previous = document.title
     document.title = `${flatName} · ${event.company}`
@@ -287,6 +287,17 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
       />
       <section className="relative px-4 pt-6 pb-10">
         <div className="mx-auto w-full max-w-xl">
+          {event.hubSlug && (
+            // A category of a bigger event: one tap back to the list, so a pair that
+            // opened the wrong level does not have to find the browser's back button.
+            <Link
+              to={`/join/${event.hubSlug}`}
+              className="mb-4 inline-flex items-center gap-1.5 text-sm text-rally-text-2 hover:text-rally-accent"
+            >
+              <ArrowLeft aria-hidden className="h-4 w-4 rtl:rotate-180" />
+              {t('corporate.hub.backToCategories')}
+            </Link>
+          )}
           {body}
           {isRegisteredCard && registration.registerError && (
             <p role="alert" className="mt-3 text-sm text-rally-error text-center">

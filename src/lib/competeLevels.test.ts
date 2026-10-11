@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { getCorporateEvent, type CorporateTournamentEvent } from '@/constants/corporateEvents'
 import { FALLBACK_LADDERS } from './skillLadder'
+import { tournamentLevelsBetween } from './tournamentLevelBands'
 import { competeLevelOptions, tournamentLevelLabel } from './competeLevels'
 
 const L7 = FALLBACK_LADDERS[7]
 const L5 = FALLBACK_LADDERS[5]
 
-const israelOpen = () => {
-  const event = getCorporateEvent('holon-israel-open-2026')
-  if (!event || event.mode !== 'tournament') throw new Error('the Israel Open event is missing')
-  return event as CorporateTournamentEvent
-}
+/**
+ * What the Israel Open's registration page offered while it was one tournament: every
+ * band from 2 to 5, flagged as bands. The event is split into per-level pages now and
+ * none of them asks for a level, but any event can still opt into this shape, so the
+ * shape is pinned here rather than through an entry.
+ */
+const israelOpen = () => ({
+  competeLevels: tournamentLevelsBetween(2, 5),
+  competeLevelsAreBands: true as const,
+})
 
 /** The dropdown as it reads on 2026-09-29, the day registrations opened — pinned verbatim. */
 const TODAY = [

@@ -55,7 +55,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // line break in tournamentName is handled there.
   return sendHtml(
     injectOg(baseHtml, {
-      title: event.tournamentName,
+      // A level category says which one in the card; every other entry's title is untouched.
+      title: event.levelLabel
+        ? `${event.tournamentName.replace(/\s+/g, ' ').trim()} · ${event.levelLabel}`
+        : event.tournamentName,
       description: `${event.company} · ${event.dateLabel} · ${event.timeLabel} · ${event.clubName}`,
       // Unlike club/tournament banners, this one is served from public/ and is
       // root-relative — crawlers will not resolve that.
