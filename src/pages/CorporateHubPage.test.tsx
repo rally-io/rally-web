@@ -46,11 +46,11 @@ beforeEach(() => {
 })
 
 describe('CorporateHubPage', () => {
-  it('says registration is through the category tournaments, not on this page', () => {
+  it('says general registration is over and sends the pair to the tournament for its level and day', () => {
     renderHub()
     const notice = screen.getByTestId('hub-notice')
-    expect(within(notice).getByText('Registration is per category')).toBeInTheDocument()
-    expect(within(notice).getByText(/can't register on this page/i)).toBeInTheDocument()
+    expect(within(notice).getByText('General registration is over')).toBeInTheDocument()
+    expect(within(notice).getByText(/relevant tournament by your skill level and preferred day/i)).toBeInTheDocument()
   })
 
   it('links every category to its own registration page, lowest level first', () => {

@@ -1134,16 +1134,16 @@
     "appBody": "The Rally app shows every available padel court in Israel — book courts, find tournaments and coaches.",
     "managedBy": "Tournament managed and run by Rally",
     "hub": {
-      "noticeTitle": "Registration is per category",
-      "noticeBody": "The championship is split into five level categories, and each one is its own tournament with its own registration page. You can't register on this page — pick the category that fits you and register through its link.",
-      "listTitle": "Choose a category",
-      "listHint": "Between two levels? Pick the category closest to yours.",
+      "noticeTitle": "General registration is over",
+      "noticeBody": "Please register for the relevant tournament by your skill level and preferred day. Each level is its own tournament — the links are below.",
+      "listTitle": "Choose a tournament by level and day",
+      "listHint": "Between two levels? Pick the tournament closest to yours.",
       "levelLabel": "Level",
       "registerCta": "Register",
       "viewCta": "Details",
       "soldOut": "Sold out",
       "closed": "Registration closed",
-      "backToCategories": "All categories"
+      "backToCategories": "All levels"
     },
     "reg": {
       "signInCta": "Sign in to register",
