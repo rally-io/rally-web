@@ -655,7 +655,8 @@
     "tournamentLeaveWaitlist": "עזיבת רשימת ההמתנה",
     "tournamentLeaveWaitlistConfirmTitle": "לעזוב את רשימת ההמתנה?",
     "tournamentLeaveWaitlistConfirmBody": "תאבד/י את מקומך במקום #{{position}}.",
-    "tournamentLeaveWaitlistCancelCta": "ביטול"
+    "tournamentLeaveWaitlistCancelCta": "ביטול",
+    "tournamentWaitlistNoWaiverNote": "הפטור מדמי הרשמה אינו זמין ברשימת ההמתנה — אם יתפנה מקום, ההרשמה תהיה במחיר המלא."
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
@@ -1146,6 +1147,18 @@
     "appTitle": "רוצים לשחק גם אחרי הטורניר?",
     "appBody": "אפליקציית Rally מראה את כל מגרשי הפאדל הפנויים בישראל — הזמנת מגרש, טורנירים ומאמנים.",
     "managedBy": "הטורניר מנוהל ומופעל ע״י Rally",
+    "hub": {
+      "noticeTitle": "ההרשמה הכללית הסתיימה",
+      "noticeBody": "אנא הירשמו לטורניר הרלוונטי לפי רמת המשחק והיום המועדף עליכם. לכל רמה יש טורניר נפרד — הקישורים למטה.",
+      "listTitle": "בחרו טורניר לפי רמה ויום",
+      "listHint": "בין שתי רמות? בחרו את הטורניר הקרוב לרמה שלכם.",
+      "levelLabel": "רמה",
+      "registerCta": "להרשמה",
+      "viewCta": "לפרטים",
+      "soldOut": "אזלו המקומות",
+      "closed": "ההרשמה נסגרה",
+      "backToCategories": "לכל הרמות"
+    },
     "reg": {
       "signInCta": "התחברו כדי להירשם",
       "signInHint": "עם Google, Apple, Facebook או אימייל — לוקח חצי דקה.",
@@ -1189,6 +1202,8 @@
       "terminalBody": "לשאלות על ההרשמה פנו למארגני הטורניר בחברה.",
       "fullTitle": "כל המקומות נתפסו",
       "fullBody": "הטורניר מלא. פנו למארגני הטורניר בחברה — אולי יתפנה מקום.",
+      "waitlistTitle": "הטורניר מלא — אפשר להצטרף לרשימת המתנה",
+      "waitlistBody": "אם יתפנה מקום, תועברו מרשימת ההמתנה להרשמה. ההצטרפות נעשית בעמוד הטורניר באתר Rally: נבצע החזקה זמנית בכרטיס ונחייב רק אם יתפנה מקום.",
       "profileSaveError": "לא הצלחנו לשמור את הפרטים. נסו שוב בעוד רגע.",
       "sessionError": "משהו השתבש בטעינת הפרופיל.",
       "retry": "נסו שוב",
