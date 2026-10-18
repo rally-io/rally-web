@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -26,7 +27,7 @@ const graph: GlobeGraph = {
 }
 const index = buildNetworkIndex(graph)
 
-function renderCard(target: GlobeNode, onFocus = vi.fn(), onClose = vi.fn(), viewerId: string | null = 'me') {
+function renderCard(target: GlobeNode, onFocus = vi.fn(), onClose = vi.fn(), viewerId: string | null = 'me', footer?: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return {
     onFocus,
@@ -34,7 +35,7 @@ function renderCard(target: GlobeNode, onFocus = vi.fn(), onClose = vi.fn(), vie
     ...render(
       <QueryClientProvider client={qc}>
         <MemoryRouter>
-          <PlayerCard node={target} index={index} onFocus={onFocus} onClose={onClose} viewerId={viewerId} />
+          <PlayerCard node={target} index={index} onFocus={onFocus} onClose={onClose} viewerId={viewerId} footer={footer} />
         </MemoryRouter>
       </QueryClientProvider>,
     ),
@@ -93,5 +94,13 @@ describe('PlayerCard', () => {
     expect(screen.queryByRole('button', { name: /follow/i })).not.toBeInTheDocument()
     expect(vi.mocked(api.fetchFullPlayerStats)).not.toHaveBeenCalled()
     expect(vi.mocked(api.fetchSocialProfile)).not.toHaveBeenCalled()
+  })
+
+  it('pins a footer under the scrolling body, outside it', async () => {
+    renderCard(index.nodeById.get('p1')!, vi.fn(), vi.fn(), 'me', <button type="button">Like</button>)
+    const like = screen.getByRole('button', { name: 'Like' })
+    expect(like.closest('aside')).not.toBeNull()
+    expect(like.closest('.overflow-y-auto')).toBeNull()
+    expect(await screen.findByTestId('player-season-stats')).toBeInTheDocument()
   })
 })

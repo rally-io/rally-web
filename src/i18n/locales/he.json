@@ -540,6 +540,16 @@
     "partnerMobileNumberPlaceholder": "מספר נייד",
     "partnerInviteButton": "הוסף שותף",
     "partnerRemove": "הסר שותף",
+    "partnerSelfRow": "זה החשבון שלכם",
+    "partnerOwnPhoneError": "זה המספר שלכם. הזינו את המספר של הפרטנר.",
+    "partnerOwnNameWarning": "השם הזה זהה לשם שלכם. אם גם לפרטנר שלכם קוראים כך, אפשר להמשיך.",
+    "partnerNoPartnerYet": "עדיין אין לכם שותף?",
+    "partnerFindPartner": "מצאו שותף",
+    "partnerFindPartnerHint": "שחקנים שמתאימים לטורניר הזה, מהקהילה שלכם קודם",
+    "partnerLookingCount_one": "שחקן אחד מחפש שותף",
+    "partnerLookingCount_two": "שני שחקנים מחפשים שותף",
+    "partnerLookingCount_many": "{{count}} שחקנים מחפשים שותף",
+    "partnerLookingCount_other": "{{count}} שחקנים מחפשים שותף",
     "tournamentDetailRegistering": "נרשם/ת…",
     "tournamentSummaryTitle": "סיכום הרשמה",
     "bookingSummaryClub": "מועדון",
@@ -596,6 +606,7 @@
       "alreadyWaiting": "את/ה כבר ברשימת ההמתנה של הטורניר הזה",
       "notOnWaitlist": "את/ה לא ברשימת ההמתנה של הטורניר הזה",
       "ownPhone": "זה מספר הטלפון שלך. בחר/י שותף/ה אחר/ת.",
+      "ownPartner": "אי אפשר לבחור את עצמך כשותף. יש לבחור שותף אחר.",
       "missingInviteDetails": "חסרים פרטי השותף/ה (שם פרטי, טלפון או קידומת)",
       "feeWaiverUnavailable": "ההנחה לתושבים אינה זמינה בטורניר הזה. בחרו \"לא תושבים\" ונסו שוב."
     },
@@ -655,7 +666,8 @@
     "tournamentLeaveWaitlist": "עזיבת רשימת ההמתנה",
     "tournamentLeaveWaitlistConfirmTitle": "לעזוב את רשימת ההמתנה?",
     "tournamentLeaveWaitlistConfirmBody": "תאבד/י את מקומך במקום #{{position}}.",
-    "tournamentLeaveWaitlistCancelCta": "ביטול"
+    "tournamentLeaveWaitlistCancelCta": "ביטול",
+    "tournamentLeaveWaitlistFailed": "לא הצלחנו להוציא אותך מרשימת ההמתנה. נסו שוב."
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
@@ -671,9 +683,10 @@
     "countryCode": "קידומת מדינה",
     "phone": "מספר טלפון",
     "gender": "מגדר",
+    "genderPlaceholder": "בחרו מגדר",
     "genderMale": "זכר",
     "genderFemale": "נקבה",
-    "genderPreferNot": "מעדיף לא לציין",
+    "genderPreferNot": "מעדיפים לא לציין",
     "signOut": "התנתקות",
     "continue": "המשך",
     "errorGeneric": "משהו השתבש",
@@ -1725,6 +1738,124 @@
     "ball": {
       "see": "לראות על הכדור",
       "findYourself": "מצאו את עצמכם על הכדור"
+    }
+  },
+  "partners": {
+    "title": "מציאת שותף",
+    "looking": "מחפש/ת שותף לטורניר",
+    "lookingBadge": "מחפש/ת שותף",
+    "likesYou": "רוצה לשחק איתך",
+    "outsideNetwork": "מחוץ לקהילה שלך",
+    "you": "אתם",
+    "tile": {
+      "level": "רמה",
+      "side": "צד",
+      "matches": "משחקים",
+      "wins": "ניצחונות"
+    },
+    "newToRally": "חדש/ה ב-Rally",
+    "side": {
+      "left_side": "שמאל",
+      "right_side": "ימין",
+      "both_sides": "שני הצדדים"
+    },
+    "slot": {
+      "morning": "בבקרים",
+      "afternoon": "בצהריים",
+      "evening": "בערבים",
+      "all_day": "כל היום",
+      "specific_hours": "בשעות מסוימות"
+    },
+    "whyYouTwo": "למה אתם מתאימים",
+    "since": "ב-Rally מאז {{year}}",
+    "pass": "דילוג",
+    "like": "לייק",
+    "undo": "ביטול הדילוג",
+    "matchesCount_one": "התאמה אחת",
+    "matchesCount_two": "שתי התאמות",
+    "matchesCount_many": "{{count}} התאמות",
+    "matchesCount_other": "{{count}} התאמות",
+    "search": "חיפוש שחקן",
+    "searchPlaceholder": "חיפוש לפי שם",
+    "searchMinChars": "הקלידו לפחות {{min}} אותיות",
+    "searchEmpty": "לא נמצאו שחקנים",
+    "status": {
+      "liked": "סימנת לייק",
+      "matched": "יש התאמה",
+      "passed": "דילגת"
+    },
+    "match": {
+      "title": "יש התאמה!",
+      "body": "את/ה ו-{{name}} התאמתם עבור {{tournament}}",
+      "register": "נרשמים יחד",
+      "whatsapp": "הודעה בוואטסאפ",
+      "keepSwiping": "להמשיך לחפש",
+      "alreadyRegistered": "את/ה כבר רשום/ה עם {{name}}",
+      "cannotRegister": "כבר אי אפשר להירשם יחד: אחד מכם כבר רשום לטורניר.",
+      "noPhone": "אין מספר טלפון בפרופיל"
+    },
+    "whatsappText": "היי! קיבלנו התאמה ב-Rally עבור {{tournament}}. נירשם יחד?",
+    "whatsappTextShort": "היי! קיבלנו התאמה ב-Rally. נירשם יחד?",
+    "whatsappNote": {
+      "title": "לפני שמתחילים",
+      "body": "אם תהיה התאמה, השותף/ה יוכלו לשלוח לך הודעה בוואטסאפ.",
+      "ok": "הבנתי"
+    },
+    "matches": {
+      "title": "ההתאמות שלך",
+      "empty": "עוד אין התאמות. המשיכו לחפש!",
+      "error": "לא הצלחנו לטעון את ההתאמות"
+    },
+    "empty": {
+      "title": "ראיתם את כולם",
+      "body": "נסו שוב מאוחר יותר, או חפשו שחקן לפי שם.",
+      "refresh": "לבדוק שוב",
+      "invite": "הזמינו שותף"
+    },
+    "inviteMessage": "מחפש/ת שותף ל{{name}} ב-Rally. נשחק ביחד?",
+    "needsGender": {
+      "title": "חסר מגדר בפרופיל",
+      "body": "בטורניר מעורב השותפים מותאמים לפי מגדר. הוסיפו אותו לפרופיל כדי לראות שחקנים.",
+      "action": "עריכת פרופיל"
+    },
+    "closed": {
+      "title": "חיפוש השותפים סגור",
+      "body": "נרשמת, נכנסת לרשימת ההמתנה, או שההרשמה הסתיימה.",
+      "openMatches": "ההתאמות שלך",
+      "backToTournament": "חזרה לטורניר"
+    },
+    "unavailable": {
+      "title": "לא זמין",
+      "body": "חיפוש שותפים לא זמין לטורניר הזה."
+    },
+    "error": {
+      "title": "משהו השתבש",
+      "generic": "משהו השתבש. נסו שוב.",
+      "retry": "נסו שוב",
+      "rateLimited": "קצב מהיר! עצרו לרגע ונסו שוב."
+    },
+    "back": "חזרה",
+    "close": "סגירה",
+    "reason": {
+      "playedWith_one": "שיחקתם יחד פעם אחת",
+      "playedWith_two": "שיחקתם יחד פעמיים",
+      "playedWith_many": "שיחקתם יחד {{count}} פעמים",
+      "playedWith_other": "שיחקתם יחד {{count}} פעמים",
+      "playedAgainst_one": "שיחקתם זה נגד זה פעם אחת",
+      "playedAgainst_two": "שיחקתם זה נגד זה פעמיים",
+      "playedAgainst_many": "שיחקתם זה נגד זה {{count}} פעמים",
+      "playedAgainst_other": "שיחקתם זה נגד זה {{count}} פעמים",
+      "mutualPartners_one": "שותף משותף אחד",
+      "mutualPartners_two": "שני שותפים משותפים",
+      "mutualPartners_many": "{{count}} שותפים משותפים",
+      "mutualPartners_other": "{{count}} שותפים משותפים",
+      "sharedTournaments_one": "טורניר משותף אחד",
+      "sharedTournaments_two": "שני טורנירים משותפים",
+      "sharedTournaments_many": "{{count}} טורנירים משותפים",
+      "sharedTournaments_other": "{{count}} טורנירים משותפים",
+      "courtSideFit": "הצדדים מתאימים: את/ה {{mine}}, השחקן/ית {{theirs}}",
+      "availability": "פנויים גם {{slot}}",
+      "similarLevel": "רמה דומה"
     }
   }
 }

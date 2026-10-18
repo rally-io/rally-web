@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import i18n from '@/i18n'
-import { AppDownloadModal } from './AppDownloadModal'
+import en from '@/i18n/locales/en.json'
+import he from '@/i18n/locales/he.json'
+import { AppDownloadModal, type AppDownloadVariant } from './AppDownloadModal'
 import { APP_STORE_URL, PLAY_STORE_URL, buildAppDeepLink } from '@/lib/appLinks'
 
 afterEach(() => {
@@ -114,5 +116,23 @@ describe('AppDownloadModal', () => {
     render(<AppDownloadModal open variant="book" onOpenChange={() => {}} />)
     expect(screen.getByRole('link', { name: /app store/i })).toHaveAttribute('href', APP_STORE_URL)
     expect(screen.getByRole('link', { name: /google play/i })).toHaveAttribute('href', PLAY_STORE_URL)
+  })
+})
+
+// The title key is built from the variant (`title_${variant}`), which the
+// literal-key scan cannot see. A Record over the union makes tsc fail when a
+// variant is added without being listed here.
+const VARIANTS: Record<AppDownloadVariant, true> = {
+  register: true,
+  book: true,
+  pay: true,
+  join: true,
+}
+
+describe('AppDownloadModal titles', () => {
+  it.each(Object.keys(VARIANTS))('has a title for %s in both languages', (variant) => {
+    for (const bundle of [en, he]) {
+      expect(typeof (bundle.appDownload as Record<string, unknown>)[`title_${variant}`]).toBe('string')
+    }
   })
 })

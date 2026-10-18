@@ -50,6 +50,12 @@ describe('translateRegistrationError', () => {
     )
   })
 
+  it('translates the static "A partner is required for this tournament" message', () => {
+    expect(translateRegistrationError('A partner is required for this tournament', t)).toBe(
+      t('tournament.registrationErrors.partnerRequired'),
+    )
+  })
+
   it('translates the dynamic "Tournament registration is {status}" message', () => {
     expect(translateRegistrationError('Tournament registration is cancelled', t)).toBe(
       t('tournament.registrationErrors.registrationNotOpen'),
@@ -68,6 +74,10 @@ describe('translateRegistrationError — corporate page additions', () => {
   it('maps the own-phone partner refusal', () => {
     expect(translateRegistrationError('That is your own phone number. Choose a different partner.', t))
       .toBe(i18n.t('tournament.registrationErrors.ownPhone'))
+  })
+  it('maps the own-partner refusal (picking yourself)', () => {
+    expect(translateRegistrationError("You can't be your own partner. Choose a different partner.", t))
+      .toBe(i18n.t('tournament.registrationErrors.ownPartner'))
   })
   it('maps the missing-invite-details refusal', () => {
     expect(translateRegistrationError('Missing invite details (first name, phone, or country code)', t))

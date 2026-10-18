@@ -194,6 +194,7 @@ function defaultsFromProfile(
     // and a null both normalise to null, so the slider opens empty and the
     // player has to choose.
     skill_level: normalizeSkillLevel(profile?.skill_level, skillBounds),
+    gender: profile?.gender ?? '',
   }
 }
 
@@ -388,7 +389,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
           last_name: (values.last_name || '').trim(),
           email: user.email,
           contact_number: phone,
-          gender: 'choose_not_to_answer',
+          gender: values.gender || 'choose_not_to_answer',
           ...(phone ? { country_code: values.country_code ?? DEFAULT_COUNTRY.dial } : {}),
           ...(values.skill_level != null ? levelWriteFields(values.skill_level, ladder) : {}),
         }
@@ -438,6 +439,7 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
       if ((dirty.skill_level || (detailsMode && normalizeSkillLevel(profile?.skill_level, skillBounds) == null)) && values.skill_level != null) {
         patch.skill_level = values.skill_level
       }
+      if (dirty.gender && values.gender) patch.gender = values.gender
       if (Object.keys(patch).length === 0) return { applied: patch, savedPlayer: null, levelWritten: false }
       // Contract §7: a level write carries its scale and the level it replaces. Only here, on
       // the wire — `patch` itself stays form fields, because it is folded back into the form.
@@ -602,6 +604,24 @@ function EditProfileForm({ profile }: { profile: PlayerMe | null }) {
             <Label className="mb-1 block text-sm">{t('edit_profile.email')}</Label>
             <p className="text-rally-text-2 text-sm">{profile?.email ?? user?.email ?? '—'}</p>
           </div>
+
+          {/* Optional, and not part of the required-details step (566287d took it out of the
+              onboarding gate). The partner deck's needs-gender prompt sends players here. */}
+          {!detailsMode && (
+            <div className="mt-3">
+              <Label htmlFor="gender" className="mb-1 block text-sm">
+                {t('profile.gender')}
+              </Label>
+              <Select id="gender" {...form.register('gender')}>
+                <option value="" disabled>
+                  {t('profile.genderPlaceholder')}
+                </option>
+                <option value="male">{t('profile.genderMale')}</option>
+                <option value="female">{t('profile.genderFemale')}</option>
+                <option value="choose_not_to_answer">{t('profile.genderPreferNot')}</option>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-[1fr_7rem] gap-3 mt-3">
             <div>
