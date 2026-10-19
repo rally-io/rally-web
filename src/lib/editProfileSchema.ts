@@ -20,6 +20,8 @@ export function buildEditProfileSchema(skill: SkillBounds) {
       .or(z.literal(''))
       .refine((val) => !val || /^\d{6,15}$/.test(val), 'edit_profile.validation.phoneInvalid'),
     skill_level: z.number().min(skill.min).max(skill.max).nullable().optional(),
+    // '' is "not set yet": the select's placeholder, never sent.
+    gender: z.enum(['male', 'female', 'choose_not_to_answer']).optional().or(z.literal('')),
   })
 }
 

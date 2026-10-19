@@ -26,25 +26,29 @@ const SheetOverlay = React.forwardRef<
 ))
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-type Side = 'right' | 'left'
+export type SheetSide = 'right' | 'left' | 'bottom'
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
-  side?: Side
+  side?: SheetSide
   hideClose?: boolean
+  /** the close button's accessible name; pass the translated one */
+  closeLabel?: string
 }
 
-const sideClasses: Record<Side, string> = {
+const sideClasses: Record<SheetSide, string> = {
   right:
     'right-0 top-0 h-full w-full sm:max-w-md border-l border-white/5 data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right',
   left:
     'left-0 top-0 h-full w-full sm:max-w-md border-r border-white/5 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left',
+  bottom:
+    'inset-x-0 bottom-0 max-h-[85dvh] w-full rounded-t-3xl border-t border-white/5 data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', hideClose, className, children, ...props }, ref) => (
+>(({ side = 'right', hideClose, closeLabel = 'Close', className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
@@ -61,7 +65,7 @@ const SheetContent = React.forwardRef<
       {!hideClose && (
         <DialogPrimitive.Close
           className="absolute end-4 top-4 rounded-full bg-slate-900/80 p-2 text-gray-300 hover:text-white transition-colors focus:outline-none"
-          aria-label="Close"
+          aria-label={closeLabel}
         >
           <X className="h-4 w-4" />
         </DialogPrimitive.Close>

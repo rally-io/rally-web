@@ -14,6 +14,7 @@ import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistra
 import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
 import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { partnerSelfFromProfile } from '@/lib/selfPartner'
 import {
   useTournamentRegistration, type RegistrationCoupon, type RegistrationGate,
 } from '@/hooks/useTournamentRegistration'
@@ -1092,6 +1093,7 @@ function RegistrationForm({
               selectionState={partnerState}
               onPartnerChange={setPartnerState}
               searchEnabled={!!playerProfile}
+              self={partnerSelfFromProfile(playerProfile)}
             />
           </section>
         )}

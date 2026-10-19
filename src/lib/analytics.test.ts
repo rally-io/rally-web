@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { normalizeEmail, normalizePhone, trackLead, trackDownload, trackFunnel, trackGlobeOpen, META_PIXEL_ID } from './analytics'
+import { normalizeEmail, normalizePhone, trackLead, trackDownload, trackFunnel, trackGlobeOpen, trackPartner, META_PIXEL_ID } from './analytics'
 
 describe('normalisation for Meta advanced matching', () => {
   it('lower-cases and trims emails, drops non-addresses', () => {
@@ -117,5 +117,40 @@ describe('trackGlobeOpen', () => {
   it('never throws when gtag is missing', () => {
     delete window.gtag
     expect(() => trackGlobeOpen('direct')).not.toThrow()
+  })
+})
+
+describe('trackPartner', () => {
+  const gtag = vi.fn()
+  beforeEach(() => {
+    window.gtag = gtag
+  })
+  afterEach(() => {
+    gtag.mockReset()
+    delete window.gtag
+  })
+
+  it('sends the event with its allowed fields', () => {
+    trackPartner('partner_swipe', { tournament_id: 't-1', decision: 'like', ring: 2, source: 'deck' })
+    expect(gtag).toHaveBeenCalledWith('event', 'partner_swipe', expect.objectContaining({
+      tournament_id: 't-1', decision: 'like', ring: 2, source: 'deck',
+    }))
+  })
+
+  it('never forwards a player id, a name or the query itself', () => {
+    const leaky = { tournament_id: 't-1', query_length: 3, player_id: 'p-1', name: 'Noa', query: 'noa' }
+    trackPartner('partner_search', leaky as Parameters<typeof trackPartner>[1])
+    const sent = gtag.mock.calls[0][2] as Record<string, unknown>
+    expect(sent).not.toHaveProperty('player_id')
+    expect(sent).not.toHaveProperty('name')
+    expect(sent).not.toHaveProperty('query')
+    expect(sent.query_length).toBe(3)
+  })
+
+  it('never throws when gtag is missing or throws', () => {
+    delete window.gtag
+    expect(() => trackPartner('partner_invite', { tournament_id: 't-1' })).not.toThrow()
+    window.gtag = () => { throw new Error('blocked') }
+    expect(() => trackPartner('partner_invite', { tournament_id: 't-1' })).not.toThrow()
   })
 })
