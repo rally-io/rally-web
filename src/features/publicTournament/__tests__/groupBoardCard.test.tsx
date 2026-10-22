@@ -284,6 +284,20 @@ describe('GroupBoardCard', () => {
         expect((line as HTMLElement).style.fontSize).toBe('15px');
     });
 
+    it('drops a nameless guest from the compact line instead of leaving a bare slash', () => {
+        const g = group({
+            standings: [standing({
+                position: 1,
+                team_name: null,
+                player_1: player('p1', 'Gal', 'Cohen'),
+                player_2: { id: 'p2', first_name: null, last_name: null, skill_level: null, is_guest: true },
+            })],
+        });
+        const { container } = render(<GroupBoardCard group={g} compact />);
+        expect(container.querySelector('[title="Gal Cohen"]')).not.toBeNull();
+        expect(container.querySelector('[title="Gal Cohen / "]')).toBeNull();
+    });
+
     it('turns the cards compact on a nine-group board and leaves an eight-group one alone', () => {
         const pair = (name: string): PublicGroup => group({
             group_name: name,

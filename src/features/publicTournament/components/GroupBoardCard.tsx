@@ -28,9 +28,12 @@ function standingNameLines(s: PublicStanding): string[] {
     return label ? [label] : [];
 }
 
-/** Joined form, used only as a stable React key — display is line-per-player. */
+/**
+ * Joined form: the React key, and the compact card's one line. A nameless guest is dropped, as
+ * `teamLabel` drops an empty second player, so the line never ends on a bare slash.
+ */
 function standingLabel(s: PublicStanding): string {
-    return standingNameLines(s).join(' / ');
+    return standingNameLines(s).filter(Boolean).join(' / ');
 }
 
 /**
