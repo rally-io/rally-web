@@ -87,6 +87,7 @@ function renderPage(initialPath = '/profile/edit') {
         <Routes>
           <Route path="/profile/edit" element={<EditProfilePage />} />
           <Route path="/tournaments/:id" element={<TournamentProbe />} />
+          <Route path="/tournaments/:id/partners" element={<div data-testid="deck-probe" />} />
           <Route path="/" element={<div data-testid="home-probe" />} />
         </Routes>
       </MemoryRouter>
@@ -1040,5 +1041,88 @@ describe('EditProfilePage — the level-write guard (contract §7)', () => {
     await waitFor(() => expect(updateSpy).toHaveBeenLastCalledWith({ skill_level: 5, level_scale: 7, skill_level_base: 4.6 }))
     updateSpy.mockRestore()
     reload.mockRestore()
+  })
+})
+
+// The partner deck's mixed pools pair a man with a woman, so a player with no gender gets an
+// empty deck and an "Edit profile" button that lands here. Optional, like every field on this
+// page: it never blocks a save, and the required-details step does not ask for it.
+describe('EditProfilePage — gender', () => {
+  const genderSelect = () => screen.getByLabelText(/^gender$/i) as HTMLSelectElement
+  const mockUpdate = () =>
+    vi.spyOn(profileApi, 'updateProfile').mockResolvedValue({ success: true, data: {}, meta: null, error: null } as never)
+
+  it('shows the stored gender, and changing it PATCHes only the gender', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = { ...READY_PROFILE, gender: 'female' }
+    const updateSpy = mockUpdate()
+    renderPage()
+    expect(genderSelect().value).toBe('female')
+    await user.selectOptions(genderSelect(), 'male')
+    const save = screen.getByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(1))
+    expect(updateSpy).toHaveBeenCalledWith({ gender: 'male' })
+    updateSpy.mockRestore()
+  })
+
+  it('no stored gender: the placeholder shows, and a name-only save sends no gender', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    const updateSpy = mockUpdate()
+    renderPage()
+    expect(genderSelect().value).toBe('')
+    expect(screen.getByRole('option', { name: /select gender/i })).toBeDisabled()
+    const lastName = screen.getByLabelText(/last name/i) as HTMLInputElement
+    await user.clear(lastName)
+    await user.type(lastName, 'Cohen')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(1))
+    expect(updateSpy).toHaveBeenCalledWith({ last_name: 'Cohen' })
+    updateSpy.mockRestore()
+  })
+
+  it('from the partner deck: saving a gender goes back to the deck', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'ready'
+    sessionState.playerProfile = READY_PROFILE
+    const updateSpy = mockUpdate()
+    renderPage(`/profile/edit?returnTo=${encodeURIComponent('/tournaments/t-1/partners')}`)
+    await user.selectOptions(genderSelect(), 'female')
+    await user.click(screen.getByRole('button', { name: /save changes/i }))
+    expect(await screen.findByTestId('deck-probe')).toBeInTheDocument()
+    expect(updateSpy).toHaveBeenCalledWith({ gender: 'female' })
+    updateSpy.mockRestore()
+  })
+
+  it('a new profile sends the gender chosen on create', async () => {
+    const user = userEvent.setup()
+    sessionState.status = 'profile_incomplete'
+    sessionState.playerProfile = null
+    const createSpy = vi.spyOn(authApi, 'createPlayerProfile').mockResolvedValue({
+      success: true, data: { id: 'new' }, meta: null, error: null,
+    } as never)
+    renderPage()
+    await user.type(screen.getByLabelText(/first name/i), 'Dana')
+    await user.type(screen.getByLabelText(/last name/i), 'Levi')
+    await user.type(screen.getByLabelText(/phone number/i), '501234567')
+    await verifyPhoneInUi(user)
+    await user.selectOptions(genderSelect(), 'female')
+    const save = screen.getByRole('button', { name: /save changes/i })
+    await waitFor(() => expect(save).not.toBeDisabled())
+    await user.click(save)
+    await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1))
+    expect(createSpy.mock.calls[0][0]).toMatchObject({ gender: 'female' })
+    createSpy.mockRestore()
+  })
+
+  it('the required-details step does not ask for gender', () => {
+    sessionState.status = 'profile_incomplete'
+    renderPage('/profile/edit?purpose=tournament&returnTo=%2Ftournaments%2Ft-1')
+    expect(screen.getByRole('heading', { name: /your details for this tournament/i })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^gender$/i)).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Calendar, Clock, ExternalLink, FileCheck, Trophy, TrendingUp, Users,
@@ -24,6 +24,8 @@ import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMess
 import { TournamentRulesSection } from '@/components/tournaments/TournamentRulesSection'
 import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { partnerSelfFromProfile } from '@/lib/selfPartner'
+import { partnerDeckPath, showFindPartner } from '@/lib/findPartner'
 import { ResidencyWaiverSelector, formatWaiverTitle } from '@/components/tournaments/ResidencyWaiverSelector'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
@@ -74,9 +76,9 @@ function TournamentRegistrationPage() {
   const { locale } = useRtl()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { data: tr, isLoading, isError, refetch } = useTournament(id!)
+  const { data: tr, isLoading, refetch } = useTournament(id!)
   const { requireSignIn } = useAuthGate()
-  const { status: sessionStatus, refetchOnboarding, needsDetails } = useAppSession()
+  const { status: sessionStatus, playerProfile, refetchOnboarding, needsDetails } = useAppSession()
   const { user } = useAuth()
   const ladder = useSkillLadder()
   // Same query key as the ScreenMessageList mounted below (scope: 'tournament',
@@ -175,6 +177,10 @@ function TournamentRegistrationPage() {
         setPartnerState({ phase: 'idle' })
       }
     },
+    // "Already registered" (the player, or the partner) means this page is out
+    // of date: refetch so it shows the registration instead of Register Now.
+    // The error text is the hook's state and stays.
+    onRegisterRejected: () => { void refetch() },
   })
 
   const [isCheckingProfile, setIsCheckingProfile] = useState(false)
@@ -259,6 +265,21 @@ function TournamentRegistrationPage() {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     scrolledForRef.current = first.id
   }, [gate.outstanding, gate.blocking])
+
+  // The partner deck sends the player back here with a partner picked, asking
+  // for { scrollTo: 'partner-section' }. That section renders only once the
+  // tournament and the session have loaded, so look again as each lands; the
+  // ref keeps it to one scroll per visit.
+  const location = useLocation()
+  const scrollTo = (location.state as { scrollTo?: string } | null)?.scrollTo
+  const scrolledToPartnerRef = useRef(false)
+  useEffect(() => {
+    if (scrollTo !== 'partner-section' || scrolledToPartnerRef.current) return
+    const el = document.getElementById('partner-section')
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    scrolledToPartnerRef.current = true
+  }, [scrollTo, tr, sessionStatus])
 
   // Register is one continuous flow: sign in, then prove the profile has what
   // rally-api requires, then partner, then the terms gate, then submit.
@@ -428,11 +449,35 @@ function TournamentRegistrationPage() {
   const handleLeaveWaitlist = async () => {
     if (!tr) return
     setIsLeavingWaitlist(true)
+    setWaitlistError(null)
+    // A refusal means this page may be out of date: refetch. When the entry is
+    // gone (the club removed or promoted it), also drop a join made on this
+    // visit so the refetched state, not the local entry, is what shows. Any
+    // other refusal leaves the player waiting, so the card stays.
+    const refused = (message: string, code?: string) => {
+      setWaitlistError(translateWaitlistError(message, t))
+      if (code === 'WAITLIST_ENTRY_NOT_FOUND') setWaitlistOverride(undefined)
+      void refetch()
+    }
     try {
       const result = await leaveTournamentWaitlist(tr.id)
-      if (result.success) setWaitlistOverride(null)
+      if (!mounted.current) return
+      if (!result.success) {
+        refused(result.error.message, result.error.code)
+        return
+      }
+      setWaitlistOverride(null)
+      // The waiting count and the CTA come from the tournament query.
+      void refetch()
+    } catch (e) {
+      const err = e as { status?: number; code?: string; message?: string } | null
+      if (!mounted.current) return
+      // Only a rejection the server answered carries a status (and its text,
+      // in the site language); the client's NETWORK_ERROR has neither.
+      if (typeof err?.status === 'number' && err.message) refused(err.message, err.code)
+      else setWaitlistError(t('tournament.tournamentLeaveWaitlistFailed'))
     } finally {
-      setIsLeavingWaitlist(false)
+      if (mounted.current) setIsLeavingWaitlist(false)
     }
   }
 
@@ -443,7 +488,9 @@ function TournamentRegistrationPage() {
       </main>
     )
   }
-  if (isError || !tr) {
+  // No tournament at all. Not `isError`: a failed background refetch flags it
+  // while keeping the data, and the page should keep showing what it has.
+  if (!tr) {
     return (
       <main className="pt-32 min-h-screen bg-rally-bg text-center text-rally-text-2">
         {t('tournament.tournamentDetailLoadErrorTitle')}
@@ -472,6 +519,20 @@ function TournamentRegistrationPage() {
     myWaitlistEntry,
     myRegistration: myReg,
   })
+  // The row opens the partner deck, on exactly the tournaments the app would show it on.
+  const findPartner = showFindPartner({
+    partnerSearchAvailable: tr.partner_search_available,
+    format: tr.format,
+    registrationOpen: open,
+    hasRegistration: myReg != null,
+    hasWaitlistEntry: myWaitlistEntry != null,
+    partnerPicked: partnerState.phase !== 'idle',
+  })
+    ? {
+        lookingCount: tr.partner_looking_count ?? 0,
+        onPress: () => navigate(partnerDeckPath(tr.id)),
+      }
+    : undefined
   const myRegResidents = (myReg?.fee_waiver_resident_count ?? 0) as 0 | 1 | 2
   const myRegAmountDue = myReg ? waivedAmount(tr.entry_fee, seats, myRegResidents) : tr.entry_fee
   const waiverZero =
@@ -820,7 +881,17 @@ function TournamentRegistrationPage() {
                     {t('tournament.tournamentPartnerRequiredHint')}
                   </p>
                 )}
-                <PartnerSection selectionState={partnerState} onPartnerChange={setPartnerState} />
+                <PartnerSection
+                  selectionState={partnerState}
+                  // A register error can be about the partner just replaced
+                  // ("already registered"); it must not outlive that choice.
+                  onPartnerChange={(next) => {
+                    setRegisterError(null)
+                    setPartnerState(next)
+                  }}
+                  self={partnerSelfFromProfile(playerProfile)}
+                  findPartner={findPartner}
+                />
               </>
             ) : sessionStatus === 'profile_error' ? (
               <div role="alert" className="space-y-2 text-sm text-rally-text-2">

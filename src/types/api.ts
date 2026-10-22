@@ -319,6 +319,13 @@ export interface TournamentDetail extends Tournament {
   fee_waiver_type?: string | null
   is_document_required?: boolean
   document_instructions?: string | null
+  /**
+   * Whether this viewer can look for a partner here (the app's partner finder).
+   * Absent on an API before the finder, which means no; false for a signed-out viewer.
+   */
+  partner_search_available?: boolean
+  /** Players looking for a partner who would be in this viewer's deck. 0 whenever search is unavailable. */
+  partner_looking_count?: number
 }
 
 /**
@@ -465,6 +472,7 @@ export interface ProfileUpdateRequest {
   /** Contract §7: the level this page loaded (null if none). Without it rally-api ignores a change
       to an already-chosen level; with a stale one it refuses the save. See lib/levelWrite.ts. */
   skill_level_base?: number | null
+  gender?: Gender
 }
 
 // PROFILE_FIELDS_REQUIRED error
@@ -523,6 +531,8 @@ export interface PlayerMe {
   first_name: string | null
   last_name: string | null
   contact_number: string | null
+  /** Dialling code of `contact_number`, e.g. '+972' (rally-api normalizes both). Null without a phone. */
+  country_code?: string | null
   email?: string | null
   skill_level: number | null
   skill_tier?: 'bronze' | 'silver' | 'gold' | null
@@ -535,6 +545,12 @@ export interface PlayerMe {
       can never earn a rating) → describeLevel → `unknown`. */
   level_verified?: boolean | null
   level_reliability?: number | null
+  /** The avatar without its frame: the partner deck draws it on the court beside each card. */
+  avatar_clean_url?: string | null
+  /** Only the side is read, by the partner deck's court. */
+  player_preferences?: { court_side?: string | null } | null
+  /** Null until set. A mixed pool needs male or female; anything else gets the deck's needs-gender prompt. */
+  gender?: Gender | null
 }
 
 export interface SupabaseUserSummary {

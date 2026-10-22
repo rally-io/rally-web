@@ -8,6 +8,7 @@ vi.mock('@/hooks/usePlayerSearch', () => ({ usePlayerSearch: vi.fn() }))
 import { PartnerSection } from './PartnerSection'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
 import type { PartnerSelectionState } from '@/types/partner'
+import type { PartnerSelf } from '@/lib/selfPartner'
 
 const mockUsePlayerSearch = vi.mocked(usePlayerSearch)
 
@@ -15,6 +16,7 @@ function renderSection(
   state: PartnerSelectionState,
   onPartnerChange = vi.fn(),
   searchEnabled?: boolean,
+  self?: PartnerSelf,
 ) {
   render(
     <I18nextProvider i18n={i18n}>
@@ -22,6 +24,7 @@ function renderSection(
         selectionState={state}
         onPartnerChange={onPartnerChange}
         searchEnabled={searchEnabled}
+        self={self}
       />
     </I18nextProvider>,
   )
@@ -189,5 +192,168 @@ describe('PartnerSection', () => {
     expect(
       screen.queryByPlaceholderText(i18n.t('tournament.partnerSearchPlaceholder')),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('PartnerSection — nobody is their own partner', () => {
+  const me: PartnerSelf = { id: 'p-me', firstName: 'Dana', lastName: 'Levi', phone: '501234567', countryCode: '+972' }
+
+  const fill = (first: string, last: string, phone: string) => {
+    fireEvent.change(screen.getByPlaceholderText(i18n.t('tournament.partnerFirstNamePlaceholder')), {
+      target: { value: first },
+    })
+    fireEvent.change(screen.getByPlaceholderText(i18n.t('tournament.partnerLastNamePlaceholder')), {
+      target: { value: last },
+    })
+    fireEvent.change(screen.getByPlaceholderText(i18n.t('tournament.partnerMobileNumberPlaceholder')), {
+      target: { value: phone },
+    })
+  }
+  const inviteButton = () => screen.getByRole('button', { name: i18n.t('tournament.partnerInviteButton') })
+
+  it('shows my own search row as "That\'s you", disabled, and clicking it selects nobody', () => {
+    mockUsePlayerSearch.mockReturnValue({
+      results: [
+        { id: 'p-me', first_name: 'Dana', last_name: 'Levi', avatar_url: null },
+        { id: 'p-2', first_name: 'Dana', last_name: 'Cohen', avatar_url: null },
+      ],
+      isLoading: false,
+      isActive: true,
+    })
+    const onPartnerChange = renderSection({ phase: 'idle' }, vi.fn(), undefined, me)
+
+    const mine = screen.getByTestId('partner-result-self')
+    expect(mine).toBeDisabled()
+    expect(mine).toHaveAttribute('aria-disabled', 'true')
+    expect(mine).toHaveTextContent('Dana Levi')
+    expect(mine).toHaveTextContent(i18n.t('tournament.partnerSelfRow'))
+    expect(mine).not.toHaveTextContent(i18n.t('tournament.partnerBadgeRally'))
+
+    fireEvent.click(mine)
+    expect(onPartnerChange).not.toHaveBeenCalled()
+
+    // Everyone else stays pickable.
+    const other = screen.getByRole('button', { name: /Dana Cohen/ })
+    expect(other).not.toBeDisabled()
+    expect(other).toHaveTextContent(i18n.t('tournament.partnerBadgeRally'))
+    fireEvent.click(other)
+    expect(onPartnerChange).toHaveBeenCalledWith(
+      expect.objectContaining({ phase: 'selected', partner: expect.objectContaining({ id: 'p-2' }) }),
+    )
+  })
+
+  it('without `self` no row is singled out', () => {
+    mockUsePlayerSearch.mockReturnValue({
+      results: [{ id: 'p-me', first_name: 'Dana', last_name: 'Levi', avatar_url: null }],
+      isLoading: false,
+      isActive: true,
+    })
+    renderSection({ phase: 'idle' })
+    expect(screen.queryByTestId('partner-result-self')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Dana Levi/ })).not.toBeDisabled()
+  })
+
+  it.each(['501234567', '0501234567', '050-123-4567'])('blocks inviting my own number typed as %s', (typed) => {
+    const onPartnerChange = renderSection({ phase: 'idle' }, vi.fn(), undefined, me)
+    fill('Noa', 'Cohen', typed)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(i18n.t('tournament.partnerOwnPhoneError'))
+    expect(inviteButton()).toBeDisabled()
+    fireEvent.click(inviteButton())
+    expect(onPartnerChange).not.toHaveBeenCalled()
+  })
+
+  it('lets the invite through once the number is someone else\'s', () => {
+    const onPartnerChange = renderSection({ phase: 'idle' }, vi.fn(), undefined, me)
+    fill('Noa', 'Cohen', '0501234567')
+    expect(inviteButton()).toBeDisabled()
+
+    fireEvent.change(screen.getByPlaceholderText(i18n.t('tournament.partnerMobileNumberPlaceholder')), {
+      target: { value: '0501234568' },
+    })
+    expect(screen.queryByText(i18n.t('tournament.partnerOwnPhoneError'))).not.toBeInTheDocument()
+    expect(inviteButton()).not.toBeDisabled()
+    fireEvent.click(inviteButton())
+    expect(onPartnerChange).toHaveBeenCalledWith({
+      phase: 'selected',
+      partner: { type: 'invite', firstName: 'Noa', lastName: 'Cohen', countryCode: '+972', phone: '0501234568' },
+    })
+  })
+
+  it('my number under another dialling code is not mine', () => {
+    renderSection({ phase: 'idle' }, vi.fn(), undefined, me)
+    fill('Noa', 'Cohen', '501234567')
+    expect(inviteButton()).toBeDisabled()
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '+1' } })
+    expect(screen.queryByText(i18n.t('tournament.partnerOwnPhoneError'))).not.toBeInTheDocument()
+    expect(inviteButton()).not.toBeDisabled()
+  })
+
+  it('warns on my own name but never blocks: a namesake partner still submits', () => {
+    const onPartnerChange = renderSection({ phase: 'idle' }, vi.fn(), undefined, me)
+    fill(' dana ', 'LEVI', '0521112233')
+
+    expect(screen.getByTestId('partner-invite-own-name')).toHaveTextContent(
+      i18n.t('tournament.partnerOwnNameWarning'),
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(inviteButton()).not.toBeDisabled()
+    fireEvent.click(inviteButton())
+    expect(onPartnerChange).toHaveBeenCalledWith({
+      phase: 'selected',
+      partner: { type: 'invite', firstName: ' dana ', lastName: 'LEVI', countryCode: '+972', phone: '0521112233' },
+    })
+  })
+
+  it('shows no hint for a different name', () => {
+    renderSection({ phase: 'idle' }, vi.fn(), undefined, me)
+    fill('Dana', 'Cohen', '0521112233')
+    expect(screen.queryByTestId('partner-invite-own-name')).not.toBeInTheDocument()
+  })
+})
+
+describe('PartnerSection — find a partner in the app', () => {
+  function renderWithFinder(state: PartnerSelectionState, lookingCount: number, onPress = vi.fn()) {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <PartnerSection selectionState={state} onPartnerChange={vi.fn()} findPartner={{ lookingCount, onPress }} />
+      </I18nextProvider>,
+    )
+    return onPress
+  }
+
+  it('has no finder row unless the page offers one', () => {
+    renderSection({ phase: 'idle' })
+    expect(screen.queryByTestId('tournament-find-partner')).toBeNull()
+  })
+
+  it('pitches the finder while nobody is looking yet', () => {
+    renderWithFinder({ phase: 'idle' }, 0)
+    const row = screen.getByTestId('tournament-find-partner')
+    expect(row).toHaveTextContent('No partner yet?')
+    expect(row).toHaveTextContent('Players who fit this tournament, your community first')
+    expect(row).toHaveTextContent('Find a partner')
+  })
+
+  it('says how many are looking once anyone is', () => {
+    renderWithFinder({ phase: 'idle' }, 3)
+    expect(screen.getByTestId('tournament-find-partner')).toHaveTextContent('3 players looking for a partner')
+  })
+
+  it('uses the singular for one player', () => {
+    renderWithFinder({ phase: 'idle' }, 1)
+    expect(screen.getByTestId('tournament-find-partner')).toHaveTextContent('1 player looking for a partner')
+  })
+
+  it('hands off on press', () => {
+    const onPress = renderWithFinder({ phase: 'idle' }, 2)
+    fireEvent.click(screen.getByRole('button', { name: /No partner yet\?/ }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+  })
+
+  it('is gone once a partner is picked', () => {
+    renderWithFinder({ phase: 'selected', partner: { type: 'existing', id: 'p-2', displayName: 'Noa Cohen', avatarUrl: null } }, 2)
+    expect(screen.queryByTestId('tournament-find-partner')).toBeNull()
   })
 })

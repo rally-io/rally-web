@@ -154,6 +154,34 @@ describe('useTournamentRegistration', () => {
     expect(result.current.registerError).toBeTruthy()
   })
 
+  it('onRegisterRejected fires on any refusal the server sent, whatever its text', async () => {
+    const onRejected = vi.fn()
+    // A Hebrew site gets rally-api's own Hebrew sentence, so this cannot match on text.
+    mockRegister.mockRejectedValueOnce({ status: 400, code: 'BAD_REQUEST', message: 'כבר נרשמת לטורניר זה' })
+    const { result } = renderHook(() => useTournamentRegistration(T, gate(), { onRegisterRejected: onRejected }), { wrapper })
+    await act(() => result.current.register(PARTNER as any))
+    expect(onRejected).toHaveBeenCalledTimes(1)
+
+    mockRegister.mockResolvedValueOnce({ success: false, error: { code: 'BAD_REQUEST', message: 'Tournament registration has closed', details: null } } as any)
+    await act(() => result.current.register(PARTNER as any))
+    expect(onRejected).toHaveBeenCalledTimes(2)
+    expect(result.current.registerError).toBeTruthy()
+  })
+
+  it('onRegisterRejected stays quiet on a network failure and on the terms gate', async () => {
+    const onRejected = vi.fn()
+    mockRegister.mockRejectedValueOnce({ code: 'NETWORK_ERROR', message: 'Network error' })
+    const g = gate({ handleGateError: vi.fn((err: { code?: string }) => err?.code === 'ACKNOWLEDGMENT_REQUIRED') })
+    const { result } = renderHook(() => useTournamentRegistration(T, g, { onRegisterRejected: onRejected }), { wrapper })
+    await act(() => result.current.register(PARTNER as any))
+    expect(result.current.registerError).toBe('Network error')
+
+    mockRegister.mockRejectedValueOnce({ code: 'ACKNOWLEDGMENT_REQUIRED', status: 409 })
+    await act(() => result.current.register(PARTNER as any))
+    expect(result.current.gateError).toBeTruthy()
+    expect(onRejected).not.toHaveBeenCalled()
+  })
+
   it('a backend message is translated into registerError', async () => {
     mockRegister.mockRejectedValue({ message: 'You are already registered for this tournament', status: 400 })
     const { result } = renderHook(() => useTournamentRegistration(T, gate()), { wrapper })

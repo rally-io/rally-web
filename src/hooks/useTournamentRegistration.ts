@@ -97,6 +97,15 @@ export interface UseTournamentRegistrationOptions {
    *  refetches so the page flips to its full state). Omitted ⇒ the raw backend
    *  message is shown, as before. */
   onTournamentFull?: () => void
+  /** The server refused the registration (an error response, or a 2xx body
+   *  with success: false): what the caller loaded may be out of date — the
+   *  player or the partner is already in, registration closed, the draw
+   *  filled — so the caller refetches. Not fired for a network failure (the
+   *  refetch would fail too) or for the terms gate (it refetches its own
+   *  messages). Fired for every refusal rather than matched on its text:
+   *  rally-api translates its messages from Accept-Language, so a Hebrew site
+   *  never sees the English sentence. */
+  onRegisterRejected?: () => void
   /** Keep a residual 422 PROFILE_FIELDS_REQUIRED inline instead of the global
    *  redirect to /profile/edit. */
   skipProfileRedirect?: boolean
@@ -137,7 +146,9 @@ export function useTournamentRegistration(
 ) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { returnTo, onTournamentFull, skipProfileRedirect, onRegistered, registrationSource } = options
+  const {
+    returnTo, onTournamentFull, onRegisterRejected, skipProfileRedirect, onRegistered, registrationSource,
+  } = options
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
   // Separate from registerError on purpose: this is the ONE state a tick can
@@ -192,6 +203,7 @@ export function useTournamentRegistration(
         if (!mounted.current) return
         if (!result.success) {
           setRegisterError(translateRegistrationError(result.error.message, t))
+          onRegisterRejected?.()
           return
         }
         const reg = result.data
@@ -273,7 +285,7 @@ export function useTournamentRegistration(
         // etc.) are RallyException on rally-api — a non-2xx response, which the
         // axios client's interceptor turns into a rejected plain object
         // ({status, code, message, details}), not an Error instance.
-        const err = e as { code?: string; message?: string; details?: unknown } | null
+        const err = e as { status?: number; code?: string; message?: string; details?: unknown } | null
         if (!mounted.current) return
         trackFunnel('registration_error', { tournament_id: tournament.id })
         // The 409 safety net (SCREEN_MESSAGES_WEB_SPEC.md §6a): a message
@@ -289,6 +301,9 @@ export function useTournamentRegistration(
           )
           return
         }
+        // Only a rejection the server answered carries a status; the client's
+        // NETWORK_ERROR has none.
+        if (typeof err?.status === 'number') onRegisterRejected?.()
         if (err?.code === 'TOURNAMENT_FULL' && onTournamentFull) {
           setRegisterError(t('tournament.tournamentFullLine'))
           onTournamentFull()
@@ -314,7 +329,10 @@ export function useTournamentRegistration(
         if (mounted.current) setIsRegistering(false)
       }
     },
-    [tournament, t, navigate, returnTo, onTournamentFull, skipProfileRedirect, onRegistered, registrationSource],
+    [
+      tournament, t, navigate, returnTo, onTournamentFull, onRegisterRejected, skipProfileRedirect, onRegistered,
+      registrationSource,
+    ],
   )
 
   return { register, isRegistering, registerError, gateError, setRegisterError, setGateError }

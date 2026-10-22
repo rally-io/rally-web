@@ -239,3 +239,46 @@ export function initDownloadClickTracking() {
     { capture: true },
   )
 }
+
+
+/**
+ * The partner deck's events. The same NAMES the app logs (rally-mobile `logEvent('partner_…')`),
+ * so a report joins the two platforms on the event name.
+ */
+export type PartnerEvent =
+  | 'partner_deck_open'
+  | 'partner_swipe'
+  | 'partner_match'
+  | 'partner_register_together'
+  | 'partner_whatsapp_tap'
+  | 'partner_search'
+  | 'partner_invite'
+
+export interface PartnerEventFields {
+  tournament_id: string
+  decision?: 'like' | 'pass'
+  ring?: 1 | 2 | 3
+  source?: 'deck' | 'search' | 'detail'
+  from?: 'match' | 'matches'
+  cards?: number
+  results?: number
+  query_length?: number
+}
+
+/** Only the fields above are forwarded: never a player id, a name or a search query. */
+export function trackPartner(event: PartnerEvent, fields: PartnerEventFields) {
+  try {
+    window.gtag?.('event', event, {
+      tournament_id: fields.tournament_id,
+      decision: fields.decision,
+      ring: fields.ring,
+      source: fields.source,
+      from: fields.from,
+      cards: fields.cards,
+      results: fields.results,
+      query_length: fields.query_length,
+    })
+  } catch {
+    /* analytics must not interrupt the deck */
+  }
+}

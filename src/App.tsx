@@ -11,6 +11,9 @@ const LiveTournamentPage = lazy(() => import('./features/publicTournament'))
 // Lazy on purpose: the player network pulls in three.js and its own textures — only this
 // route should pay for them.
 const PlayerNetworkPage = lazy(() => import('./features/playerGlobe'))
+// Lazy on purpose: the partner deck's detail drawer is the globe's player card and its stats
+// tabs — only this route should pay for them.
+const PartnerDeckPage = lazy(() => import('./pages/PartnerDeckPage'))
 
 // Pages
 import HomePage from './pages/HomePage'
@@ -118,6 +121,14 @@ export default function App() {
           <Route path="/clubs/:id/events" element={<ClubEventsPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
+          <Route
+            path="/tournaments/:id/partners"
+            element={
+              <Suspense fallback={<div className="min-h-[60vh] bg-rally-bg" />}>
+                <PartnerDeckPage />
+              </Suspense>
+            }
+          />
           <Route path="/organizers/:slug" element={<OrganizerTournamentsPage />} />
           <Route path="/my-activity" element={<MyActivityPage />} />
           <Route path="/profile/edit" element={<EditProfilePage />} />
