@@ -182,4 +182,26 @@ describe('LanesView', () => {
         // viewer would read as "this group has no games at all".
         expect(screen.getByText('No matches in this round window')).toBeInTheDocument();
     });
+
+    it('shows fewer rounds when a round has three games, so a lane never holds more than eight cards', () => {
+        // A six-pair group: three games a round, five rounds. Four columns were twelve cards ~100px
+        // wide on the TV, and the longest names wrapped until a card overflowed into the lane below.
+        const sixPairs = group('Group A', Array.from({ length: 5 }, (_, r) => [0, 1, 2].map(i =>
+            match(`r${r + 1}-${i}`, r + 1, r === 0 ? 'in_progress' : 'scheduled', `Home${r}${i}`, `Away${r}${i}`),
+        )).flat());
+        const { container } = render(<LanesView groups={[sixPairs]} accents={ACCENTS} />);
+
+        expect(screen.getByText('Rounds 1–2 of 5')).toBeInTheDocument();
+        expect(cardCount(container)).toBe(6);
+    });
+
+    it('keeps four rounds across for two games a round', () => {
+        const fivePairs = group('Group A', Array.from({ length: 5 }, (_, r) => [0, 1].map(i =>
+            match(`r${r + 1}-${i}`, r + 1, 'scheduled', `Home${r}${i}`, `Away${r}${i}`),
+        )).flat());
+        const { container } = render(<LanesView groups={[fivePairs]} accents={ACCENTS} />);
+
+        expect(screen.getByText('Rounds 1–4 of 5')).toBeInTheDocument();
+        expect(cardCount(container)).toBe(8);
+    });
 });
