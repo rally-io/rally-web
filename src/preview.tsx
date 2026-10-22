@@ -47,7 +47,7 @@ import './features/publicTournament/themes.css';
 import { cn } from '@/lib/utils';
 import { TvCanvas } from './features/publicTournament/components/TvCanvas';
 import { GroupBoardCard } from './features/publicTournament/components/GroupBoardCard';
-import { GroupsView, GROUP_ACCENTS, tvGridCols } from './features/publicTournament/components/GroupsView';
+import { GroupsView, GROUP_ACCENTS, compactGroupCards, tvGridCols } from './features/publicTournament/components/GroupsView';
 import { LanesView } from './features/publicTournament/components/LanesView';
 import { getRotationViews } from './features/publicTournament/liveLayouts';
 import { PublicHeader } from './features/publicTournament/components/PublicHeader';
@@ -263,7 +263,7 @@ function Preview(): React.ReactElement {
                         ) : (
                             <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(groups.length))} style={forcedCols}>
                                 {groups.map((g, i) => (
-                                    <GroupBoardCard key={g.group_name} group={g} accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]} qualifyCount={2} />
+                                    <GroupBoardCard key={g.group_name} group={g} accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]} qualifyCount={2} compact={compactGroupCards(groups.length)} />
                                 ))}
                             </div>
                         )}

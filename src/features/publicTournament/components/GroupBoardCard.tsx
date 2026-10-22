@@ -5,10 +5,16 @@ import { PairChip } from './PairChip';
 import { FitText } from './FitText';
 import { TvCard, TvCardColumns } from './TvCard';
 import { RankNumeral } from './RankNumeral';
-import { groupGlyph, isVoidedStatus, localizeGroupName, playerFullName } from '../utils';
+import { groupGlyph, isVoidedStatus, keepNamesWhole, localizeGroupName, playerFullName } from '../utils';
 import type { PublicGroup, PublicPlayer, PublicStanding } from '../types';
 
-type GroupBoardCardProps = { group: PublicGroup; accentClass?: string; qualifyCount?: number };
+type GroupBoardCardProps = {
+    group: PublicGroup;
+    accentClass?: string;
+    qualifyCount?: number;
+    /** One line per pair instead of one per player: the board has a third row of cards (`compactGroupCards`). */
+    compact?: boolean;
+};
 
 function standingPlayers(s: PublicStanding): PublicPlayer[] {
     return [s.player_1, s.player_2].filter((p): p is PublicPlayer => Boolean(p));
@@ -34,7 +40,7 @@ function standingLabel(s: PublicStanding): string {
  * this table is read from across a hall, and the previous version's paged games zone meant a
  * viewer could wait ~40s to see one particular game while the table stayed small.
  */
-export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardCardProps): React.ReactElement {
+export function GroupBoardCard({ group, accentClass, qualifyCount, compact = false }: GroupBoardCardProps): React.ReactElement {
     const { t } = useTranslation();
     const glyph = groupGlyph(group.group_name);
     const standings = group.standings;
@@ -60,6 +66,11 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
     // four pairs or fewer, `dense` is false and each className resolves to exactly the same string
     // as if the `dense && '…'` clause were never there.
     const dense = standings.length > 4;
+    // The spacing half of dense, without its smaller type: a compact card is a third shorter
+    // but wider, so it has the room for full-size text and none for the padding. A row's height
+    // is set by the rank numeral (24px) plus `py-1`, and four of those overflowed the 133px a
+    // three-row board leaves the list by 29px.
+    const tight = dense || compact;
 
     return (
         <TvCard
@@ -114,7 +125,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                     // Six dense rows plus the cutoff line need 261px against the 241px this box
                     // gets in a 3-across grid (5+ groups halve the card's height), so dense also
                     // buys height back from the gaps — measured, not guessed.
-                    dense && 'gap-0.5',
+                    tight && 'gap-0.5',
                 )}
             >
                 {standings.map((s, i) => {
@@ -122,16 +133,20 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                     const qualifies = ranked && qualifyCount != null && i < qualifyCount && !dq;
                     const diff = s.games_won - s.games_lost;
                     const played = s.wins + s.losses;
-                    const nameLines = standingNameLines(s);
+                    // Compact: the pair on one line, breakable only after the slash, so a pair too
+                    // long for the line at the floor wraps between the players — never cut.
+                    const nameLines = compact ? [keepNamesWhole(standingLabel(s))] : standingNameLines(s);
                     return (
                         <React.Fragment key={`${s.position}-${standingLabel(s) || i}`}>
                             <div className={cn(
                                 'flex items-center gap-1.5 rounded-xl px-3 py-1',
-                                dense && 'py-px',
+                                tight && 'py-px',
+                                // Five pairs on a three-row board: the last 2px a row can give.
+                                dense && compact && 'py-0',
                                 qualifies && 'bg-(--pb-winner-bg)',
                                 dq && 'opacity-60',
                             )}>
-                                <RankNumeral widthClass="w-6" dense={dense} highlight={qualifies}>
+                                <RankNumeral widthClass="w-6" dense={tight} highlight={qualifies}>
                                     {dq ? '—' : i + 1}
                                 </RankNumeral>
                                 <PairChip pair={s} className="h-5 w-5 rounded-md text-[9px]" />
@@ -216,7 +231,7 @@ export function GroupBoardCard({ group, accentClass, qualifyCount }: GroupBoardC
                             {/* The cutoff line belongs AT the cutoff — between the last qualifying
                                 row and the first that misses out — not under the whole table. */}
                             {qualifyCount != null && i === qualifyCount - 1 && i < standings.length - 1 && (
-                                <p className={cn("flex items-center gap-2 px-3 py-0.5 text-[9px] font-black uppercase tracking-wider text-(--pb-highlight) before:h-px before:flex-1 before:border-t before:border-dashed before:border-(--pb-highlight)/50 before:content-[''] after:h-px after:flex-1 after:border-t after:border-dashed after:border-(--pb-highlight)/50 after:content-['']", dense && 'py-0')}>
+                                <p className={cn("flex items-center gap-2 px-3 py-0.5 text-[9px] font-black uppercase tracking-wider text-(--pb-highlight) before:h-px before:flex-1 before:border-t before:border-dashed before:border-(--pb-highlight)/50 before:content-[''] after:h-px after:flex-1 after:border-t after:border-dashed after:border-(--pb-highlight)/50 after:content-['']", tight && 'py-0')}>
                                     {t('public_bracket.top_qualify', { count: qualifyCount, defaultValue: `Top ${qualifyCount} advance` })}
                                 </p>
                             )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tvGridCols } from '../components/GroupsView';
+import { compactGroupCards, tvGridCols } from '../components/GroupsView';
 
 /**
  * Pins the "never more than two rows" rule. jsdom does no layout, so this cannot see a clipped
@@ -29,14 +29,28 @@ describe('tvGridCols', () => {
         expect(tvGridCols(8)).toBe('grid-cols-4');
     });
 
+    it('lays nine groups out 3×3 and ten to twelve four across, the boards that need a third row', () => {
+        // Two rows of nine would be five across: ~30px left for a name.
+        expect(tvGridCols(9)).toBe('grid-cols-3');
+        expect(tvGridCols(10)).toBe('grid-cols-4');
+        expect(tvGridCols(12)).toBe('grid-cols-4');
+    });
+
     it('returns a literal utility class, never one assembled from the count', () => {
         // Tailwind v4 only emits classes it finds written out in source; a runtime
         // `grid-cols-${n}` is silently absent and the grid collapses to one column.
-        for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
             expect(['grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4']).toContain(
                 tvGridCols(n).split(' ').find(c => c.startsWith('grid-cols-')),
             );
         }
+    });
+
+    it('makes the cards one line per pair exactly when the board has a third row', () => {
+        // At eight or fewer the card has ~300px and keeps a line per player; a 195px card
+        // clipped two of four pairs that way.
+        for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) expect(compactGroupCards(n)).toBe(false);
+        for (const n of [9, 10, 11, 12]) expect(compactGroupCards(n)).toBe(true);
     });
 
     describe('one row (oneRow) — the Americano rounds board tiers', () => {

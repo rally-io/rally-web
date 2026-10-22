@@ -33,9 +33,18 @@ type GroupsViewProps = {
  * chrome is pared for). Measured at 8×4 pairs: every card fits with ~28px spare, and the longest
  * realistic pair name bottoms out at FitText's 9px floor without clipping.
  *
- * Nine or more groups is NOT handled: five across leaves ~30px for a name, so the card would
- * need paging instead (rotate pages of eight on the auto-rotate clock). No such tournament has
- * existed yet; if one does, the ninth group's row clips exactly the way eight used to.
+ * Nine or more groups break "never more than two rows": two rows of nine would be five across,
+ * which leaves ~30px for a name. A third row gives each card 195px, and a four-pair table with a
+ * line per player needs 278px of it, so a three-row board also turns on `compactGroupCards` —
+ * one line per pair. Chosen over paging (pages of eight on the auto-rotate clock) because a hall
+ * should not wait a page to see its group, the reason the games left this card (owner
+ * 2026-10-04). A nine-group tournament (2026-10-22) showed two pairs per group before this.
+ *
+ * Nine go 3×3 (499px cards). Measured: four pairs fit with every realistic name at full size and
+ * the longest at 12px; five pairs fit; six pairs overflow by 14px and are NOT handled. Ten to
+ * twelve stay four across with a third row: four pairs fit, but at 369px the names drop to
+ * 9–11px and the longest wraps after its slash. Thirteen or more is a fourth row and is NOT
+ * handled.
  *
  * Literal class strings on purpose: Tailwind v4 only emits utilities it finds written out in
  * source, so a `grid-cols-${n}` assembled at runtime is silently absent from the stylesheet
@@ -54,7 +63,17 @@ export function tvGridCols(count: number, oneRow = false): string {
     if (count === 2) return 'grid-cols-2';
     if (count === 4) return 'grid-cols-2';
     if (count <= 6) return 'grid-cols-3';
+    if (count === 9) return 'grid-cols-3';
     return 'grid-cols-4';
+}
+
+/**
+ * Whether the TV group cards put each pair on one line: past eight groups the board has a third
+ * row of cards, so each card has 195px instead of ~300px. See `tvGridCols` for the measurements.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- layout rule, not a component; the /preview.html harness renders the same grid
+export function compactGroupCards(count: number): boolean {
+    return count > 8;
 }
 
 /** Rotating per-group accent hue, defined per theme in themes.css. Shared by both group views. */
@@ -76,6 +95,7 @@ export function GroupsView({ groups, view, isBigScreen, qualifyCount }: GroupsVi
                         group={g}
                         accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]}
                         qualifyCount={qualifyCount}
+                        compact={compactGroupCards(groups.length)}
                     />
                 ))}
             </div>
