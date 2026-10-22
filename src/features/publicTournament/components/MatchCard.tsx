@@ -9,7 +9,9 @@ import { TieLabel } from './TieLabel';
 import { SCORE_TONE_CLASS, isLiveStatus, isVoidedStatus, localizeMatchLabel, localizeTeamPlaceholder, playerFullName, scoreTone, slotPlaceholderLabel, type ScoreTone } from '../utils';
 import type { PublicMatch, PublicPlayer, PublicTeam, SetScore, SlotPlaceholder } from '../types';
 
-export type MatchCardVariant = 'default' | 'node' | 'hero' | 'stage';
+/** `compact` is the TV tree's card for a big draw (`COMPACT_MIN_ROUNDS`): no header row and no
+ *  rating chips, so a 32-pair round still fits one screen. */
+export type MatchCardVariant = 'default' | 'node' | 'hero' | 'stage' | 'compact';
 
 type MatchCardProps = {
     match: PublicMatch;
@@ -19,7 +21,7 @@ type MatchCardProps = {
     seeds?: ReadonlyMap<string, number>;
 };
 
-function TeamNames({ team, maxPx, seeds }: { team: PublicTeam; maxPx: number; seeds?: ReadonlyMap<string, number> }): React.ReactElement {
+function TeamNames({ team, maxPx, seeds, showRating = true }: { team: PublicTeam; maxPx: number; seeds?: ReadonlyMap<string, number>; showRating?: boolean }): React.ReactElement {
     const { t } = useTranslation();
     const players = [team.player_1, team.player_2].filter((p): p is PublicPlayer => Boolean(p));
     if (players.length === 0) {
@@ -35,7 +37,7 @@ function TeamNames({ team, maxPx, seeds }: { team: PublicTeam; maxPx: number; se
                         </span>
                     )}
                     <FitText text={playerFullName(p)} maxPx={maxPx} minPx={9} className="min-w-0" wrapAtFloor />
-                    <RatingChip rating={p.skill_level} />
+                    {showRating && <RatingChip rating={p.skill_level} />}
                 </span>
             ))}
             {/* Reached the knockout on best-loser ranking rather than by qualifying.
@@ -51,7 +53,7 @@ function TeamNames({ team, maxPx, seeds }: { team: PublicTeam; maxPx: number; se
     );
 }
 
-function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, placeholder, seeds }: {
+function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, compact, placeholder, seeds }: {
     team: PublicTeam | null | undefined;
     sets: SetScore[];
     side: 'team_a' | 'team_b';
@@ -62,6 +64,7 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
     small: boolean;
     large: boolean;
     stage?: boolean;
+    compact?: boolean;
     placeholder?: SlotPlaceholder | null;
     seeds?: ReadonlyMap<string, number>;
 }): React.ReactElement {
@@ -72,12 +75,12 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
     const scores = sets.map(s => (side === 'team_a' ? s.team_a_score : s.team_b_score));
     // The same three-step ladder as the row's own text size below, in px: FitText needs a
     // number, and two copies of a variant ladder drift the moment one variant is retuned.
-    const namePx = stage ? 22 : small ? 12 : large ? 15 : 13;
+    const namePx = stage ? 22 : compact ? 11 : small ? 12 : large ? 15 : 13;
     return (
         <div className={cn('flex items-stretch', isWinner && 'bg-(--pb-winner-bg)')}>
             <div className={cn(
                 'flex min-w-0 flex-1 items-center gap-1.5 font-bold text-(--pb-text)',
-                stage ? 'px-5 py-3 text-[22px]' : small ? 'px-3 py-2 text-xs' : large ? 'px-4 py-3 text-[15px]' : 'px-3 py-2 text-[13px]',
+                stage ? 'px-5 py-3 text-[22px]' : compact ? 'gap-1 px-2 py-0.5 text-[11px]' : small ? 'px-3 py-2 text-xs' : large ? 'px-4 py-3 text-[15px]' : 'px-3 py-2 text-[13px]',
                 isLoser && 'text-(--pb-text-muted)',
                 // Both sides are demoted, after the loser clause so it wins on either row: a
                 // voided fixture has no winner and no loser, so neither name may stay at full
@@ -86,7 +89,7 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
                 isVoided && 'text-(--pb-text-muted) line-through',
             )}>
                 {team ? (
-                    <TeamNames team={team} maxPx={namePx} seeds={seeds} />
+                    <TeamNames team={team} maxPx={namePx} seeds={seeds} showRating={!compact} />
                 ) : (
                     // `truncate` because the label is translated: `public_bracket.status.tbd`
                     // used to be an empty string here and now carries real text (Hebrew
@@ -94,11 +97,11 @@ function TeamRow({ team, sets, side, winner, tone, status, small, large, stage, 
                     // rather than push the score column out of the card.
                     <span className="min-w-0 truncate text-(--pb-text-faint)">{slotPlaceholderLabel(placeholder, t) ?? t('public_bracket.status.tbd', 'TBD')}</span>
                 )}
-                {isWinner && <Trophy size={stage ? 20 : 12} className="shrink-0 text-(--pb-highlight)" />}
+                {isWinner && <Trophy size={stage ? 20 : compact ? 10 : 12} className="shrink-0 text-(--pb-highlight)" />}
             </div>
             <div className={cn(
                 'flex items-center gap-2 border-s border-(--pb-border) px-2.5 font-black',
-                stage ? 'min-w-20 justify-center px-4 text-[34px]' : small ? 'min-w-9 text-xs' : large ? 'min-w-12 px-3 text-[15px]' : 'min-w-10 text-[13px]',
+                stage ? 'min-w-20 justify-center px-4 text-[34px]' : compact ? 'min-w-7 gap-1.5 px-1.5 text-[11px]' : small ? 'min-w-9 text-xs' : large ? 'min-w-12 px-3 text-[15px]' : 'min-w-10 text-[13px]',
                 SCORE_TONE_CLASS[tone === 'live' ? 'neutral' : tone],
             )}>
                 {isVoided ? (
@@ -127,6 +130,7 @@ export function MatchCard({ match, variant = 'default', className, seeds }: Matc
     const small = variant === 'node';
     const large = variant === 'hero';
     const stage = variant === 'stage';
+    const compact = variant === 'compact';
     const isLive = isLiveStatus(match.status);
     const isDone = match.status === 'completed' || match.status === 'walkover';
     const isVoided = isVoidedStatus(match.status);
@@ -142,13 +146,15 @@ export function MatchCard({ match, variant = 'default', className, seeds }: Matc
 
     return (
         <div className={cn(
-            'overflow-hidden rounded-xl border bg-(--pb-card)',
-            isLive ? 'border-(--pb-live)/50' : 'border-(--pb-border)',
+            'overflow-hidden border bg-(--pb-card)',
+            compact ? 'rounded-lg' : 'rounded-xl',
+            // With no header there is no LIVE word, so the frame carries it at full strength.
+            isLive ? (compact ? 'border-(--pb-live)' : 'border-(--pb-live)/50') : 'border-(--pb-border)',
             (variant === 'hero' || variant === 'stage') && 'border-(--pb-highlight)/60 shadow-[0_0_24px_var(--pb-glow)]',
             justChanged && 'pb-score-flash',
             className,
         )}>
-            <div className="flex items-center justify-between gap-2 border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-1.5">
+            {!compact && <div className="flex items-center justify-between gap-2 border-b border-(--pb-border) bg-(--pb-card-header) px-3 py-1.5">
                 <span className="truncate text-[10px] font-black uppercase tracking-widest text-(--pb-text-faint)">
                     {/* No court once voided, the same way the lane card drops it: the court was
                         given back to the tournament, and a dead fixture still naming one has the
@@ -184,10 +190,10 @@ export function MatchCard({ match, variant = 'default', className, seeds }: Matc
                 ) : time ? (
                     <span className="shrink-0 text-[10px] font-bold text-(--pb-accent)">{time}</span>
                 ) : null}
-            </div>
+            </div>}
             <div className="divide-y divide-(--pb-border)">
-                <TeamRow team={match.team_a} sets={match.sets} side="team_a" winner={match.winner_team ?? null} tone={scoreTone(match, 'team_a')} status={match.status} small={small} large={large} stage={stage} placeholder={match.team_a_placeholder} seeds={seeds} />
-                <TeamRow team={match.team_b} sets={match.sets} side="team_b" winner={match.winner_team ?? null} tone={scoreTone(match, 'team_b')} status={match.status} small={small} large={large} stage={stage} placeholder={match.team_b_placeholder} seeds={seeds} />
+                <TeamRow team={match.team_a} sets={match.sets} side="team_a" winner={match.winner_team ?? null} tone={scoreTone(match, 'team_a')} status={match.status} small={small} large={large} stage={stage} compact={compact} placeholder={match.team_a_placeholder} seeds={seeds} />
+                <TeamRow team={match.team_b} sets={match.sets} side="team_b" winner={match.winner_team ?? null} tone={scoreTone(match, 'team_b')} status={match.status} small={small} large={large} stage={stage} compact={compact} placeholder={match.team_b_placeholder} seeds={seeds} />
             </div>
         </div>
     );
