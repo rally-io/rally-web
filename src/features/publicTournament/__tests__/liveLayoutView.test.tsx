@@ -157,6 +157,33 @@ describe('group+knockout (kind: groups)', () => {
     });
 });
 
+describe('a group stage too big for one TV screen', () => {
+    // Nine groups of four: one standings board, but two pages of lanes (five and four).
+    const groups: PublicGroup[] = Array.from({ length: 9 }, (_, i) => {
+        const name = `Group ${String.fromCharCode(65 + i)}`;
+        return { group_name: name, matches: [match(`g${i}`, `${name} T1`, `${name} T2`)], standings: [1, 2, 3, 4].map(p => standingRow(`${name} P${p}`, p)) };
+    });
+    const bracket = baseBracket({ structure: 'group_then_knockout', groups });
+
+    it('draws the games page by page: the first five lanes, then the last four', () => {
+        const first = render(<LiveLayoutView kind="groups" view="games" page={0} bracket={bracket} isBigScreen dir="ltr" />);
+        expect(screen.getByText('Group E T1')).toBeInTheDocument();
+        expect(screen.queryByText('Group F T1')).toBeNull();
+        first.unmount();
+
+        render(<LiveLayoutView kind="groups" view="games" page={1} bracket={bracket} isBigScreen dir="ltr" />);
+        expect(screen.getByText('Group F T1')).toBeInTheDocument();
+        expect(screen.getByText('Group I T1')).toBeInTheDocument();
+        expect(screen.queryByText('Group E T1')).toBeNull();
+    });
+
+    it('keeps all nine standings on the one board', () => {
+        render(<LiveLayoutView kind="groups" view="groups" page={0} bracket={bracket} isBigScreen dir="ltr" />);
+        expect(screen.getByText('Group A P1')).toBeInTheDocument();
+        expect(screen.getByText('Group I P1')).toBeInTheDocument();
+    });
+});
+
 describe('a league (kind: league)', () => {
     const bracket = baseBracket({
         structure: 'round_robin_league',

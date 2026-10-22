@@ -57,4 +57,39 @@ describe('ViewTabs auto-rotate progress bar', () => {
         );
         expect(container.querySelector('.pb-rotate-bar')).toBeNull();
     });
+
+    it('marks a paged view with its page, and keeps the bar on it with rotation off', () => {
+        // A manually picked tab still turns its pages (useViewMode), so the bar is not a promise
+        // of a rotation that cannot come — and "1/2" tells the hall the other groups are coming.
+        const { container, getByText } = render(
+            <ViewTabs
+                view="games"
+                onSelect={vi.fn()}
+                isAutoRotate={false}
+                onToggleAutoRotate={vi.fn()}
+                showAutoRotate={true}
+                tabs={['groups', 'games']}
+                rotateMs={12000}
+                page={0}
+                pageCount={2}
+            />,
+        );
+        expect(getByText('1/2')).toBeInTheDocument();
+        expect(container.querySelector('.pb-rotate-bar')).not.toBeNull();
+    });
+
+    it('prints no page on a view that fits one screen', () => {
+        const { container } = render(
+            <ViewTabs
+                view="groups"
+                onSelect={vi.fn()}
+                isAutoRotate={true}
+                onToggleAutoRotate={vi.fn()}
+                showAutoRotate={true}
+                tabs={['groups', 'games']}
+                rotateMs={12000}
+            />,
+        );
+        expect(container.textContent).not.toMatch(/\d\/\d/);
+    });
 });

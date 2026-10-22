@@ -258,6 +258,94 @@ describe('GroupBoardCard', () => {
         expect(second.title).toBe('Michael Abramovich');
     });
 
+    it('puts a pair on one line when compact, breakable only between the players', () => {
+        const g = group({
+            matches: [match({ id: 'm1', sets: [{ team_a_score: 6, team_b_score: 3, is_tiebreak: null }] })],
+            standings: [standing({
+                position: 1,
+                team_name: null,
+                player_1: player('p1', 'Alexander', 'Konstantinov'),
+                player_2: player('p2', 'Michael', 'Abramovich'),
+                wins: 1, losses: 0,
+            })],
+        });
+        const { container } = render(<GroupBoardCard group={g} compact />);
+
+        // One element for the pair; its title is the label as typed.
+        const line = container.querySelector('[title="Alexander Konstantinov / Michael Abramovich"]');
+        expect(line).not.toBeNull();
+        expect(screen.queryByText('Alexander Konstantinov')).toBeNull();
+        // Non-breaking inside each name, so a wrap at FitText's floor lands after the slash.
+        expect(line!.textContent).toBe('Alexander Konstantinov / Michael Abramovich');
+        // The spacing tightens, the name keeps its full size: the compact card is wider.
+        const row = line!.closest('.rounded-xl') as HTMLElement;
+        expect(row.className).toContain('py-px');
+        expect((row.firstElementChild as HTMLElement).className).toContain('text-xl');
+        expect((line as HTMLElement).style.fontSize).toBe('15px');
+    });
+
+    it('drops a nameless guest from the compact line instead of leaving a bare slash', () => {
+        const g = group({
+            standings: [standing({
+                position: 1,
+                team_name: null,
+                player_1: player('p1', 'Gal', 'Cohen'),
+                player_2: { id: 'p2', first_name: null, last_name: null, skill_level: null, is_guest: true },
+            })],
+        });
+        const { container } = render(<GroupBoardCard group={g} compact />);
+        expect(container.querySelector('[title="Gal Cohen"]')).not.toBeNull();
+        expect(container.querySelector('[title="Gal Cohen / "]')).toBeNull();
+    });
+
+    it('turns the cards compact on a nine-group board and leaves an eight-group one alone', () => {
+        const pair = (name: string): PublicGroup => group({
+            group_name: name,
+            standings: [standing({
+                position: 1,
+                team_name: null,
+                player_1: player(`${name}-1`, 'Gal', 'Cohen'),
+                player_2: player(`${name}-2`, 'Adi', 'Shani'),
+            })],
+        });
+        const groups = (n: number) => Array.from({ length: n }, (_, i) => pair(`Group ${String.fromCharCode(65 + i)}`));
+
+        const nine = render(<GroupsView groups={groups(9)} view="groups" isBigScreen />);
+        expect((nine.container.firstElementChild as HTMLElement).className).toContain('grid-cols-3');
+        expect(nine.container.querySelectorAll('[title="Gal Cohen / Adi Shani"]')).toHaveLength(9);
+        nine.unmount();
+
+        const eight = render(<GroupsView groups={groups(8)} view="groups" isBigScreen />);
+        expect(eight.container.querySelectorAll('[title="Gal Cohen / Adi Shani"]')).toHaveLength(0);
+        expect(eight.container.querySelectorAll('[title="Gal Cohen"]')).toHaveLength(8);
+    });
+
+    it('draws a twelve-group board as two pages of six, each group keeping its accent', () => {
+        const pair = (name: string): PublicGroup => group({
+            group_name: name,
+            standings: [standing({ position: 1, team_name: null, player_1: player(`${name}-1`, 'Gal', 'Cohen'), player_2: null })],
+        });
+        const groups = Array.from({ length: 12 }, (_, i) => pair(`Group ${String.fromCharCode(65 + i)}`));
+
+        const first = render(<GroupsView groups={groups} view="groups" isBigScreen page={0} />);
+        expect(first.container.querySelectorAll('[title="Gal Cohen"]')).toHaveLength(6);
+        expect((first.container.firstElementChild as HTMLElement).className).toContain('grid-cols-3');
+        expect(first.container.textContent).toContain('Group A');
+        expect(first.container.textContent).not.toContain('Group G');
+        first.unmount();
+
+        const second = render(<GroupsView groups={groups} view="groups" isBigScreen page={1} />);
+        expect(second.container.querySelectorAll('[title="Gal Cohen"]')).toHaveLength(6);
+        expect(second.container.textContent).toContain('Group G');
+        expect(second.container.textContent).not.toContain('Group F');
+        // Group G is the seventh group: its accent is the one it would have on a single board,
+        // not the first accent again because it opens a page.
+        const accents = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
+        const accentOf = (card: Element) => accents.find(c => card.classList.contains(c) || card.querySelector(`.${c}`));
+        const cards = Array.from((second.container.firstElementChild as HTMLElement).children);
+        expect(cards.map(accentOf)).toEqual(['pb-ga-2', 'pb-ga-3', 'pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3']);
+    });
+
     it('keeps a pair\'s chip colour stable when the standings array reorders around it', () => {
         const alpha = standing({
             position: 1,
