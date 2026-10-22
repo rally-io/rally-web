@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parseISO } from 'date-fns';
 import { Trophy } from 'lucide-react';
@@ -78,8 +78,9 @@ export function BracketTreeTV({ rounds, thirdPlaceMatch, showChampion }: Bracket
     // Shrink the whole tree, connectors included, until it fits the screen: on a canvas with no
     // scrollbar anything wider or taller is simply cut off. `transform` rather than `zoom`, so the
     // offset* geometry the connectors are measured from stays unscaled; and writing the scale moves
-    // nothing either box measures, so it cannot feed back into another resize.
-    useEffect(() => {
+    // nothing either box measures, so it cannot feed back into another resize. A layout effect, as
+    // in TvCanvas, so the first paint is already scaled rather than clipped for a frame.
+    useLayoutEffect(() => {
         const box = boxRef.current;
         const tree = containerRef.current;
         if (!box || !tree) return;
