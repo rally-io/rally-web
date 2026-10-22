@@ -21,7 +21,13 @@
  *       .forEach(l => console.log(l.scrollHeight - l.clientHeight))   // 0 = fits
  *
  * /preview.html?theme=dark|light|gradient&groups=N&pairs=N&dq=1&cancel=1&long=0&lang=en&cols=2
- *              &played=0&phone=1&view=games
+ *              &played=0&phone=1&view=games&page=2
+ *
+ * `long=all` gives every pair the longest name, so two of them meet on one card — the tallest a
+ * lane card gets, and the shape the games screen's page sizes are measured against.
+ *
+ * `page=N` (1-based) is which page of a group stage too big for one screen to draw — the pages
+ * the venue screen turns through (features/publicTournament/tvPages.ts). One page needs none.
  *
  * `view=games` swaps the standings grid for the «משחקים» lanes — the other TV screen the group
  * phase rotates through, which has the same no-scroll constraint and its own way of running out
@@ -47,9 +53,10 @@ import './features/publicTournament/themes.css';
 import { cn } from '@/lib/utils';
 import { TvCanvas } from './features/publicTournament/components/TvCanvas';
 import { GroupBoardCard } from './features/publicTournament/components/GroupBoardCard';
-import { GroupsView, GROUP_ACCENTS, tvGridCols } from './features/publicTournament/components/GroupsView';
+import { GroupsView, GROUP_ACCENTS, compactGroupCards, tvGridCols } from './features/publicTournament/components/GroupsView';
 import { LanesView } from './features/publicTournament/components/LanesView';
 import { getRotationViews } from './features/publicTournament/liveLayouts';
+import { largestGroup, tvGroupPages } from './features/publicTournament/tvPages';
 import { PublicHeader } from './features/publicTournament/components/PublicHeader';
 import { ViewTabs } from './features/publicTournament/components/ViewTabs';
 import { QrPanel } from './features/publicTournament/components/QrPanel';
@@ -64,11 +71,13 @@ const pairCount = Number(q.get('pairs') ?? 4);
 const withDq = q.get('dq') === '1';
 const withCancel = q.get('cancel') === '1';
 const longNames = q.get('long') !== '0';
+const allLong = q.get('long') === 'all';
 const lang = q.get('lang') ?? 'he';
 const colsParam = q.get('cols');
 const played = q.get('played') !== '0';
 const phone = q.get('phone') === '1';
 const tvView = q.get('view') === 'games' ? 'games' : 'groups';
+const pageParam = Math.max(1, Number(q.get('page') ?? 1));
 void i18n.changeLanguage(lang);
 
 const player = (id: string, first: string, last: string) => ({
@@ -112,7 +121,7 @@ function roundRobin(n: number): Array<Array<[number, number]>> {
 function grp(name: string, n: number, dqIndex: number): PublicGroup {
     const src = longNames ? LONG : SHORT;
     const pair = (i: number) => {
-        const [f1, l1, f2, l2] = src[i % src.length];
+        const [f1, l1, f2, l2] = allLong ? LONG[2] : src[i % src.length];
         return { player_1: player(`${name}-${i}-a`, f1, l1), player_2: player(`${name}-${i}-b`, f2, l2) };
     };
     const rounds = roundRobin(n);
@@ -155,6 +164,11 @@ function grp(name: string, n: number, dqIndex: number): PublicGroup {
 const groups: PublicGroup[] = Array.from({ length: groupCount }, (_, gi) =>
     grp(`Group ${String.fromCharCode(65 + gi)}`, pairCount, gi === 0 && withDq ? Math.min(3, pairCount - 1) : -1));
 
+/** The same split the live page makes, so a page here is exactly a page there. */
+const pages = tvGroupPages(groups, tvView === 'games' ? 'lanes' : 'board');
+const pageIndex = Math.min(pageParam, pages.length) - 1;
+const shown = pages[pageIndex];
+
 /** The real footer measures `CourtRail` against `QrPanel`, so the board's height here must be
  *  what the page actually leaves it — a rail of the same fixtures, not an empty spacer. */
 const bracket: PublicBracketData = {
@@ -185,11 +199,11 @@ function Controls(): React.ReactElement {
                 <button key={v} className={btn(theme === v)} onClick={() => set('theme', v)}>{v}</button>
             ))}
             <span className="px-1 text-[10px] font-black uppercase text-white/50">groups</span>
-            {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12].map(v => (
+            {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 16, 18].map(v => (
                 <button key={v} className={btn(groupCount === v)} onClick={() => set('groups', String(v))}>{v}</button>
             ))}
             <span className="px-1 text-[10px] font-black uppercase text-white/50">pairs</span>
-            {[3, 4, 5, 6].map(v => (
+            {[3, 4, 5, 6, 7, 8].map(v => (
                 <button key={v} className={btn(pairCount === v)} onClick={() => set('pairs', String(v))}>{v}</button>
             ))}
             <span className="px-1 text-[10px] font-black uppercase text-white/50">cols</span>
@@ -202,6 +216,10 @@ function Controls(): React.ReactElement {
             <button className={btn(played)} onClick={() => set('played', played ? '0' : '1')}>{played ? 'played' : 'pre-start'}</button>
             <button className={btn(phone)} onClick={() => set('phone', phone ? '0' : '1')}>{phone ? 'phone' : 'tv'}</button>
             <button className={btn(tvView === 'games')} onClick={() => set('view', tvView === 'games' ? 'groups' : 'games')}>{tvView === 'games' ? 'games' : 'groups'}</button>
+            {pages.length > 1 && <span className="px-1 text-[10px] font-black uppercase text-white/50">page</span>}
+            {pages.length > 1 && pages.map((_, i) => (
+                <button key={i} className={btn(pageIndex === i)} onClick={() => set('page', String(i + 1))}>{i + 1}</button>
+            ))}
             <button className={btn(lang === 'he')} onClick={() => set('lang', lang === 'he' ? 'en' : 'he')}>{lang}</button>
         </div>
     );
@@ -255,15 +273,16 @@ function Preview(): React.ReactElement {
                             view={tvView} onSelect={() => {}} isAutoRotate
                             onToggleAutoRotate={() => {}} showAutoRotate={showAutoRotate}
                             tabs={['groups', 'games', 'knockout']} rotateMs={20000}
+                            page={pageIndex} pageCount={pages.length}
                         />
                     </div>
                     <main className="min-h-0 flex-1 overflow-hidden">
                         {tvView === 'games' ? (
-                            <LanesView groups={groups} accents={GROUP_ACCENTS} />
+                            <LanesView groups={shown.map(i => groups[i])} accents={shown.map(i => GROUP_ACCENTS[i % GROUP_ACCENTS.length])} />
                         ) : (
-                            <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(groups.length))} style={forcedCols}>
-                                {groups.map((g, i) => (
-                                    <GroupBoardCard key={g.group_name} group={g} accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]} qualifyCount={2} />
+                            <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(shown.length, largestGroup(groups) > 6))} style={forcedCols}>
+                                {shown.map(i => (
+                                    <GroupBoardCard key={groups[i].group_name} group={groups[i]} accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]} qualifyCount={2} compact={compactGroupCards(shown.length)} />
                                 ))}
                             </div>
                         )}

@@ -25,7 +25,7 @@ export default function PublicTournamentPage(): React.ReactElement | null {
     const { bracket, isLoading, isExpired, isHardError, isReconnecting, updatedAt } = usePublicBracket(token);
     const { theme, cycleTheme } = useTheme();
     const isBigScreen = useMediaQuery(BIG_SCREEN_QUERY);
-    const { view, kind, tabs, selectView, isAutoRotate, toggleAutoRotate, showTabs, canAutoRotate } = useViewMode(bracket, isBigScreen);
+    const { view, page, pageCount, kind, tabs, selectView, isAutoRotate, toggleAutoRotate, showTabs, canAutoRotate } = useViewMode(bracket, isBigScreen);
 
     const dir = useMemo(() => {
         if (i18n.language === 'he') return 'rtl';
@@ -83,13 +83,15 @@ export default function PublicTournamentPage(): React.ReactElement | null {
                         showAutoRotate={isBigScreen && canAutoRotate}
                         tabs={tabs}
                         rotateMs={ROTATE_MS}
+                        page={page}
+                        pageCount={pageCount}
                     />
                 </div>
             )}
             <main className={cn(isBigScreen ? 'min-h-0 flex-1 overflow-hidden' : showTabs ? '' : 'pt-4')}>
                 {view === 'video'
                     ? <VideoView videos={bracket.videos} isBigScreen={isBigScreen} />
-                    : <LiveLayoutView kind={kind} view={view} bracket={bracket} isBigScreen={isBigScreen} dir={dir} />}
+                    : <LiveLayoutView kind={kind} view={view} page={page} bracket={bracket} isBigScreen={isBigScreen} dir={dir} />}
             </main>
             {isBigScreen && (
                 <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-(--pb-border) bg-(--pb-card-header) px-8 pb-3 pt-2">

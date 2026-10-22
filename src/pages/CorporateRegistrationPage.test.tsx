@@ -135,10 +135,42 @@ describe('CorporateRegistrationPage — states', () => {
     expect(screen.getByText(/registration has closed/i)).toBeInTheDocument()
   })
 
-  it('full → full card', () => {
-    mockUseTournament.mockReturnValue(tr({ is_full: true }))
+  it('full with the waiting list switched off → full card, no way in', () => {
+    mockUseTournament.mockReturnValue(tr({ is_full: true, waitlist_enabled: false }))
     renderPage()
     expect(screen.getByText(/all spots are taken/i)).toBeInTheDocument()
+    expect(screen.queryByTestId('corporate-waitlist-link')).not.toBeInTheDocument()
+  })
+
+  it('full → offers the waiting list and sends the pair to the tournament page, where the join runs', () => {
+    // `waitlist_enabled` absent: the API only sends false when the switch is off.
+    mockUseTournament.mockReturnValue(tr({ is_full: true }))
+    renderPage()
+    expect(screen.getByText(i18n.t('corporate.reg.waitlistTitle'))).toBeInTheDocument()
+    expect(screen.queryByText(/all spots are taken/i)).not.toBeInTheDocument()
+    const link = screen.getByTestId('corporate-waitlist-link')
+    expect(link).toHaveAttribute('href', '/tournaments/t-1')
+    expect(link).toHaveTextContent(i18n.t('tournament.tournamentJoinWaitlist'))
+    // A tournament with no waiver has nothing to warn about.
+    expect(screen.queryByTestId('corporate-waitlist-waiver-note')).not.toBeInTheDocument()
+  })
+
+  it('full with a residents\' waiver → says the waiver does not carry onto the waiting list', () => {
+    mockUseTournament.mockReturnValue(tr({ is_full: true, fee_waiver_type: 'holon_resident' }))
+    renderPage({ feeWaiver: { type: 'holon_resident' } })
+    expect(screen.getByTestId('corporate-waitlist-waiver-note'))
+      .toHaveTextContent(i18n.t('tournament.tournamentWaitlistNoWaiverNote'))
+  })
+
+  it('full and already queued → shows the position, not a second join prompt', () => {
+    mockUseTournament.mockReturnValue(tr({
+      is_full: true,
+      my_waitlist_entry: { id: 'w-1', position: 4, joined_at: null, entry_fee: 150, service_fee: 0 },
+    }))
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.tournamentWaitlistPosition', { position: 4 }))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('corporate.reg.waitlistTitle'))).not.toBeInTheDocument()
+    expect(screen.getByTestId('corporate-waitlist-link')).toHaveAttribute('href', '/tournaments/t-1')
   })
 
   it('signed out → one CTA that stashes the return path and opens the sign-in gate', async () => {
@@ -253,7 +285,7 @@ describe('CorporateRegistrationPage — post-refetch register error (I2)', () =>
       gateError: null, setRegisterError: vi.fn(), setGateError: vi.fn(),
     } as any)
     renderPage()
-    expect(screen.getByText(/all spots are taken/i)).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.waitlistTitle'))).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

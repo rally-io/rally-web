@@ -7,9 +7,6 @@ import type { PreferredDay } from '../types/api'
 // /join/:slug page 500s. A type-only import is erased and needs no extension;
 // this one is a value import. See api/esm-imports.test.ts.
 import { ISRAEL_OPEN_TERMS } from './israelOpenTerms.js'
-// Relative with `.js`, never the `@/` alias: api/join-og.ts imports this module and
-// runs as native ESM, where Node resolves neither an alias nor a bare specifier.
-import { tournamentLevelsBetween } from '../lib/tournamentLevelBands.js'
 
 /**
  * Closed corporate tournaments — one entry per event.
@@ -91,6 +88,14 @@ export interface CorporateEventBase {
   dateLabel: string
   /** Human-readable time window, e.g. '17:00–21:00'. */
   timeLabel: string
+  /**
+   * The level of an entry that is one level category of a bigger event, written as
+   * the tournament writes it ("2.0–2.5 (D2–D1)"). Shown as its own left-to-right
+   * pill under the title — a range typed into `tournamentName` is mirrored by the
+   * page's RTL — and appended to the page title and the link preview's title.
+   * Copy, not data: the tournament's own `skill_level` is what registration uses.
+   */
+  levelLabel?: string
 }
 
 /**
@@ -155,9 +160,87 @@ export interface CorporateTournamentEvent extends CorporateEventBase {
    * every other registration is refused outright. Omit it and the regular page stays.
    */
   redirectFromTournamentPage?: boolean
+  /**
+   * The hub (`mode: 'hub'`) this tournament is one category of. When set, its page
+   * links back to that hub so a pair that picked the wrong category can switch
+   * without going through the browser's back button.
+   */
+  hubSlug?: string
 }
 
-export type CorporateEvent = CorporateLeadEvent | CorporateTournamentEvent
+/**
+ * Hub mode: an event that is split into several tournaments (one per level
+ * category), each with its own registration page. The hub registers nobody — it
+ * says so, and links to every category's page with its live fill. Its link
+ * (`/join/<slug>`, and `/holon` for the Israel Open) stays the one the club
+ * hands out; the per-category pages are `categories`.
+ */
+export interface CorporateHubEvent extends CorporateEventBase {
+  mode: 'hub'
+  /** Slugs of the tournament-mode entries to list, in the order they are shown. */
+  categories: string[]
+  /** The rulebook, collapsed at the foot — it covers every category. */
+  terms?: TermsSection[]
+}
+
+export type CorporateEvent = CorporateLeadEvent | CorporateTournamentEvent | CorporateHubEvent
+
+/** What the Israel Open hub and each of its category pages have in common. */
+const HOLON_SHARED = {
+  company: 'Padel Time Club',
+  tournamentName: 'אליפות ישראל\nהפתוחה בפאדל',
+  clubName: 'Padel Time Club · בחסות עיריית חולון',
+  // As the club gave it, 2026-09-28 — the street address players navigate to,
+  // with the country club it sits in.
+  clubAddress: 'הלוחמים 30, פאדל טיים קלאב חולון (קאנטרי חולון)',
+  // Open to anyone with the link — no "closed event" badge.
+  closedBadge: false,
+  // The address chip already names the club; the owner dropped the line, 2026-09-28.
+  hostedAtLine: false,
+  // The club's 1200×630 banner (2026-09-28): the sponsor logos fill the top-right
+  // corner and the residents' line the top-left, so neither can carry the mark.
+  // 1.91:1 fills a phone edge to edge and is the size link previews expect.
+  heroImage: '/holon-israel-open-2026-hero.jpg',
+  heroFit: 'contain',
+  wordmarkOverHero: false,
+} as const
+
+const HOLON_HUB_SLUG = 'holon-israel-open-2026'
+
+/**
+ * The five level categories, lowest first — one prod tournament each, created
+ * 2026-10-11 by splitting the original registrations by level. `dayLabel` is the
+ * day the category plays; the tournaments themselves are scheduled Wednesday to
+ * Friday, so the real day lives here and in the tournament's description.
+ */
+const HOLON_CATEGORIES = [
+  { slug: 'holon-israel-open-2026-d2-d1', tournamentId: '58eb2668-3a66-486b-94f8-8eabdd8d731a', level: '2.0–2.5 (D2–D1)', dayLabel: 'יום רביעי, 21 באוקטובר 2026', timeLabel: 'אחר הצהריים' },
+  { slug: 'holon-israel-open-2026-d1-c2', tournamentId: '6956aa01-973b-4eda-aa1d-0e4de3200047', level: '2.5–3.0 (D1–C2)', dayLabel: 'יום חמישי, 22 באוקטובר 2026', timeLabel: 'אחר הצהריים' },
+  { slug: 'holon-israel-open-2026-c2-c1', tournamentId: '50bd8fd1-14f6-4c25-9e26-f9e5ee707a02', level: '3.0–3.5 (C2–C1)', dayLabel: 'יום רביעי, 21 באוקטובר 2026', timeLabel: 'אחר הצהריים' },
+  { slug: 'holon-israel-open-2026-c1-b2', tournamentId: '0f1e1128-8d9c-4120-b64d-2f0b8e699542', level: '3.5–4.0 (C1–B2)', dayLabel: 'יום חמישי, 22 באוקטובר 2026', timeLabel: 'אחר הצהריים' },
+  { slug: 'holon-israel-open-2026-b2-a', tournamentId: 'fe183995-5e56-4ef2-85d0-c857cfdee42c', level: '4.0–5.0 (B2–A)', dayLabel: 'יום שישי, 23 באוקטובר 2026', timeLabel: 'בבוקר' },
+] as const
+
+/**
+ * One category's registration page. Same flow as any tournament-mode event, minus
+ * the two questions the category already answers: no level dropdown (the
+ * tournament IS the level) and no preferred day (the category plays one day).
+ */
+function holonCategoryEvent(category: (typeof HOLON_CATEGORIES)[number]): CorporateTournamentEvent {
+  return {
+    mode: 'tournament',
+    ...HOLON_SHARED,
+    slug: category.slug,
+    tournamentId: category.tournamentId,
+    hubSlug: HOLON_HUB_SLUG,
+    levelLabel: category.level,
+    dateLabel: category.dayLabel,
+    timeLabel: category.timeLabel,
+    feeWaiver: { type: 'holon_resident' },
+    terms: ISRAEL_OPEN_TERMS,
+    redirectFromTournamentPage: false,
+  }
+}
 
 export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
   // Private link: /join/samsung-fold8
@@ -210,71 +293,40 @@ export const CORPORATE_EVENTS: Record<string, CorporateEvent> = {
   // Copy taken from the client's first poster; the dates below come from the
   // official תקנון, which supersedes it.
   //
-  // The tournament is `is_unlisted` + `registration_open` on prod, created
-  // 2026-09-27: unlisted keeps it out of every public list, feed and
-  // announcement, while registration_open is what lets a pair actually register
-  // (`register_tournament` refuses any other status). The slug is the only way in.
+  // The championship is split into five level categories, each its own tournament
+  // (created 2026-10-11 from the one that registrations first went to). This slug
+  // is the hub: it registers nobody and links to the five category pages below.
+  // The original tournament (7acb6027-…) stays on prod, unlisted and closed, for
+  // the pairs that could not be placed in a category — nothing on this page reads it.
   //
   // Renamed from `israel-open-2026` on 2026-09-28, after the link had already gone
-  // out for feedback. vercel.json redirects the old path here permanently, so
-  // those copies still land — keep that redirect for as long as the event runs.
+  // out for feedback. vercel.json redirects the old path here, and `/holon` too —
+  // keep both for as long as the event runs.
   'holon-israel-open-2026': {
-    mode: 'tournament',
+    mode: 'hub',
     slug: 'holon-israel-open-2026',
-    tournamentId: '7acb6027-33df-456a-8d3c-6ba4073b72ef',
-    company: 'Padel Time Club',
-    tournamentName: 'אליפות ישראל\nהפתוחה בפאדל',
-    clubName: 'Padel Time Club · בחסות עיריית חולון',
-    // As the club gave it, 2026-09-28 — the street address players navigate to,
-    // with the country club it sits in.
-    clubAddress: 'הלוחמים 30, פאדל טיים קלאב חולון (קאנטרי חולון)',
-    feeWaiver: { type: 'holon_resident' },
-    // Open to anyone with the link — no "closed event" badge.
-    closedBadge: false,
-    // The address chip already names the club; the owner dropped the line, 2026-09-28.
-    hostedAtLine: false,
-    // The club's 1200×630 banner (2026-09-28): the sponsor logos fill the top-right
-    // corner and the residents' line the top-left, so neither can carry the mark.
-    // 1.91:1 fills a phone edge to edge and is the size link previews expect.
-    heroImage: '/holon-israel-open-2026-hero.jpg',
-    heroFit: 'contain',
-    wordmarkOverHero: false,
+    categories: HOLON_CATEGORIES.map((category) => category.slug),
+    ...HOLON_SHARED,
+    // Parts of the day, not clock times (owner's call, 2026-09-28): the exact
+    // slots depend on the draw. Each category plays one day, below.
+    // The club's working hours were Wed–Thu 16:00–00:00 and Fri 07:30–13:00.
+    dateLabel: '21–23 באוקטובר 2026',
+    timeLabel: 'רביעי–חמישי אחר הצהריים\nשישי בבוקר',
+    terms: ISRAEL_OPEN_TERMS,
     // The club's copy, 2026-09-28. Spelling fixed (ביניהם, מקומכם) and the
     // punctuation tidied; the words are theirs.
     intro: [
       'בפאדל טיים קלאב חולון מתחילים במסורת חדשה!!',
       'אליפות ישראל הפתוחה בפאדל עם פרסים בשווי 80,000 ₪.',
-      'ההרשמה יצאה לדרך, הזדמנות חד פעמית לכל הרמות להשתתפות באירוע ענק!',
+      'הזדמנות חד פעמית לכל הרמות להשתתפות באירוע ענק!',
       '',
       'הפרסים הכי שווים בענף, ביניהם הזוג הזוכה טס לשבוע אימונים באקדמיית M3 במדריד, מהטובות באירופה.',
       'המקומות מוגבלים בהחלט.',
       '',
-      'תושבי חולון בחינם - ההרשמה פתוחה עכשיו, מהרו לתפוס את מקומכם.',
+      'תושבי חולון בחינם — בחרו את הטורניר שלכם למטה והירשמו.',
     ].join('\n'),
-    // 21–23 October per the official תקנון (§1), which supersedes the 28–30 the
-    // poster carried. 21–23 Oct 2026 is Wednesday to Friday.
-    dateLabel: '21–23 באוקטובר 2026',
-    // Parts of the day, not clock times (owner's call, 2026-09-28): the exact
-    // slots depend on the draw, and §5.2 has each pair play two of the three days.
-    // The club's working hours were Wed–Thu 16:00–00:00 and Fri 07:30–13:00.
-    timeLabel: 'רביעי–חמישי אחר הצהריים\nשישי בבוקר',
-    terms: ISRAEL_OPEN_TERMS,
-    // Every tournament band from 2 to 5, written the way tournaments show their level
-    // ("2.5 - 3.0 (D1 - C2)") — the owner's call, 2026-09-28. The poster's three
-    // categories were a mock. Taken from the one tournament band list rather than
-    // typed here, so it reads exactly like a tournament's level.
-    competeLevels: tournamentLevelsBetween(2, 5),
-    // They are the tournament bands, so after the 1–7 → 1–5 switch the page lists the
-    // served bands instead of these 1–7 strings (lib/competeLevels.ts).
-    competeLevelsAreBands: true,
-    // Wednesday or Thursday — §5.2 has each pair play two of the three days; the pair
-    // says which weekday it would rather have.
-    preferredDays: ['wednesday', 'thursday'],
-    // Listed publicly from 2026-09-28. Web visitors land here for the full flow; the
-    // app registers plain entries (no waiver, no level) and its banner and the
-    // tournament description point residents to rallypadel.app/holon (vercel.json).
-    redirectFromTournamentPage: false,
   },
+  ...Object.fromEntries(HOLON_CATEGORIES.map((category) => [category.slug, holonCategoryEvent(category)])),
 }
 
 export function getCorporateEvent(slug: string | undefined): CorporateEvent | null {

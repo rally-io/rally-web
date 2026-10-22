@@ -58,6 +58,19 @@ describe('EventHero', () => {
     expect(screen.getByAltText('Padel Club')).toBeInTheDocument()
   })
 
+  it('shows a level category\'s level as its own left-to-right pill', () => {
+    render(<EventHero event={{ ...EVENT, levelLabel: '2.0–2.5 (D2–D1)' }} />)
+    const level = screen.getByTestId('event-level')
+    expect(level).toHaveTextContent('2.0–2.5 (D2–D1)')
+    // The page is RTL: a range left in the flow would be mirrored and read 2.5–2.0.
+    expect(level).toHaveAttribute('dir', 'ltr')
+  })
+
+  it('shows no level pill for an event without one', () => {
+    render(<EventHero event={EVENT} />)
+    expect(screen.queryByTestId('event-level')).not.toBeInTheDocument()
+  })
+
   it('renders the intro as paragraphs: a blank line splits, a lone newline reflows', () => {
     render(<EventHero event={{ ...EVENT, intro: 'Big news\nthis year!\n\nPrizes galore.\n\nSign up now.' }} />)
     const paragraphs = within(screen.getByTestId('event-intro')).getAllByText(/./, { selector: 'p' })

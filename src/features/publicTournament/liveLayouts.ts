@@ -1,4 +1,5 @@
 import { getFinalRoundNumber, isAmericanoLive } from './americano';
+import { tvGroupPages } from './tvPages';
 import { usesLeagueLayout } from './utils';
 import type { PublicBracketData } from './types';
 
@@ -33,6 +34,11 @@ export type LiveLayout = {
     stage: string;
     /** A view that, once it appears, takes every screen to it and drops an earlier pick. */
     takeover: ViewMode | null;
+    /**
+     * How many pages a view takes on this screen. Only a group stage too big for one TV screen
+     * has more than one (./tvPages.ts); the hook turns them as steps of the rotation.
+     */
+    pageCount: (view: ViewMode, isBigScreen: boolean) => number;
 };
 
 function knockoutHasPlayers(bracket: PublicBracketData): boolean {
@@ -91,6 +97,7 @@ function singleViewLayout(kind: 'knockout' | 'league', view: ViewMode): LiveLayo
         accepts: () => false,
         stage: kind,
         takeover: null,
+        pageCount: () => 1,
     };
 }
 
@@ -117,6 +124,12 @@ function groupsLayout(bracket: PublicBracketData): LiveLayout {
         accepts: view => view !== 'plate' || showPlate,
         stage: phase,
         takeover: null,
+        // The same routing as LiveLayoutView's GroupsLayout: the lanes are the TV's games screen,
+        // and every other group view there is the standings board. A phone scrolls instead.
+        pageCount: (view, isBigScreen) => {
+            if (!isBigScreen || view === 'knockout' || view === 'plate' || view === 'video') return 1;
+            return tvGroupPages(bracket.groups ?? [], view === 'games' ? 'lanes' : 'board').length;
+        },
     };
 }
 
@@ -135,6 +148,7 @@ function americanoLayout(bracket: PublicBracketData): LiveLayout {
         // The final round appearing is the evening's last stage: every screen jumps to it and a
         // tab someone picked earlier is dropped (owner 2026-10-03).
         takeover: finalDrawn ? 'final' : null,
+        pageCount: () => 1,
     };
 }
 

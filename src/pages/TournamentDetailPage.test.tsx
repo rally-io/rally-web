@@ -1318,6 +1318,38 @@ describe('TournamentDetailPage — residency fee waiver & document upload', () =
     expect(screen.getByText('₪150')).toBeInTheDocument()
   })
 
+  // rally-api refuses a waiting-list join that carries a waiver and ignores one at
+  // promotion, so the waiting list must not collect proof or quote a waived price.
+  it('a full waiver tournament on the waiting list shows no waiver selector, only the note', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ is_full: true, waitlist_enabled: true, is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    expect(screen.queryByTestId('residency-waiver-section')).not.toBeInTheDocument()
+    expect(screen.getByTestId('waitlist-no-waiver-note'))
+      .toHaveTextContent(i18n.t('tournament.tournamentWaitlistNoWaiverNote'))
+    // The way in is still there — only the waiver part of it is gone.
+    expect(screen.getByTestId('tournament-join-waitlist-button')).toBeInTheDocument()
+  })
+
+  it('the same waiver tournament with a free seat still offers the selector, and no note', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ is_full: false, is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
+    )
+    renderPage()
+    expect(screen.getByTestId('residency-waiver-section')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-no-waiver-note')).not.toBeInTheDocument()
+  })
+
+  it('a full tournament that only requires a document (no waiver) keeps its upload section on the waiting list', () => {
+    mockUseTournament.mockReturnValue(
+      tr({ is_full: true, waitlist_enabled: true, is_document_required: true, fee_waiver_type: null, entry_fee: 150 }),
+    )
+    renderPage()
+    expect(screen.getByTestId('residency-waiver-section')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-no-waiver-note')).not.toBeInTheDocument()
+  })
+
   it('filters out option 2 for singles tournaments', () => {
     mockUseTournament.mockReturnValue(
       tr({ format: 'singles', is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
-import type { PublicBracketData, PublicGroup, PublicMatch, PublicRound, PublicVideo } from '../../types';
-import { useViewMode } from '../useViewMode';
+import { act, renderHook } from '@testing-library/react';
+import type { PublicBracketData, PublicGroup, PublicMatch, PublicRound, PublicStanding, PublicVideo } from '../../types';
+import { ROTATE_MS, useViewMode } from '../useViewMode';
 import { getRotationPhase, getRotationViews } from '../../liveLayouts';
 
 function makeMatch(hasPlayer: boolean): PublicMatch {
@@ -124,8 +124,8 @@ describe('phase transition', () => {
         const staleIndex = 2;
         expect(knockoutViews[staleIndex]).toBe('groups');
 
-        // The hook resets its index to 0 on any phase change
-        // (see the `useEffect(() => setRotateIndex(0), [phase])` in the hook).
+        // The hook resets its step to 0 on any phase change
+        // (see the `useEffect(() => setStep(0), [layout.stage])` in the hook).
         expect(getRotationViews('group', true, true)[0]).toBe('groups');
         expect(knockoutViews[0]).toBe('knockout');
     });
@@ -267,5 +267,81 @@ describe('the layout the hook hands the page', () => {
         expect(phone.result.current.tabs).toEqual(['groups', 'standings', 'knockout']);
         const knockout = renderHook(() => useViewMode(makeBracket({ structure: 'single_elimination', knockout_rounds: [makeRound(true)] }), true));
         expect(knockout.result.current).toMatchObject({ kind: 'knockout', tabs: ['knockout'], showTabs: false, canAutoRotate: false });
+    });
+});
+
+describe('a group stage too big for one TV screen', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const row = (position: number): PublicStanding => ({
+        position, is_disqualified: false, player_name: null, team_name: `Pair ${position}`,
+        player_1: null, player_2: null, matches_played: 0, wins: 0, losses: 0,
+        sets_won: 0, sets_lost: 0, games_won: 0, games_lost: 0, points: null,
+    });
+    const drawn = (count: number, pairs = 4): PublicBracketData => makeBracket({
+        groups: Array.from({ length: count }, (_, i) => ({
+            group_name: `Group ${i + 1}`,
+            matches: [makeMatch(true)],
+            standings: Array.from({ length: pairs }, (_, p) => row(p + 1)),
+        })),
+    });
+    const at = (r: { current: { view: string; page: number; pageCount: number } }) =>
+        `${r.current.view} ${r.current.page + 1}/${r.current.pageCount}`;
+
+    it('turns every page as a step of the rotation: twelve groups are four screens', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() => useViewMode(drawn(12), true));
+        const seen = [at(result)];
+        for (let i = 0; i < 4; i++) {
+            act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+            seen.push(at(result));
+        }
+        expect(seen).toEqual(['groups 1/2', 'groups 2/2', 'games 1/2', 'games 2/2', 'groups 1/2']);
+    });
+
+    it('pages only the screen that needs it: nine groups are one board and two pages of games', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() => useViewMode(drawn(9), true));
+        const seen = [at(result)];
+        for (let i = 0; i < 3; i++) {
+            act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+            seen.push(at(result));
+        }
+        expect(seen).toEqual(['groups 1/1', 'games 1/2', 'games 2/2', 'groups 1/1']);
+    });
+
+    it('keeps turning the pages of a picked tab, and stays on that tab', () => {
+        // A TV someone parked on the games would otherwise show half the groups all evening.
+        vi.useFakeTimers();
+        const { result } = renderHook(() => useViewMode(drawn(12), true));
+        act(() => { vi.advanceTimersByTime(ROTATE_MS); });      // mid-cycle, on the board's page 2
+        act(() => result.current.selectView('games'));
+        expect(at(result)).toBe('games 1/2');                   // a pick starts at its first page
+        act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+        expect(at(result)).toBe('games 2/2');
+        act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+        expect(at(result)).toBe('games 1/2');
+        expect(result.current.isAutoRotate).toBe(false);
+    });
+
+    it('never pages a phone, which scrolls', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() => useViewMode(drawn(12), false));
+        expect(at(result)).toBe('groups 1/1');
+        act(() => result.current.selectView('standings'));
+        act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+        expect(at(result)).toBe('standings 1/1');
+    });
+
+    it('leaves a stage that fits exactly as it was: two views, one page each', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() => useViewMode(drawn(8), true));
+        expect(at(result)).toBe('groups 1/1');
+        act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+        expect(at(result)).toBe('games 1/1');
+        act(() => { vi.advanceTimersByTime(ROTATE_MS); });
+        expect(at(result)).toBe('groups 1/1');
     });
 });

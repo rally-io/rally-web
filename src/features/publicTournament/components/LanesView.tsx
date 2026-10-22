@@ -18,6 +18,16 @@ type LanesViewProps = { groups: PublicGroup[]; accents: string[] };
 const MAX_ROUND_COLUMNS = 4;
 
 /**
+ * The same limit counted in cards, which is what actually runs out: a six-pair group plays three
+ * games a round, so four rounds were twelve cards ~100px wide, and the longest names wrapped until
+ * a card stood 257px tall in a 149px lane, over the lanes below it. At eight cards (five pairs'
+ * four rounds of two) a card with the longest name on both lines stood 111px, 21px into the lane
+ * below at seven lanes a page; at six it is 82px and stays inside its lane at the page sizes in
+ * ../tvPages.ts. Measured in /preview.html with `long=all` up to twelve pairs a group.
+ */
+const MAX_LANE_CARDS = 6;
+
+/**
  * One round's matches across every group, for the axis label's state (`roundStateOf`).
  *
  * The `?? 0` fallback must match `groupMatchesByRound`'s bucketing exactly — that function is
@@ -65,7 +75,11 @@ export function LanesView({ groups, accents }: LanesViewProps): React.ReactEleme
     }));
     const active = activeRoundNumber(mergedRounds.length > 0 ? mergedRounds : [{ roundNumber: 1, matches: [] }]);
 
-    const roundNumbers = visibleRoundWindow(realRounds, active, MAX_ROUND_COLUMNS);
+    // The widest round on any lane sets how many rounds fit across: three games a round is two
+    // columns, four or more is fewer still, and never less than the one the active round needs.
+    const widestRound = Math.max(1, ...grouped.flatMap(r => r.rounds.map(x => x.matches.length)));
+    const maxColumns = Math.max(1, Math.min(MAX_ROUND_COLUMNS, Math.floor(MAX_LANE_CARDS / widestRound)));
+    const roundNumbers = visibleRoundWindow(realRounds, active, maxColumns);
     const isWindowed = roundNumbers.length < realRounds.length;
     // The columns actually rendered: the labelled/windowed real rounds, plus one trailing
     // unlabelled column carrying bucket-0 matches when any group has them (Correction A). Both

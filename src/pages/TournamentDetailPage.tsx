@@ -810,9 +810,23 @@ function TournamentRegistrationPage() {
           />
         )}
 
+        {/* A fee waiver is not offered on the waiting list: rally-api refuses a
+            join that carries one (FEE_WAIVER_NOT_AVAILABLE) and ignores one at
+            promotion, and no evidence can be attached before a registration row
+            exists. The selector would collect proof the join then drops and quote a
+            waived price the pair is never charged, so the queue says so instead. */}
+        {!myReg && hasFeeWaiver && cta === 'join_waitlist' && (
+          <p
+            data-testid="waitlist-no-waiver-note"
+            className="rounded-2xl bg-rally-surface border border-rally-border p-4 text-sm text-rally-text-2"
+          >
+            {t('tournament.tournamentWaitlistNoWaiverNote')}
+          </p>
+        )}
+
         {!myReg &&
           showRequirementsSection &&
-          (cta === 'register' || cta === 'join_waitlist') && (
+          (cta === 'register' || (cta === 'join_waitlist' && !hasFeeWaiver)) && (
             <ResidencyWaiverSelector
               seats={seats}
               format={tr.format}
