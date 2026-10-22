@@ -18,6 +18,9 @@ type ViewTabsProps = {
     tabs: ViewMode[];
     /** Rotation period, so the progress bar under the active tab matches the real interval. */
     rotateMs: number;
+    /** The active view's page and page count, when a group stage takes more than one TV screen. */
+    page?: number;
+    pageCount?: number;
 };
 
 const TAB_LABELS: Record<ViewMode, { labelKey: string; fallback: string }> = {
@@ -30,8 +33,12 @@ const TAB_LABELS: Record<ViewMode, { labelKey: string; fallback: string }> = {
     final: { labelKey: 'public_bracket.view_final', fallback: 'Final' },
 };
 
-export function ViewTabs({ view, onSelect, isAutoRotate, onToggleAutoRotate, showAutoRotate, tabs, rotateMs }: ViewTabsProps): React.ReactElement {
+export function ViewTabs({
+    view, onSelect, isAutoRotate, onToggleAutoRotate, showAutoRotate, tabs, rotateMs, page = 0, pageCount = 1,
+}: ViewTabsProps): React.ReactElement {
     const { t } = useTranslation();
+    // A paged view turns its pages even on a picked tab (`useViewMode`), so it gets the bar too.
+    const turning = (showAutoRotate && isAutoRotate) || pageCount > 1;
     return (
         <div className="flex items-center gap-2">
             {showAutoRotate && (
@@ -61,14 +68,19 @@ export function ViewTabs({ view, onSelect, isAutoRotate, onToggleAutoRotate, sho
                         )}
                     >
                         {t(TAB_LABELS[mode].labelKey, TAB_LABELS[mode].fallback)}
-                        {/* Keyed on the view so the sweep restarts with each rotation rather than
-                            continuing from wherever the previous tab's bar had reached. Gated on
-                            showAutoRotate too — isAutoRotate alone defaults to true on any big
+                        {/* Which page of the tab is up, so a hall knows the rest of the groups are
+                            coming rather than missing. Digits, so no translation. */}
+                        {view === mode && pageCount > 1 && (
+                            <span dir="ltr" className="ms-1 tabular-nums">{page + 1}/{pageCount}</span>
+                        )}
+                        {/* Keyed on the view and page so the sweep restarts with each turn rather
+                            than continuing from wherever the previous one's bar had reached. Gated
+                            on showAutoRotate too — isAutoRotate alone defaults to true on any big
                             screen, which would let the bar promise a rotation that can never
                             happen (a parked single-view board, or a board with no toggle at all). */}
-                        {showAutoRotate && isAutoRotate && view === mode && (
+                        {turning && view === mode && (
                             <span
-                                key={mode}
+                                key={`${mode}-${page}`}
                                 aria-hidden
                                 className="pb-rotate-bar absolute inset-x-2 bottom-0.5 block h-[2px] rounded-full bg-(--pb-accent)"
                                 style={{ animationDuration: `${rotateMs}ms` }}

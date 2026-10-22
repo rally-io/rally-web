@@ -20,10 +20,12 @@ const MAX_ROUND_COLUMNS = 4;
 /**
  * The same limit counted in cards, which is what actually runs out: a six-pair group plays three
  * games a round, so four rounds were twelve cards ~100px wide, and the longest names wrapped until
- * a card stood 257px tall in a 149px lane, over the lanes below it. Eight is five pairs' four
- * rounds of two — measured to stay inside its lane at the page sizes in ../tvPages.ts.
+ * a card stood 257px tall in a 149px lane, over the lanes below it. At eight cards (five pairs'
+ * four rounds of two) a card with the longest name on both lines stood 111px, 21px into the lane
+ * below at seven lanes a page; at six it is 82px and stays inside its lane at the page sizes in
+ * ../tvPages.ts. Measured in /preview.html with `long=all` up to twelve pairs a group.
  */
-const MAX_LANE_CARDS = 8;
+const MAX_LANE_CARDS = 6;
 
 /**
  * One round's matches across every group, for the axis label's state (`roundStateOf`).

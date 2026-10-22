@@ -5,6 +5,7 @@ import { MatchCard } from './MatchCard';
 import { StandingsTable } from './StandingsTable';
 import { GroupBoardCard } from './GroupBoardCard';
 import { localizeGroupName } from '../utils';
+import { largestGroup, tvGroupPages } from '../tvPages';
 import type { ViewMode } from '../hooks/useViewMode';
 import type { PublicGroup } from '../types';
 
@@ -13,6 +14,8 @@ type GroupsViewProps = {
     view: ViewMode;
     isBigScreen: boolean;
     qualifyCount?: number;
+    /** Which page of a group stage too big for one TV screen (../tvPages.ts); the TV only. */
+    page?: number;
 };
 
 /**
@@ -33,18 +36,18 @@ type GroupsViewProps = {
  * chrome is pared for). Measured at 8×4 pairs: every card fits with ~28px spare, and the longest
  * realistic pair name bottoms out at FitText's 9px floor without clipping.
  *
- * Nine or more groups break "never more than two rows": two rows of nine would be five across,
- * which leaves ~30px for a name. A third row gives each card 195px, and a four-pair table with a
- * line per player needs 278px of it, so a three-row board also turns on `compactGroupCards` —
- * one line per pair. Chosen over paging (pages of eight on the auto-rotate clock) because a hall
- * should not wait a page to see its group, the reason the games left this card (owner
- * 2026-10-04). A nine-group tournament (2026-10-22) showed two pairs per group before this.
+ * Nine groups break "never more than two rows": two rows of nine would be five across, which
+ * leaves ~30px for a name. A third row gives each card 195px, and a four-pair table with a line
+ * per player needs 278px of it, so a three-row board also turns on `compactGroupCards` — one
+ * line per pair. Chosen over a second page because a hall should not wait a page to see its group,
+ * the reason the games left this card (owner 2026-10-04). A nine-group tournament (2026-10-22)
+ * showed two pairs per group before this. Nine go 3×3 (499px cards). Measured: four pairs fit with
+ * every realistic name at full size and the longest at 12px; five pairs fit.
  *
- * Nine go 3×3 (499px cards). Measured: four pairs fit with every realistic name at full size and
- * the longest at 12px; five pairs fit; six pairs overflow by 14px and are NOT handled. Ten to
- * twelve stay four across with a third row: four pairs fit, but at 369px the names drop to
- * 9–11px and the longest wraps after its slash. Thirteen or more is a fourth row and is NOT
- * handled.
+ * A board never gets more than nine: a bigger group stage is split into pages of layouts measured
+ * here (../tvPages.ts), and so is nine groups of six pairs, which overflows 3×3 by 14px. Ten to
+ * twelve on three rows of four were tried and dropped — their names fell to 9–11px and a
+ * disqualified pair's row overflowed its card by 20px.
  *
  * Literal class strings on purpose: Tailwind v4 only emits utilities it finds written out in
  * source, so a `grid-cols-${n}` assembled at runtime is silently absent from the stylesheet
@@ -54,7 +57,8 @@ type GroupsViewProps = {
  * wants every one of them on a single row instead of this function's own "never more than two
  * rows" grid — the Americano rounds board's 5–16-court tiers, whose window already holds at
  * most 4 (or 2) rounds. One card still centres; two or three go straight across; four — the
- * window's own ceiling — also goes straight across.
+ * window's own ceiling — also goes straight across. The TV board uses it too, for groups of seven
+ * or more pairs, which overflow any two-row grid and come four to a page.
  */
 // eslint-disable-next-line react-refresh/only-export-components -- layout rule, not a component; the /preview.html harness renders the same grid
 export function tvGridCols(count: number, oneRow = false): string {
@@ -80,22 +84,25 @@ export function compactGroupCards(count: number): boolean {
 // eslint-disable-next-line react-refresh/only-export-components -- shared constant, not a component; consumed by LanesView on the games tab
 export const GROUP_ACCENTS = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
 
-export function GroupsView({ groups, view, isBigScreen, qualifyCount }: GroupsViewProps): React.ReactElement {
+export function GroupsView({ groups, view, isBigScreen, qualifyCount, page = 0 }: GroupsViewProps): React.ReactElement {
     const { t } = useTranslation();
     const [activeIdx, setActiveIdx] = useState(0);
 
     // The TV board carries its own standings, so there is no separate standings view here —
-    // a rotation that still lands on 'standings' falls through to the same board.
+    // a rotation that still lands on 'standings' falls through to the same board. Past what one
+    // screen holds, a page of it; a group keeps its accent on whichever page it lands.
     if (isBigScreen) {
+        const pages = tvGroupPages(groups, 'board');
+        const shown = pages[page % pages.length];
         return (
-            <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(groups.length))}>
-                {groups.map((g, i) => (
+            <div className={cn('grid h-full content-center gap-5 px-8 pb-6', tvGridCols(shown.length, largestGroup(groups) > 6))}>
+                {shown.map(i => (
                     <GroupBoardCard
-                        key={g.group_name}
-                        group={g}
+                        key={groups[i].group_name}
+                        group={groups[i]}
                         accentClass={GROUP_ACCENTS[i % GROUP_ACCENTS.length]}
                         qualifyCount={qualifyCount}
-                        compact={compactGroupCards(groups.length)}
+                        compact={compactGroupCards(shown.length)}
                     />
                 ))}
             </div>

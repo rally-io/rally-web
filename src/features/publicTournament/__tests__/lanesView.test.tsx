@@ -158,9 +158,9 @@ describe('LanesView', () => {
 
     it('renders a placeholder instead of an empty row when a lane has no matches inside the shared window', () => {
         // A deep 6-round group whose active round is 5 (rounds 1-4 finished, 5 still open)
-        // centres the shared 4-column window on rounds 3-6 — reproducing the reviewer's probe
-        // ("Rounds 3-6 of 6"). Alongside it, a flat legacy group (no real round numbers) has none
-        // of its matches in that window at all.
+        // windows the shared axis onto the last rounds — the reviewer's probe read "Rounds 3-6
+        // of 6" before lanes were capped at six cards. Alongside it, a flat legacy group (no real
+        // round numbers) has none of its matches in that window at all.
         const deepGroup = group('Group A', [
             match('a1', 1, 'completed', 'A1', 'A2'),
             match('a2', 2, 'completed', 'A1', 'A2'),
@@ -175,15 +175,17 @@ describe('LanesView', () => {
         ]);
         const { container } = render(<LanesView groups={[deepGroup, flatLegacyGroup]} accents={ACCENTS} />);
 
-        expect(screen.getByText('Rounds 3–6 of 6')).toBeInTheDocument();
-        // Group A still shows its four in-window cards (rounds 3-6); Group B contributes none.
-        expect(cardCount(container)).toBe(4);
+        // Three columns, not four: Group B's two games sit in one bucket, and two games a round
+        // is three rounds across under the six-card lane cap.
+        expect(screen.getByText('Rounds 4–6 of 6')).toBeInTheDocument();
+        // Group A still shows its three in-window cards (rounds 4-6); Group B contributes none.
+        expect(cardCount(container)).toBe(3);
         // Group B's row must read as "no games shown here", not as a blank row an unattended
         // viewer would read as "this group has no games at all".
         expect(screen.getByText('No matches in this round window')).toBeInTheDocument();
     });
 
-    it('shows fewer rounds when a round has three games, so a lane never holds more than eight cards', () => {
+    it('shows fewer rounds when a round has three games, so a lane never holds more than six cards', () => {
         // A six-pair group: three games a round, five rounds. Four columns were twelve cards ~100px
         // wide on the TV, and the longest names wrapped until a card overflowed into the lane below.
         const sixPairs = group('Group A', Array.from({ length: 5 }, (_, r) => [0, 1, 2].map(i =>
@@ -195,13 +197,15 @@ describe('LanesView', () => {
         expect(cardCount(container)).toBe(6);
     });
 
-    it('keeps four rounds across for two games a round', () => {
+    it('shows three rounds across for two games a round', () => {
+        // Four were eight cards ~140px wide: two of the longest names on one card stood 111px, over
+        // the lane below.
         const fivePairs = group('Group A', Array.from({ length: 5 }, (_, r) => [0, 1].map(i =>
             match(`r${r + 1}-${i}`, r + 1, 'scheduled', `Home${r}${i}`, `Away${r}${i}`),
         )).flat());
         const { container } = render(<LanesView groups={[fivePairs]} accents={ACCENTS} />);
 
-        expect(screen.getByText('Rounds 1–4 of 5')).toBeInTheDocument();
-        expect(cardCount(container)).toBe(8);
+        expect(screen.getByText('Rounds 1–3 of 5')).toBeInTheDocument();
+        expect(cardCount(container)).toBe(6);
     });
 });

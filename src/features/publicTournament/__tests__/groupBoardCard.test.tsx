@@ -320,6 +320,32 @@ describe('GroupBoardCard', () => {
         expect(eight.container.querySelectorAll('[title="Gal Cohen"]')).toHaveLength(8);
     });
 
+    it('draws a twelve-group board as two pages of six, each group keeping its accent', () => {
+        const pair = (name: string): PublicGroup => group({
+            group_name: name,
+            standings: [standing({ position: 1, team_name: null, player_1: player(`${name}-1`, 'Gal', 'Cohen'), player_2: null })],
+        });
+        const groups = Array.from({ length: 12 }, (_, i) => pair(`Group ${String.fromCharCode(65 + i)}`));
+
+        const first = render(<GroupsView groups={groups} view="groups" isBigScreen page={0} />);
+        expect(first.container.querySelectorAll('[title="Gal Cohen"]')).toHaveLength(6);
+        expect((first.container.firstElementChild as HTMLElement).className).toContain('grid-cols-3');
+        expect(first.container.textContent).toContain('Group A');
+        expect(first.container.textContent).not.toContain('Group G');
+        first.unmount();
+
+        const second = render(<GroupsView groups={groups} view="groups" isBigScreen page={1} />);
+        expect(second.container.querySelectorAll('[title="Gal Cohen"]')).toHaveLength(6);
+        expect(second.container.textContent).toContain('Group G');
+        expect(second.container.textContent).not.toContain('Group F');
+        // Group G is the seventh group: its accent is the one it would have on a single board,
+        // not the first accent again because it opens a page.
+        const accents = ['pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3'];
+        const accentOf = (card: Element) => accents.find(c => card.classList.contains(c) || card.querySelector(`.${c}`));
+        const cards = Array.from((second.container.firstElementChild as HTMLElement).children);
+        expect(cards.map(accentOf)).toEqual(['pb-ga-2', 'pb-ga-3', 'pb-ga-0', 'pb-ga-1', 'pb-ga-2', 'pb-ga-3']);
+    });
+
     it('keeps a pair\'s chip colour stable when the standings array reorders around it', () => {
         const alpha = standing({
             position: 1,
