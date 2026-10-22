@@ -124,8 +124,8 @@ describe('phase transition', () => {
         const staleIndex = 2;
         expect(knockoutViews[staleIndex]).toBe('groups');
 
-        // The hook resets its index to 0 on any phase change
-        // (see the `useEffect(() => setRotateIndex(0), [phase])` in the hook).
+        // The hook resets its step to 0 on any phase change
+        // (see the `useEffect(() => setStep(0), [layout.stage])` in the hook).
         expect(getRotationViews('group', true, true)[0]).toBe('groups');
         expect(knockoutViews[0]).toBe('knockout');
     });
