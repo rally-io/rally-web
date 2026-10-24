@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { FALLBACK_LADDERS } from './skillLadder'
-import { formatLevelWithTier, tierForLevel } from './skillTiers'
+import { bandFromLabel, formatLevelWithTier, tierForLevel } from './skillTiers'
 
 const L7 = FALLBACK_LADDERS[7]
 const L5 = FALLBACK_LADDERS[5]
@@ -64,5 +64,29 @@ describe('formatLevelWithTier', () => {
     }
     expect(formatLevelWithTier(4.95, L7)).toBe('4.9 (B1)')
     expect(formatLevelWithTier(4.49, L5)).toBe('4.4 (B1)')
+  })
+})
+
+describe('bandFromLabel', () => {
+  it('reads the code out of a rally-api level label', () => {
+    expect(bandFromLabel('4.0 - 4.5 (B1)')).toBe('B1')
+    expect(bandFromLabel('4.5 - 5.0 (A)')).toBe('A')
+    expect(bandFromLabel('5.0 - 6.0 (A2)')).toBe('A2')   // a 1–7 backend's label, verbatim
+  })
+
+  it('is null without a label, or without a code in it', () => {
+    expect(bandFromLabel(null)).toBeNull()
+    expect(bandFromLabel(undefined)).toBeNull()
+    expect(bandFromLabel('')).toBeNull()
+    expect(bandFromLabel('4.0 - 4.5')).toBeNull()
+    expect(bandFromLabel('B1')).toBeNull()
+  })
+})
+
+describe('formatLevelWithTier with the served band', () => {
+  it('prints the band the player is shown in, which can lag the number by 0.05', () => {
+    expect(formatLevelWithTier(4.03, L5, 'B2')).toBe('4.0 (B2)')   // sticky: 4.03 still shown in B2
+    expect(formatLevelWithTier(4.03, L5, null)).toBe('4.0 (B1)')   // no served band: the number decides
+    expect(formatLevelWithTier(4.03, L5)).toBe('4.0 (B1)')
   })
 })

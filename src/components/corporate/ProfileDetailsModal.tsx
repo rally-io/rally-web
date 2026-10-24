@@ -9,7 +9,7 @@ import { levelWriteRefusal, refusalMessage } from '@/lib/levelWrite'
 import { useAuth } from '@/hooks/useAuth'
 import { SkillLevelSlider } from '@/components/profile/SkillLevelSlider'
 import { PhoneOtpVerification } from '@/components/profile/PhoneOtpVerification'
-import { formatLevelWithTier } from '@/lib/skillTiers'
+import { bandFromLabel, formatLevelWithTier } from '@/lib/skillTiers'
 import { normalizeSkillLevel, typedBounds } from '@/lib/skillLevel'
 import { DEFAULT_COUNTRY } from '@/constants/countryCodes'
 import { Field } from './Field'
@@ -309,8 +309,9 @@ export function ProfileDetailsModal({
             {levelLocked && !levelEditing && level != null ? (
               <div className="flex items-center justify-between gap-3 rounded-md bg-rally-surface-2 border border-rally-border px-3 py-3">
                 {/* "4.6 (B1)" is Latin + digits inside a Hebrew paragraph — isolate it or the
-                    bidi algorithm renders "(B1) 4.6". */}
-                <span className="text-rally-text"><bdi dir="ltr">{formatLevelWithTier(level, ladder)}</bdi></span>
+                    bidi algorithm renders "(B1) 4.6". The band is the one rally-api shows the
+                    player in (sticky; see `bandFromLabel`), not re-derived from the number. */}
+                <span className="text-rally-text"><bdi dir="ltr">{formatLevelWithTier(level, ladder, bandFromLabel(playerProfile?.mapped_skill_level))}</bdi></span>
                 <button
                   type="button"
                   disabled={saving}
