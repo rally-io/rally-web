@@ -152,7 +152,7 @@ export default function PaymentMethodPage() {
         <p className="text-rally-text-2 text-sm">
           {isFree
             ? t('coupon.confirmFreeNotice')
-            : t(isWaitlistHold ? 'payment.paymentMethodWaitlistHoldNotice' : 'payment.paymentMethodHoldNotice')}
+            : t(isWaitlistHold || params.get('waitlist') === '1' ? 'payment.paymentMethodWaitlistHoldNotice' : 'payment.paymentMethodHoldNotice')}
         </p>
 
         {!isWaitlistHold && coupon.appliedCoupon && (

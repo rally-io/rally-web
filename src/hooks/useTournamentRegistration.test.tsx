@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 
 vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
 vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
+vi.mock('@/lib/analytics', () => ({ trackFunnel: vi.fn() }))
 
 // A navigate spy that still records a post-unmount call even though there is
 // no live Probe left to reflect it in `lastPath` — delegates to the real
@@ -28,9 +29,11 @@ vi.mock('react-router-dom', async () => {
 import { useTournamentRegistration, buildRegisterPayload } from './useTournamentRegistration'
 import { registerTournament } from '@/services/api/tournaments'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
+import { trackFunnel } from '@/lib/analytics'
 
 const mockRegister = vi.mocked(registerTournament)
 const mockZero = vi.mocked(confirmTournamentZeroPayment)
+const mockTrack = vi.mocked(trackFunnel)
 
 let lastPath = ''
 function Probe() {
@@ -125,6 +128,33 @@ describe('useTournamentRegistration', () => {
     await act(() => result.current.register(PARTNER as any))
     expect(mockRegister).toHaveBeenCalledWith('t-1', expect.objectContaining({ partner_type: 'existing' }))
     expect(lastPath).toBe('/payment-method?registration_id=r-1&tournament_id=t-1&amount=150&return_to=%2Fjoin%2Facme')
+  })
+
+  it('a queued result (waitlist_position set) adds waitlist=1; a seated one does not', async () => {
+    mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150, waitlist_position: 3 } } as any)
+    const queued = renderHook(() => useTournamentRegistration(T, gate(), {}), { wrapper })
+    await act(() => queued.result.current.register(PARTNER as any))
+    expect(new URLSearchParams(lastPath.split('?')[1]).get('waitlist')).toBe('1')
+    queued.unmount()
+    lastPath = ''
+    mockRegister.mockResolvedValue({ success: true, data: { id: 'r-2', amount_to_pay: 150, waitlist_position: null } } as any)
+    const seated = renderHook(() => useTournamentRegistration(T, gate(), {}), { wrapper })
+    await act(() => seated.result.current.register(PARTNER as any))
+    expect(lastPath).toMatch(/^\/payment-method\?/)
+    expect(new URLSearchParams(lastPath.split('?')[1]).has('waitlist')).toBe(false)
+  })
+
+  it('tags registration_created with step waitlist only for a queued result', async () => {
+    mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150, waitlist_position: 3 } } as any)
+    const queued = renderHook(() => useTournamentRegistration(T, gate(), {}), { wrapper })
+    await act(() => queued.result.current.register(PARTNER as any))
+    expect(mockTrack).toHaveBeenCalledWith('registration_created', { tournament_id: 't-1', step: 'waitlist' })
+    queued.unmount()
+    mockTrack.mockClear()
+    mockRegister.mockResolvedValue({ success: true, data: { id: 'r-2', amount_to_pay: 150 } } as any)
+    const seated = renderHook(() => useTournamentRegistration(T, gate(), {}), { wrapper })
+    await act(() => seated.result.current.register(PARTNER as any))
+    expect(mockTrack).toHaveBeenCalledWith('registration_created', { tournament_id: 't-1' })
   })
 
   it('free registration → confirm-zero-payment → /payments/confirming', async () => {

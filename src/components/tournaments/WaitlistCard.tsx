@@ -8,21 +8,37 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
+import { WaitlistRegistrationPanel } from '@/components/tournaments/WaitlistRegistrationPanel'
+import type { MyRegistration } from '@/types/api'
 
 interface Props {
   /** Queue position from `myWaitlistEntry.position` — 1-indexed. */
   position: number
   onLeave: () => void | Promise<void>
   isLeaving?: boolean
+  /**
+   * The registration behind the entry (`my_waitlist_entry.registration`): a
+   * sign-up made through Register, or a pair bumped to the list. Null/absent
+   * for an old card-only join, which renders exactly as it always has.
+   */
+  registration?: MyRegistration | null
+  /** Needed with `registration`: the fee and format decide what is owed. */
+  tournament?: { id: string; format: string; entry_fee: number }
+  returnTo?: string
+  evidenceError?: string | null
+  onEvidenceChanged?: () => Promise<unknown>
 }
 
 /**
- * Rendered on the tournament detail page when `ctaFor` resolves to
- * 'waiting'. Stands in for the partner/guest picker section — that choice
- * was already made and sent with the join-waitlist request, so there is
- * nothing left to pick here, only the option to leave the queue.
+ * Rendered on the tournament detail page and the corporate /join page when
+ * `ctaFor` resolves to 'waiting'. The partner/guest picker is gone — that choice
+ * was made with the Register form — leaving the place in line, the payment
+ * state and documents of the registration behind it, and the option to leave.
  */
-export function WaitlistCard({ position, onLeave, isLeaving = false }: Props) {
+export function WaitlistCard({
+  position, onLeave, isLeaving = false,
+  registration = null, tournament, returnTo, evidenceError = null, onEvidenceChanged,
+}: Props) {
   const { t } = useTranslation()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -48,6 +64,15 @@ export function WaitlistCard({ position, onLeave, isLeaving = false }: Props) {
       <p className="text-sm text-rally-text-2">
         {t('tournament.tournamentWaitlistOrderNote')}
       </p>
+      {registration && tournament && (
+        <WaitlistRegistrationPanel
+          registration={registration}
+          tournament={tournament}
+          returnTo={returnTo}
+          evidenceError={evidenceError}
+          onEvidenceChanged={onEvidenceChanged ?? (async () => undefined)}
+        />
+      )}
       <button
         type="button"
         data-testid="tournament-leave-waitlist-button"
@@ -65,7 +90,9 @@ export function WaitlistCard({ position, onLeave, isLeaving = false }: Props) {
               {t('tournament.tournamentLeaveWaitlistConfirmTitle')}
             </DialogTitle>
             <DialogDescription className="text-rally-text-2">
-              {t('tournament.tournamentLeaveWaitlistConfirmBody', { position })}
+              {registration
+                ? t('tournament.tournamentLeaveWaitlistConfirmBodyPaid', { position })
+                : t('tournament.tournamentLeaveWaitlistConfirmBody', { position })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center gap-2">

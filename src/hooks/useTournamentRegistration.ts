@@ -207,7 +207,10 @@ export function useTournamentRegistration(
           return
         }
         const reg = result.data
-        trackFunnel('registration_created', { tournament_id: tournament.id })
+        trackFunnel('registration_created', {
+          tournament_id: tournament.id,
+          ...(reg.waitlist_position != null ? { step: 'waitlist' } : {}),
+        })
         // The registration row exists — the caller may now drop the state it
         // must never replay (the partner draft). Deliberately before the
         // payment hand-off: a failed payment is resumed from the row, not by
@@ -279,6 +282,8 @@ export function useTournamentRegistration(
         if (returnTo) sp.set('return_to', returnTo)
         // The payment page applies it on arrival, so it is never typed twice.
         if (coupon) sp.set('coupon', coupon.code)
+        // A queued registration's card is held, not charged: say so on the card page.
+        if (reg.waitlist_position != null) sp.set('waitlist', '1')
         navigate(`/payment-method?${sp.toString()}`)
       } catch (e) {
         // Validation failures (partner already registered, tournament closed,

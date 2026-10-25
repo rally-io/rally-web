@@ -25,7 +25,6 @@ vi.mock('@/hooks/usePlayerSearch', () => ({
 }))
 vi.mock('@/services/api/tournaments', () => ({
   registerTournament: vi.fn(),
-  joinTournamentWaitlist: vi.fn(),
   leaveTournamentWaitlist: vi.fn(),
 }))
 vi.mock('@/services/api/profile', () => ({ getOnboardingStatus: vi.fn() }))
@@ -63,7 +62,7 @@ import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppSession } from '@/hooks/useAppSession'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
-import { registerTournament, joinTournamentWaitlist, leaveTournamentWaitlist } from '@/services/api/tournaments'
+import { registerTournament, leaveTournamentWaitlist } from '@/services/api/tournaments'
 import { getOnboardingStatus } from '@/services/api/profile'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
 import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
@@ -76,7 +75,6 @@ const mockUseAuthGate = vi.mocked(useAuthGate)
 const mockUseAppSession = vi.mocked(useAppSession)
 const mockUsePlayerSearch = vi.mocked(usePlayerSearch)
 const mockRegisterTournament = vi.mocked(registerTournament)
-const mockJoinWaitlist = vi.mocked(joinTournamentWaitlist)
 const mockLeaveWaitlist = vi.mocked(leaveTournamentWaitlist)
 const mockConfirmZeroPayment = vi.mocked(confirmTournamentZeroPayment)
 const mockUseScreenMessages = vi.mocked(useScreenMessages)
@@ -650,42 +648,6 @@ describe('TournamentDetailPage survives a failed refetch or a failed leave', () 
     expect(q.refetch).not.toHaveBeenCalled()
     expect(screen.getByTestId('tournament-waitlist-card')).toBeInTheDocument()
     expect(screen.getByTestId('tournament-leave-waitlist-button')).toBeEnabled()
-  })
-
-  it('an entry joined on this visit gives way to the server once a leave is refused', async () => {
-    const q = tr({ format: 'singles', is_full: true, waitlist_count: 3, my_waitlist_entry: null })
-    mockUseTournament.mockReturnValue(q)
-    mockJoinWaitlist.mockResolvedValue({
-      success: true, data: { id: 'w-9', position: 4, entry_fee: 0, service_fee: 0 },
-    } as any)
-    mockLeaveWaitlist.mockRejectedValue({
-      status: 404, code: 'WAITLIST_ENTRY_NOT_FOUND', message: 'You are not on the waiting list',
-    })
-    renderPage()
-    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
-    expect(await screen.findByTestId('tournament-waitlist-card')).toBeInTheDocument()
-    leave()
-    expect(await screen.findByText(i18n.t('tournament.registrationErrors.notOnWaitlist'))).toBeInTheDocument()
-    expect(screen.queryByTestId('tournament-waitlist-card')).not.toBeInTheDocument()
-    expect(q.refetch).toHaveBeenCalledTimes(1)
-  })
-
-  // Only "not on the waiting list" means the entry is gone; a server error on
-  // leave means the player is very likely still waiting.
-  it('an entry joined on this visit stays when the leave fails on the server', async () => {
-    const q = tr({ format: 'singles', is_full: true, waitlist_count: 3, my_waitlist_entry: null })
-    mockUseTournament.mockReturnValue(q)
-    mockJoinWaitlist.mockResolvedValue({
-      success: true, data: { id: 'w-9', position: 4, entry_fee: 0, service_fee: 0 },
-    } as any)
-    mockLeaveWaitlist.mockRejectedValue({ status: 500, code: 'SERVER_ERROR', message: 'An unexpected error occurred' })
-    renderPage()
-    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
-    expect(await screen.findByTestId('tournament-waitlist-card')).toBeInTheDocument()
-    leave()
-    expect(await screen.findByText('An unexpected error occurred')).toBeInTheDocument()
-    expect(screen.getByTestId('tournament-waitlist-card')).toBeInTheDocument()
-    expect(q.refetch).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -1318,17 +1280,13 @@ describe('TournamentDetailPage — residency fee waiver & document upload', () =
     expect(screen.getByText('₪150')).toBeInTheDocument()
   })
 
-  // rally-api refuses a waiting-list join that carries a waiver and ignores one at
-  // promotion, so the waiting list must not collect proof or quote a waived price.
-  it('a full waiver tournament on the waiting list shows no waiver selector, only the note', () => {
+  it('a full waiver tournament offers the waiver selector on the waiting list, and no note', () => {
     mockUseTournament.mockReturnValue(
       tr({ is_full: true, waitlist_enabled: true, is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
     )
     renderPage()
-    expect(screen.queryByTestId('residency-waiver-section')).not.toBeInTheDocument()
-    expect(screen.getByTestId('waitlist-no-waiver-note'))
-      .toHaveTextContent(i18n.t('tournament.tournamentWaitlistNoWaiverNote'))
-    // The way in is still there — only the waiver part of it is gone.
+    expect(screen.getByTestId('residency-waiver-section')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-no-waiver-note')).not.toBeInTheDocument()
     expect(screen.getByTestId('tournament-join-waitlist-button')).toBeInTheDocument()
   })
 
@@ -1744,5 +1702,128 @@ describe('TournamentDetailPage — find a partner', () => {
     mockUseTournament.mockReturnValue(tr({ partner_search_available: true }))
     renderPage()
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+})
+
+describe('TournamentDetailPage — joining the waiting list runs Register', () => {
+  const fullWaiverTr = (over: Record<string, unknown> = {}) => tr({
+    format: 'singles', is_full: true, waitlist_enabled: true, waitlist_count: 2,
+    is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150, ...over,
+  })
+  const queued = {
+    success: true,
+    data: {
+      id: 'reg-w-1', tournament_id: 't-1', status: 'payment_pending', amount_to_pay: 75,
+      waitlist_position: 3, waitlist_entry_id: 'w-1',
+    },
+  } as any
+
+  it('sends the residency claim, uploads the proof, and goes to the card hold', async () => {
+    const file = new File(['proof'], 'id.pdf', { type: 'application/pdf' })
+    mockUseTournament.mockReturnValue(fullWaiverTr())
+    mockRegisterTournament.mockResolvedValueOnce(queued)
+    renderPage()
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    fireEvent.change(document.getElementById('tournament-evidence-1') as HTMLInputElement, {
+      target: { files: [file] },
+    })
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.objectContaining({ fee_waiver: { type: 'holon_resident', resident_count: 1 } }),
+      ),
+    )
+    await waitFor(() => expect(mockUploadEvidence).toHaveBeenCalledWith('reg-w-1', 1, [file]))
+    const probe = await screen.findByTestId('route-probe')
+    expect(probe.textContent).toContain('registration_id=reg-w-1')
+  })
+
+  it('a join without a residency claim sends no fee_waiver', async () => {
+    mockUseTournament.mockReturnValue(fullWaiverTr({ is_document_required: false }))
+    mockRegisterTournament.mockResolvedValueOnce(queued)
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.not.objectContaining({ fee_waiver: expect.anything() }),
+      ),
+    )
+  })
+
+  it('"already on the waiting list" is shown in the site language and the page refetches', async () => {
+    const q = fullWaiverTr({ is_document_required: false })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValueOnce({
+      status: 409, code: 'ALREADY_WAITING', message: 'You are already on the waiting list',
+    })
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    expect(
+      await screen.findByText(i18n.t('tournament.registrationErrors.alreadyWaiting')),
+    ).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalled()
+  })
+
+  it('a partner already queued with someone else is shown in the site language', async () => {
+    mockUseTournament.mockReturnValue(fullWaiverTr({ is_document_required: false }))
+    mockRegisterTournament.mockRejectedValueOnce({
+      status: 409, message: 'That partner is already on the waiting list with someone else',
+    })
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    expect(
+      await screen.findByText(i18n.t('tournament.registrationErrors.partnerAlreadyWaiting')),
+    ).toBeInTheDocument()
+  })
+
+  it('a list switched off between load and submit shows the full line and refetches', async () => {
+    const q = fullWaiverTr({ is_document_required: false })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValueOnce({
+      status: 409, code: 'TOURNAMENT_FULL', message: 'This tournament is full',
+    })
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    expect(await screen.findByText(i18n.t('tournament.tournamentFullLine'))).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalled()
+  })
+})
+
+describe('TournamentDetailPage — the waiting card shows the sign-up behind it', () => {
+  const waitingWith = (registration: Record<string, unknown> | null) => tr({
+    format: 'singles', is_full: true, waitlist_count: 3,
+    my_waitlist_entry: { id: 'w-1', position: 2, registration },
+  })
+
+  it('unpaid: says awaiting payment and Complete payment goes to the payment page', () => {
+    mockUseTournament.mockReturnValue(waitingWith({
+      id: 'r-7', tournament_id: 't-1', player_1_id: 'p-1', status: 'payment_pending', payment_status: null,
+    }))
+    renderPage()
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentAwaiting'),
+    )
+    fireEvent.click(screen.getByTestId('waitlist-complete-payment'))
+    expect(screen.getByTestId('route-probe').textContent).toBe('registration_id=r-7&tournament_id=t-1&waitlist=1')
+  })
+
+  it('held: says payment held and offers no payment button', () => {
+    mockUseTournament.mockReturnValue(waitingWith({
+      id: 'r-7', tournament_id: 't-1', player_1_id: 'p-1', status: 'registered', payment_status: 'payment_held',
+    }))
+    renderPage()
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentHeld'),
+    )
+    expect(screen.queryByTestId('waitlist-complete-payment')).not.toBeInTheDocument()
+  })
+
+  it('an old card-only entry (registration null) shows no payment line', () => {
+    mockUseTournament.mockReturnValue(waitingWith(null))
+    renderPage()
+    expect(screen.getByTestId('tournament-waitlist-card')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-payment-state')).not.toBeInTheDocument()
   })
 })

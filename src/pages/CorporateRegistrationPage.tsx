@@ -14,6 +14,8 @@ import { useRegistrationGate } from '@/features/screenMessages/hooks/useRegistra
 import { ScreenMessageList } from '@/features/screenMessages/components/ScreenMessageList'
 import { ScreenMessageModalHost } from '@/features/screenMessages/components/ScreenMessageModalHost'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
+import { useLeaveWaitlist } from '@/hooks/useLeaveWaitlist'
 import { partnerSelfFromProfile } from '@/lib/selfPartner'
 import {
   useTournamentRegistration, type RegistrationCoupon, type RegistrationGate,
@@ -28,6 +30,7 @@ import { Select } from '@/components/ui/select'
 import { EventHero } from '@/components/corporate/EventHero'
 import { EventTerms } from '@/components/corporate/EventTerms'
 import { EvidencePicker } from '@/components/corporate/EvidencePicker'
+import { EvidenceSlot } from '@/components/tournaments/EvidenceSlot'
 import { ProfileDetailsModal, type SavedProfileEssentials } from '@/components/corporate/ProfileDetailsModal'
 import { readProfileDetails } from '@/components/corporate/profileDetails'
 import { competeLevelOptions } from '@/lib/competeLevels'
@@ -39,13 +42,13 @@ import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
 import { paymentReceiptRows } from '@/lib/paymentReceipt'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
 import {
-  evidenceFailureKey, isWaiverOffered, uploadErrorCode, validateEvidenceFiles, waivedAmount,
+  evidenceFailureKey, isWaiverOffered, uploadErrorCode, waivedAmount,
 } from '@/lib/evidenceRules'
 import type { CorporateFeeWaiver } from '@/constants/corporateFeeWaiver'
 import type { CorporateTournamentEvent } from '@/constants/corporateEvents'
 import type { PartnerSelectionState } from '@/types/partner'
 import type {
-  ConsumerCoupon, FeeWaiverRequest, MyRegistration, PreferredDay, TournamentDetail, TournamentRegistrationResult,
+  ConsumerCoupon, FeeWaiverRequest, MyRegistration, PreferredDay, TournamentDetail, TournamentRegistrationResult, TournamentWaitlistEntry,
 } from '@/types/api'
 
 // The only gate action web can reach — same constant TournamentDetailPage uses.
@@ -157,8 +160,13 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
     isRegistrationOpen(tr.registration_deadline) &&
     (tr.status == null || tr.status === 'registration_open')
   const isFull = tr.is_full === true
+  // `waitlist_enabled` is the API's global switch (absent means on, like the API).
   const cta = ctaFor({
-    isOpen: open, isFull, waitlistEnabled: false, myWaitlistEntry: null, myRegistration: myReg,
+    isOpen: open,
+    isFull,
+    waitlistEnabled: tr.waitlist_enabled ?? true,
+    myWaitlistEntry: tr.my_waitlist_entry ?? null,
+    myRegistration: myReg,
   })
 
   let body: ReactNode
@@ -169,6 +177,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
   // the "full" InfoCard via `onTournamentFull`'s refetch, and that card must
   // never show a second, unrelated "the tournament is full" line underneath it
   // — the full card already says so.
+  // The waiting card sets it too: a failed confirm-zero lands after the form is gone, there as well.
   let isRegisteredCard = false
   if (cta === 'my_registration' && myReg) {
     isRegisteredCard = true
@@ -184,6 +193,18 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         showTournamentLink={!event.redirectFromTournamentPage}
       />
     )
+  } else if (cta === 'waiting' && tr.my_waitlist_entry) {
+    isRegisteredCard = true
+    body = (
+      <WaitingCard
+        tr={tr}
+        entry={tr.my_waitlist_entry}
+        returnTo={returnTo}
+        refetchTournament={refetch}
+        evidenceError={evidenceError}
+        showTournamentLink={!event.redirectFromTournamentPage}
+      />
+    )
   } else if (!open) {
     const notYet = tr.status === 'approved'
     body = (
@@ -192,47 +213,11 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         body={t(notYet ? 'corporate.reg.notOpenBody' : 'corporate.reg.closedBody')}
       />
     )
-  } else if (isFull) {
-    // This page has no waiting-list form of its own — joining queues the pair
-    // behind a card hold, which the tournament page already runs end to end — so a
-    // full tournament that can take a queue entry sends the pair there. `open` is
-    // true on this branch, and `waitlist_enabled` is the API's global switch
-    // (absent means on, like the API). The residents' waiver is refused on the
-    // waiting list, so a waiver tournament says so before the pair taps through.
-    const waitlistOffered = tr.waitlist_enabled ?? true
-    const queued = tr.my_waitlist_entry ?? null
-    const toTournament = (label: string) => (
-      <Link
-        to={`/tournaments/${tr.id}`}
-        data-testid="corporate-waitlist-link"
-        className="mt-5 w-full h-12 rounded-full font-display font-bold inline-flex items-center justify-center bg-rally-accent text-rally-accent-text hover:bg-rally-accent-hover transition-colors"
-      >
-        {label}
-      </Link>
-    )
-    if (queued) {
-      body = (
-        <InfoCard
-          title={t('tournament.tournamentWaitlistPosition', { position: queued.position })}
-          body={t('tournament.tournamentWaitlistOrderNote')}
-        >
-          {toTournament(t('corporate.reg.viewTournament'))}
-        </InfoCard>
-      )
-    } else if (waitlistOffered) {
-      body = (
-        <InfoCard title={t('corporate.reg.waitlistTitle')} body={t('corporate.reg.waitlistBody')}>
-          {tr.fee_waiver_type && (
-            <p data-testid="corporate-waitlist-waiver-note" className="mt-3 text-sm font-bold text-rally-text">
-              {t('tournament.tournamentWaitlistNoWaiverNote')}
-            </p>
-          )}
-          {toTournament(t('tournament.tournamentJoinWaitlist'))}
-        </InfoCard>
-      )
-    } else {
-      body = <InfoCard title={t('corporate.reg.fullTitle')} body={t('corporate.reg.fullBody')} />
-    }
+  } else if (cta === 'none') {
+    // Open but not offered: full, and the waiting list is switched off. A full
+    // tournament with the list ON falls through to the form below, whose submit
+    // joins the waiting list.
+    body = <InfoCard title={t('corporate.reg.fullTitle')} body={t('corporate.reg.fullBody')} />
   } else if (sessionStatus === 'signed_out') {
     body = (
       <div className="rounded-2xl bg-rally-surface border border-rally-border p-6 sm:p-8 text-center shadow-lg">
@@ -240,6 +225,9 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         <p className="text-sm text-rally-text-2">{t('corporate.reg.priceLabel')}</p>
         {isWaiverOffered(event.feeWaiver, tr.fee_waiver_type) && (
           <p className="text-sm text-rally-accent font-bold mt-2">{t('corporate.reg.signInWaiverHint')}</p>
+        )}
+        {cta === 'join_waitlist' && (
+          <p className="text-sm text-rally-accent font-bold mt-2">{t('corporate.reg.waitlistJoinLine')}</p>
         )}
         <div className="mb-6" />
         <button
@@ -303,6 +291,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         competeLevelsAreBands={event.competeLevelsAreBands}
         preferredDays={event.preferredDays}
         pendingUpload={pendingUploadRef}
+        joinsWaitlist={cta === 'join_waitlist'}
         refetchTournament={refetch}
         onEvidenceFailed={setEvidenceError}
         register={registration.register}
@@ -395,6 +384,60 @@ function SiteLink({ className }: { className?: string }) {
 const NON_CONFIRMED_STATUSES: string[] = [
   'cancelled', 'withdrawn', 'rejected', 'disqualified',
 ]
+
+/**
+ * The pair queued on a full tournament, built from the same pieces as the
+ * seated pair's card: the shared WaitlistCard (place in line, payment state,
+ * Complete payment, documents, Leave) plus this page's way back to the site.
+ */
+function WaitingCard({
+  tr, entry, returnTo, refetchTournament, evidenceError, showTournamentLink,
+}: {
+  tr: TournamentDetail
+  entry: TournamentWaitlistEntry
+  returnTo: string
+  refetchTournament: () => Promise<unknown>
+  evidenceError: string | null
+  showTournamentLink: boolean
+}) {
+  const { t } = useTranslation()
+  // A successful leave refetches; the tournament then has no entry and the page
+  // swaps this card for the form again.
+  // `left` hides the card at once, without waiting on the refetch, so a second
+  // tap cannot reach a server that has already let the pair go.
+  const [left, setLeft] = useState(false)
+  const { leave, isLeaving, leaveError } = useLeaveWaitlist(tr.id, {
+    refetch: refetchTournament,
+    onLeft: () => setLeft(true),
+    onEntryGone: () => setLeft(false),
+  })
+  return (
+    <div>
+      {!left && <WaitlistCard
+        position={entry.position}
+        onLeave={leave}
+        isLeaving={isLeaving}
+        registration={entry.registration}
+        tournament={tr}
+        returnTo={returnTo}
+        evidenceError={evidenceError}
+        onEvidenceChanged={refetchTournament}
+      />}
+      {leaveError && (
+        <p role="alert" className="mt-3 text-sm text-rally-error text-center">{leaveError}</p>
+      )}
+      {showTournamentLink && (
+        <Link
+          to={`/tournaments/${tr.id}`}
+          className="mt-4 w-full h-12 rounded-full border border-rally-border text-rally-text hover:border-rally-border-strong font-display font-bold inline-flex items-center justify-center transition-colors"
+        >
+          {t('corporate.reg.viewTournament')}
+        </Link>
+      )}
+      <SiteLink className="mt-4" />
+    </div>
+  )
+}
 
 function RegisteredCard({
   tr, myReg, returnTo, refetchTournament, evidenceError, showTournamentLink,
@@ -580,94 +623,6 @@ function RegisteredCard({
   )
 }
 
-/**
- * One declared resident's evidence, inside the registered card. This is the
- * permanent recovery path for a failed post-register upload (the form's own
- * `uploadFailed` flash is gone — see the note above `pendingUpload.current`):
- * whatever left this slot's count at 0 while the claim is still open (pending, or
- * approved with nothing in the slot), the player can pick files and retry from
- * here, as many times as it takes.
- */
-function EvidenceSlot({
-  registrationId, slot, label, count, open, refetchTournament,
-}: {
-  registrationId: string
-  slot: 1 | 2
-  /** Whose proof this slot holds — the card decides ("the resident's" for a 1-of-2 claim). */
-  label: string
-  count: number
-  /** The claim still takes documents (pending, or approved with this slot empty). */
-  open: boolean
-  refetchTournament: () => Promise<unknown>
-}) {
-  const { t } = useTranslation()
-  const [files, setFiles] = useState<File[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  /** rally-api's code for the last failed attempt — the message says why. */
-  const [failure, setFailure] = useState<string | null>(null)
-
-  const handleAdd = async () => {
-    if (files.length === 0) {
-      setError(t('corporate.reg.evidenceRequired'))
-      return
-    }
-    const badFile = validateEvidenceFiles([], files)
-    if (badFile) {
-      setError(t(`corporate.reg.${badFile}`))
-      return
-    }
-    setError(null)
-    setFailure(null)
-    setBusy(true)
-    try {
-      await uploadRegistrationEvidence(registrationId, slot, files)
-      setFiles([])
-    } catch (uploadError) {
-      console.error('[CorporateRegistrationPage] add-evidence upload failed:', uploadError)
-      setFailure(uploadErrorCode(uploadError) ?? 'UNKNOWN')
-    } finally {
-      setBusy(false)
-      await refetchTournament()
-    }
-  }
-
-  return (
-    <div>
-      <p className="text-sm text-rally-text-2">{label} · {t('corporate.reg.evidenceCount', { n: count })}</p>
-      {count === 0 && open && (
-        <div className="mt-2 space-y-2">
-          <EvidencePicker
-            id={`registered-evidence-${slot}`}
-            label={label}
-            files={files}
-            onChange={(next) => {
-              setFiles(next)
-              setError(null)
-            }}
-            onError={(key) => setError(t(`corporate.reg.${key}`))}
-            error={error}
-            disabled={busy}
-          />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void handleAdd()}
-            className="w-full h-10 rounded-full border border-rally-accent text-rally-accent font-display font-bold text-sm disabled:opacity-50"
-          >
-            {t('corporate.reg.addEvidence')}
-          </button>
-          {failure && (
-            <p role="alert" className="text-sm text-rally-error">
-              {t(`corporate.reg.${evidenceFailureKey(failure)}`)}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 interface RegistrationFormProps {
   tr: TournamentDetail
   gate: RegistrationGate
@@ -695,6 +650,8 @@ interface RegistrationFormProps {
   isRegistering: boolean
   registerError: string | null
   gateError: string | null
+  /** The tournament is full and the list is on: submitting puts the pair on the waiting list. */
+  joinsWaitlist: boolean
 }
 
 /** none · one resident · both residents — the third is dropped for singles. */
@@ -705,7 +662,7 @@ const WAIVER_OPTIONS: { value: 0 | 1 | 2; key: string }[] = [
 ]
 
 function RegistrationForm({
-  tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, preferredDays, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError,
+  tr, gate, feeWaiver, competeLevels, competeLevelsAreBands, preferredDays, pendingUpload, refetchTournament, onEvidenceFailed, register, isRegistering, registerError, gateError, joinsWaitlist,
 }: RegistrationFormProps) {
   const { t, i18n } = useTranslation()
   const { playerProfile } = useEnsureProfileEssentials()
@@ -950,6 +907,15 @@ function RegistrationForm({
       <h2 className="font-display text-xl sm:text-2xl font-black text-rally-text mb-6">
         {t('corporate.reg.formTitle')}
       </h2>
+
+      {joinsWaitlist && (
+        <p
+          data-testid="corporate-waitlist-join-line"
+          className="mb-5 rounded-xl border border-rally-accent/40 bg-rally-accent/10 px-4 py-3 text-sm font-semibold text-rally-text"
+        >
+          {t('corporate.reg.waitlistJoinLine')}
+        </p>
+      )}
 
       <div className="space-y-5">
         {details.complete && (
@@ -1211,7 +1177,8 @@ function RegistrationForm({
           couponCoversAll
             ? 'coupon.confirmFreeNotice'
             : amountDue >= 0.01
-            ? 'corporate.reg.holdNote'
+            // Queued, the hold is charged only if a spot opens, not on approval.
+            ? (joinsWaitlist ? 'corporate.reg.holdNoteWaitlist' : 'corporate.reg.holdNote')
             : residents === 0
               ? 'corporate.reg.freeNote'
               : 'corporate.reg.waiverNoChargeNote',
@@ -1227,8 +1194,9 @@ function RegistrationForm({
         {busy ? t('corporate.reg.submitting')
           : levelMissing ? t('corporate.reg.ctaMissingLevel')
           : partnerRequired ? t('tournament.ctaMissingPartner')
-          : finalDue < 0.01 ? t('corporate.reg.submitCtaFree')
-          : t('corporate.reg.submitCta')}
+          : finalDue < 0.01
+            ? (joinsWaitlist ? t('corporate.reg.submitCtaWaitlistFree') : t('corporate.reg.submitCtaFree'))
+            : (joinsWaitlist ? t('corporate.reg.submitCtaWaitlist') : t('corporate.reg.submitCta'))}
       </button>
 
       {gateError && (

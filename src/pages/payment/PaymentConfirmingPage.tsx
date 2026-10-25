@@ -59,6 +59,11 @@ export default function PaymentConfirmingPage() {
     // manager-triggered and may happen days later. The only thing confirmed
     // here is that the payment hold itself landed (mobile parity).
     const isWaitlistHold = type === 'tournament_waitlist_hold'
+    // A sign-up made through Register that rally-api put on the waiting list
+    // instead of seating (`waitlist_position` set on the polled registration).
+    // Outranks the pending/confirmed reading below: a free sign-up is
+    // `registered` + `completed` and must not read "Registration Confirmed".
+    const isWaiting = isTournament && entity?.waitlist_position != null
     // Pre-auth hold ⇒ money held, TM approval pending. When the error-fallback
     // path fires (2 consecutive fetch errors) `entity` is null — default a
     // tournament to the pending copy, matching mobile (gap spec §5).
@@ -78,7 +83,7 @@ export default function PaymentConfirmingPage() {
             entity.payment_status === 'payment_held' ||
             entity.status === 'registered')))
 
-    const title = isWaitlistHold
+    const title = isWaitlistHold || isWaiting
       ? t('payment.waitlistHoldConfirmedTitle')
       : isTournamentPending
       ? t('payment.registrationSubmittedTitle')
@@ -100,12 +105,18 @@ export default function PaymentConfirmingPage() {
               {t('payment.waitlistHoldConfirmedSubtitle')}
             </p>
           )}
-          {isTournamentPending && !isWaitlistHold && (
+          {isWaiting && (
+            <p className="text-rally-text-2 text-sm">
+              {/* `completed` while waiting is a ₪0 sign-up: there is no payment left to settle. */}
+              {t(entity?.payment_status === 'completed' ? 'payment.waitlistSignupFreeSubtitle' : 'payment.waitlistSignupSubtitle')}
+            </p>
+          )}
+          {isTournamentPending && !isWaitlistHold && !isWaiting && (
             <p className="text-rally-text-2 text-sm">
               {t('payment.registrationSubmittedSubtitle')}
             </p>
           )}
-          {asmachta && !isTournamentPending && !isWaitlistHold && (
+          {asmachta && !isTournamentPending && !isWaitlistHold && !isWaiting && (
             <p className="text-rally-text-2 text-sm mt-2">
               {`#${asmachta}`}
             </p>

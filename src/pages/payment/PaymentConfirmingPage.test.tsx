@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import i18n from '@/i18n'
 
 // Mock useEntityPolling so the component doesn't actually poll and immediately
 // transitions to the 'confirmed' state.
@@ -141,6 +142,40 @@ describe('PaymentConfirmingPage — tournament pending vs confirmed (G3)', () =>
     })
     renderConfirming('?type=booking&id=b-1')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/payment confirmed/i)
+  })
+
+  it('a queued sign-up with the hold in place says it is on the waiting list', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'payment_held', waitlist_position: 3 },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.t('payment.waitlistHoldConfirmedTitle'))
+    expect(screen.getByText(i18n.t('payment.waitlistSignupSubtitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('payment.registrationSubmittedSubtitle'))).not.toBeInTheDocument()
+  })
+
+  it('a free queued sign-up (registered + completed) is never "Registration Confirmed"', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'completed', waitlist_position: 2 },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.t('payment.waitlistHoldConfirmedTitle'))
+    expect(screen.getByRole('heading', { level: 1 })).not.toHaveTextContent(/registration confirmed/i)
+  })
+
+  it('a free queued sign-up is not told its payment is settled later', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'completed', waitlist_position: 2 },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByText(i18n.t('payment.waitlistSignupFreeSubtitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('payment.waitlistSignupSubtitle'))).not.toBeInTheDocument()
   })
 })
 
