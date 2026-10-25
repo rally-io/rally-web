@@ -62,6 +62,17 @@ describe('translateRegistrationError', () => {
     )
   })
 
+  it('translates the two waiting-list refusals Register can now return', () => {
+    expect(translateRegistrationError('You are already on the waiting list', t)).toBe(
+      t('tournament.registrationErrors.alreadyWaiting'),
+    )
+    expect(
+      translateRegistrationError('That partner is already on the waiting list with someone else', t),
+    ).toBe(t('tournament.registrationErrors.partnerAlreadyWaiting'))
+    // A missing key would make t() echo the key, so check the sentence is real.
+    expect(t('tournament.registrationErrors.partnerAlreadyWaiting')).not.toContain('registrationErrors')
+  })
+
   it('falls back to the raw message for anything unrecognized', () => {
     expect(translateRegistrationError('Something unexpected broke', t)).toBe(
       'Something unexpected broke',

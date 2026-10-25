@@ -330,7 +330,7 @@ export interface TournamentDetail extends Tournament {
 
 /**
  * A queued entry on a tournament's waiting list. `entry_fee`/`service_fee`
- * are populated only on the join response — there is no registration row yet
+ * are populated only on the old card-only join response — there is no registration row yet
  * to read them off, and the payment-method page needs an amount to display
  * before initiating the hold.
  */
@@ -340,6 +340,12 @@ export interface TournamentWaitlistEntry {
   joined_at: string | null
   entry_fee: number
   service_fee: number
+  /**
+   * The registration behind the entry: a sign-up made through Register, or a
+   * pair bumped to the list by the last seat. Absent/null for an old card-only
+   * join. Same shape as `my_registration` (which stays null while queued).
+   */
+  registration?: MyRegistration | null
 }
 
 export interface RegistrationDetail {
@@ -372,6 +378,9 @@ export interface RegistrationDetail {
   fee_waiver_resident_count?: number | null
   /** The viewer's own payment breakdown, including any coupon discount. */
   my_payment?: MyPayment | null
+  /** Set while the registration is queued on the waiting list (the confirming page polls this shape). */
+  waitlist_position?: number | null
+  waitlist_entry_id?: string | null
 }
 
 // --- Tournament registration request ---
@@ -436,6 +445,9 @@ export interface TournamentRegistrationResult {
   /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
    *  absent from the object — never assume both keys are present. */
   evidence_counts?: Partial<Record<'1' | '2', number>>
+  /** Set when rally-api put the pair on the waiting list instead of seating it; null/absent otherwise. */
+  waitlist_position?: number | null
+  waitlist_entry_id?: string | null
 }
 
 /** One uploaded proof-of-residency file — GET/POST

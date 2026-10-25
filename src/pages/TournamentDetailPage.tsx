@@ -31,11 +31,8 @@ import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
 import { paymentReceiptRows } from '@/lib/paymentReceipt'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
-import {
-  joinTournamentWaitlist, leaveTournamentWaitlist,
-} from '@/services/api/tournaments'
-import { translateWaitlistError } from '@/lib/registrationErrors'
-import { useTournamentRegistration, buildRegisterPayload } from '@/hooks/useTournamentRegistration'
+import { useLeaveWaitlist } from '@/hooks/useLeaveWaitlist'
+import { useTournamentRegistration } from '@/hooks/useTournamentRegistration'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
 import { validateEvidenceFiles, waivedAmount } from '@/lib/evidenceRules'
 import { ctaFor } from '@/lib/tournamentCta'
@@ -168,9 +165,11 @@ function TournamentRegistrationPage() {
   }
 
   const {
-    register, isRegistering, registerError, gateError, setRegisterError, setGateError,
+    register, isRegistering, registerError, gateError, setRegisterError,
   } = useTournamentRegistration(tr, gate, {
     onRegistered: async (reg) => {
+      // A new registration: a stale "left" override must not outlive it.
+      setWaitlistOverride(undefined)
       try {
         await pendingUploadRef.current?.(reg)
       } finally {
@@ -181,6 +180,9 @@ function TournamentRegistrationPage() {
     // of date: refetch so it shows the registration instead of Register Now.
     // The error text is the hook's state and stays.
     onRegisterRejected: () => { void refetch() },
+    // The list was switched off between load and submit: Register answers
+    // TOURNAMENT_FULL again. Refetch so the page flips to its full state.
+    onTournamentFull: () => { void refetch() },
   })
 
   const [isCheckingProfile, setIsCheckingProfile] = useState(false)
@@ -193,12 +195,8 @@ function TournamentRegistrationPage() {
     return () => { mounted.current = false }
   }, [])
 
-  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false)
-  const [waitlistError, setWaitlistError] = useState<string | null>(null)
-  const [isLeavingWaitlist, setIsLeavingWaitlist] = useState(false)
-  // undefined = defer to `tr.my_waitlist_entry`; null = explicitly left;
-  // an entry = just joined. Lets join/leave update the UI immediately for a
-  // free tournament, without waiting on a refetch.
+  // undefined = defer to `tr.my_waitlist_entry`; null = explicitly left. Lets a
+  // leave hide the card immediately, without waiting on the refetch.
   const [waitlistOverride, setWaitlistOverride] = useState<TournamentWaitlistEntry | null | undefined>(
     undefined,
   )
@@ -285,8 +283,8 @@ function TournamentRegistrationPage() {
   // rally-api requires, then partner, then the terms gate, then submit.
   // requireSignIn() resolves immediately if already authenticated, otherwise
   // opens the auth gate modal and resolves once sign-in/sign-up succeeds.
-  const handleRegisterNow = () => {
-    trackFunnel('registration_started', { tournament_id: id })
+  const handleRegisterNow = (step?: 'waitlist') => {
+    trackFunnel('registration_started', { tournament_id: id, ...(step ? { step } : {}) })
     void requireSignIn()
       .then(async () => {
         if (!tr || !mounted.current) return
@@ -359,127 +357,16 @@ function TournamentRegistrationPage() {
       })
   }
 
-  // Same gates as handleRegisterNow (sign-in, partner choice, screen-message
-  // acknowledgment) — join_waitlist replays the exact same payload shape
-  // through the registration pipeline at promotion time.
-  const handleJoinWaitlist = () => {
-    trackFunnel('registration_started', { tournament_id: id, step: 'waitlist' })
-    void requireSignIn()
-      .then(async () => {
-        if (!tr || !mounted.current) return
-        if (!(await checkRegistrationProfile())) return
-
-        if (!validateEvidence()) {
-          document
-            .getElementById('residency-waiver-section')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          return
-        }
-
-        const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
-        if (isPartneredFormat && selectedPartner.phase === 'idle') {
-          document
-            .getElementById('partner-section')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          return
-        }
-        if (!currentGate.isSatisfied) {
-          const first = currentGate.blocking[0]
-          if (first) {
-            document
-              .getElementById(`screen-message-${first.id}`)
-              ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-          return
-        }
-        setIsJoiningWaitlist(true)
-        setWaitlistError(null)
-        setGateError(null)
-        try {
-          const payload = buildRegisterPayload(tr.format, selectedPartner, currentGate.payload)
-          const result = await joinTournamentWaitlist(tr.id, payload)
-          if (!mounted.current) return
-          if (!result.success) {
-            setWaitlistError(translateWaitlistError(result.error.message, t))
-            return
-          }
-          const entry = result.data
-          setPartnerState({ phase: 'idle' })
-          trackFunnel('registration_created', { tournament_id: tr.id, step: 'waitlist' })
-          setWaitlistOverride(entry)
-          const amount = (entry.entry_fee ?? 0) + (entry.service_fee ?? 0)
-          // A paid tournament places a pre-auth hold via the same payment-method
-          // flow as registration; a free one is done the moment the entry lands
-          // — the WaitlistCard below now renders from `waitlistOverride`.
-          if (amount >= 0.01) {
-            const sp = new URLSearchParams({
-              type: 'tournament_waitlist_hold',
-              waitlist_entry_id: entry.id,
-              tournament_id: tr.id,
-              amount: String(amount),
-            })
-            navigate(`/payment-method?${sp.toString()}`)
-          }
-        } catch (e) {
-          const err = e as { code?: string; message?: string; details?: unknown } | null
-          if (!mounted.current) return
-          trackFunnel('registration_error', { tournament_id: tr.id, step: 'waitlist' })
-          if (gate.handleGateError(err)) {
-            setGateError(
-              t('screenMessages.registrationGateRequired', {
-                defaultValue: 'You must accept the tournament terms to continue',
-              }),
-            )
-            return
-          }
-          setWaitlistError(
-            err?.message
-              ? translateWaitlistError(err.message, t)
-              : t('tournament.registrationFailedTitle'),
-          )
-        } finally {
-          if (mounted.current) setIsJoiningWaitlist(false)
-        }
-      })
-      .catch(() => {
-        // USER_CANCELLED or SUPERSEDED — stay on the page as-is.
-      })
-  }
-
-  const handleLeaveWaitlist = async () => {
-    if (!tr) return
-    setIsLeavingWaitlist(true)
-    setWaitlistError(null)
-    // A refusal means this page may be out of date: refetch. When the entry is
-    // gone (the club removed or promoted it), also drop a join made on this
-    // visit so the refetched state, not the local entry, is what shows. Any
-    // other refusal leaves the player waiting, so the card stays.
-    const refused = (message: string, code?: string) => {
-      setWaitlistError(translateWaitlistError(message, t))
-      if (code === 'WAITLIST_ENTRY_NOT_FOUND') setWaitlistOverride(undefined)
-      void refetch()
-    }
-    try {
-      const result = await leaveTournamentWaitlist(tr.id)
-      if (!mounted.current) return
-      if (!result.success) {
-        refused(result.error.message, result.error.code)
-        return
-      }
-      setWaitlistOverride(null)
-      // The waiting count and the CTA come from the tournament query.
-      void refetch()
-    } catch (e) {
-      const err = e as { status?: number; code?: string; message?: string } | null
-      if (!mounted.current) return
-      // Only a rejection the server answered carries a status (and its text,
-      // in the site language); the client's NETWORK_ERROR has neither.
-      if (typeof err?.status === 'number' && err.message) refused(err.message, err.code)
-      else setWaitlistError(t('tournament.tournamentLeaveWaitlistFailed'))
-    } finally {
-      if (mounted.current) setIsLeavingWaitlist(false)
-    }
-  }
+  // Leave returns whatever the pair paid or put on hold. The rules for a refused
+  // leave (say why, refetch, drop the card only when the entry is gone) live in
+  // the hook, shared with the corporate page.
+  const {
+    leave: handleLeaveWaitlist, isLeaving: isLeavingWaitlist, leaveError: waitlistError,
+  } = useLeaveWaitlist(tr?.id, {
+    refetch,
+    onLeft: () => setWaitlistOverride(null),
+    onEntryGone: () => setWaitlistOverride(undefined),
+  })
 
   if (isLoading) {
     return (
@@ -807,26 +694,15 @@ function TournamentRegistrationPage() {
             position={myWaitlistEntry.position}
             onLeave={handleLeaveWaitlist}
             isLeaving={isLeavingWaitlist}
+            registration={myWaitlistEntry.registration}
+            tournament={tr}
+            onEvidenceChanged={async () => { await refetch() }}
           />
-        )}
-
-        {/* A fee waiver is not offered on the waiting list: rally-api refuses a
-            join that carries one (FEE_WAIVER_NOT_AVAILABLE) and ignores one at
-            promotion, and no evidence can be attached before a registration row
-            exists. The selector would collect proof the join then drops and quote a
-            waived price the pair is never charged, so the queue says so instead. */}
-        {!myReg && hasFeeWaiver && cta === 'join_waitlist' && (
-          <p
-            data-testid="waitlist-no-waiver-note"
-            className="rounded-2xl bg-rally-surface border border-rally-border p-4 text-sm text-rally-text-2"
-          >
-            {t('tournament.tournamentWaitlistNoWaiverNote')}
-          </p>
         )}
 
         {!myReg &&
           showRequirementsSection &&
-          (cta === 'register' || (cta === 'join_waitlist' && !hasFeeWaiver)) && (
+          (cta === 'register' || cta === 'join_waitlist') && (
             <ResidencyWaiverSelector
               seats={seats}
               format={tr.format}
@@ -1032,11 +908,12 @@ function TournamentRegistrationPage() {
             ) : cta === 'join_waitlist' ? (
               <button
                 data-testid="tournament-join-waitlist-button"
-                onClick={handleJoinWaitlist}
-                disabled={isJoiningWaitlist || isCheckingProfile}
+                aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
+                onClick={() => handleRegisterNow('waitlist')}
+                disabled={isRegistering || isCheckingProfile}
                 className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full border-2 border-rally-accent text-rally-accent font-bold enabled:hover:bg-rally-accent/10 transition-all disabled:opacity-60"
               >
-                {isCheckingProfile ? t('common.loading') : isJoiningWaitlist
+                {isCheckingProfile ? t('common.loading') : isRegistering
                   ? t('tournament.tournamentDetailRegistering')
                   : sessionStatus === 'signed_out'
                   ? t('tournament.continueRegistration')
@@ -1044,6 +921,8 @@ function TournamentRegistrationPage() {
                   ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
+                  : (hasWaiverActive ? residentCount > 0 : isDocRequired) && myFiles.length === 0
+                  ? t('tournament.ctaMissingDocument', { defaultValue: 'Upload required document' })
                   : t('tournament.tournamentJoinWaitlist')}
               </button>
             ) : cta === 'none' ? (
@@ -1055,7 +934,7 @@ function TournamentRegistrationPage() {
               </button>
             ) : (
               <button
-                onClick={handleRegisterNow}
+                onClick={() => handleRegisterNow()}
                 disabled={isRegistering || isCheckingProfile}
                 aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
                 className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"

@@ -604,6 +604,7 @@
       "waitlistNotOpen": "ההרשמה לטורניר אינה פתוחה כרגע",
       "tournamentNotFull": "יש עדיין מקומות פנויים — נסה/י להירשם במקום זאת",
       "alreadyWaiting": "את/ה כבר ברשימת ההמתנה של הטורניר הזה",
+      "partnerAlreadyWaiting": "השותף/ה שבחרת כבר ברשימת ההמתנה עם מישהו אחר",
       "notOnWaitlist": "את/ה לא ברשימת ההמתנה של הטורניר הזה",
       "ownPhone": "זה מספר הטלפון שלך. בחר/י שותף/ה אחר/ת.",
       "ownPartner": "אי אפשר לבחור את עצמך כשותף. יש לבחור שותף אחר.",
@@ -667,8 +668,14 @@
     "tournamentLeaveWaitlistConfirmTitle": "לעזוב את רשימת ההמתנה?",
     "tournamentLeaveWaitlistConfirmBody": "תאבד/י את מקומך במקום #{{position}}.",
     "tournamentLeaveWaitlistCancelCta": "ביטול",
-    "tournamentWaitlistNoWaiverNote": "הפטור מדמי הרשמה אינו זמין ברשימת ההמתנה — אם יתפנה מקום, ההרשמה תהיה במחיר המלא.",
-    "tournamentLeaveWaitlistFailed": "לא הצלחנו להוציא אותך מרשימת ההמתנה. נסו שוב."
+    "tournamentLeaveWaitlistFailed": "לא הצלחנו להוציא אותך מרשימת ההמתנה. נסו שוב.",
+    "tournamentLeaveWaitlistConfirmBodyPaid": "תאבדו את המקום שלכם (#{{position}}). כל סכום ששולם או נתפס בכרטיס יוחזר.",
+    "tournamentWaitlistPaymentHeld": "התשלום נתפס",
+    "tournamentWaitlistPaymentAwaiting": "ממתין לתשלום",
+    "tournamentWaitlistPaymentSettled": "התשלום הושלם",
+    "tournamentWaitlistPaymentFree": "אין תשלום",
+    "tournamentWaitlistAwaitingNote": "המקום שלכם בתור שמור, אבל המארגן יוכל לשבץ אתכם רק אחרי השלמת התשלום.",
+    "tournamentWaitlistCompletePayment": "להשלמת התשלום"
   },
   "profile": {
     "completeTitle": "השלם את הפרופיל שלך",
@@ -1094,6 +1101,8 @@
     "paymentMethodWaitlistHoldNotice": "נבצע החזקה זמנית בכרטיס שלך ונחייב אותך רק אם יתפנה מקום ותועבר/י מרשימת ההמתנה.",
     "waitlistHoldConfirmedTitle": "נרשמת לרשימת ההמתנה",
     "waitlistHoldConfirmedSubtitle": "התשלום שלך בהחזקה זמנית — תחויב/י אוטומטית ותאושר/י אם יתפנה מקום.",
+    "waitlistSignupSubtitle": "מקומכם בתור שמור. אם יתפנה מקום, המארגן ישבץ אתכם והתשלום יסולק בשלב הזה.",
+    "waitlistSignupFreeSubtitle": "מקומכם בתור שמור. אם יתפנה מקום, המארגן ישבץ אתכם. אין מה לשלם.",
     "backToEvent": "חזרה לעמוד האירוע"
   },
   "coupon": {
@@ -1195,6 +1204,7 @@
       "partnerRequiredHintInviteOnly": "הרשמה היא בזוגות — הזמינו את השותף/ה לפי שם וטלפון. אם הם כבר ב-Rally, נזהה אותם לפי המספר.",
       "priceLabel": "דמי הרשמה לזוג",
       "holdNote": "הסכום ייתפס בכרטיס ויחויב רק לאחר אישור ההרשמה על ידי מארגני הטורניר.",
+      "holdNoteWaitlist": "הסכום ייתפס בכרטיס ויחויב רק אם יתפנה מקום והמארגנים ישבצו אתכם.",
       "waiverNoChargeNote": "לא ייגבה תשלום. ההרשמה תאושר סופית לאחר שהמועדון יאמת את התושבות.",
       "freeNote": "לא נדרש תשלום עבור ההרשמה.",
       "submitCta": "הרשמה ותשלום",
@@ -1215,8 +1225,9 @@
       "terminalBody": "לשאלות על ההרשמה פנו למארגני הטורניר בחברה.",
       "fullTitle": "כל המקומות נתפסו",
       "fullBody": "הטורניר מלא. פנו למארגני הטורניר בחברה — אולי יתפנה מקום.",
-      "waitlistTitle": "הטורניר מלא — אפשר להצטרף לרשימת המתנה",
-      "waitlistBody": "אם יתפנה מקום, תועברו מרשימת ההמתנה להרשמה. ההצטרפות נעשית בעמוד הטורניר באתר Rally: נבצע החזקה זמנית בכרטיס ונחייב רק אם יתפנה מקום.",
+      "waitlistJoinLine": "הטורניר מלא. ההרשמה כאן תכניס אתכם לרשימת ההמתנה, והמארגנים ישבצו מתוכה אם יתפנה מקום.",
+      "submitCtaWaitlist": "הצטרפות לרשימת המתנה ותשלום",
+      "submitCtaWaitlistFree": "הצטרפות לרשימת המתנה",
       "profileSaveError": "לא הצלחנו לשמור את הפרטים. נסו שוב בעוד רגע.",
       "sessionError": "משהו השתבש בטעינת הפרופיל.",
       "retry": "נסו שוב",

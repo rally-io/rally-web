@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18n from '@/i18n'
 
@@ -9,6 +9,13 @@ import {
   requireSignIn, refetchOnboarding, ensure, register,
   mockUploadEvidence, refetchTournament, mockUseRegistration,
 } from './CorporateRegistrationPage.fixtures'
+
+vi.mock('@/services/api/tournaments', async () => {
+  const actual = await vi.importActual<typeof import('@/services/api/tournaments')>('@/services/api/tournaments')
+  return { ...actual, leaveTournamentWaitlist: vi.fn() }
+})
+import { leaveTournamentWaitlist } from '@/services/api/tournaments'
+const mockLeave = vi.mocked(leaveTournamentWaitlist)
 
 beforeEach(resetPageMocks)
 
@@ -25,6 +32,20 @@ describe('CorporateRegistrationPage — states', () => {
     mockUseTournament.mockReturnValue(tr({ fee_waiver_type: 'holon_resident' }))
     renderPage({ feeWaiver: { type: 'holon_resident' } })
     expect(screen.getByText(i18n.t('corporate.reg.signInWaiverHint'))).toBeInTheDocument()
+  })
+
+  it('signed out on a full event with the list on: the waiting-list line shows above sign-in', () => {
+    mockUseAppSession.mockReturnValue(session('signed_out'))
+    mockUseTournament.mockReturnValue(tr({ is_full: true }))
+    renderPage()
+    expect(screen.getByText(i18n.t('corporate.reg.waitlistJoinLine'))).toBeInTheDocument()
+  })
+
+  it('signed out on an event with a free seat: no waiting-list line', () => {
+    mockUseAppSession.mockReturnValue(session('signed_out'))
+    mockUseTournament.mockReturnValue(tr({}))
+    renderPage()
+    expect(screen.queryByText(i18n.t('corporate.reg.waitlistJoinLine'))).not.toBeInTheDocument()
   })
 
   it('a tournament with no waiver shows only the price', () => {
@@ -142,35 +163,120 @@ describe('CorporateRegistrationPage — states', () => {
     expect(screen.queryByTestId('corporate-waitlist-link')).not.toBeInTheDocument()
   })
 
-  it('full → offers the waiting list and sends the pair to the tournament page, where the join runs', () => {
-    // `waitlist_enabled` absent: the API only sends false when the switch is off.
-    mockUseTournament.mockReturnValue(tr({ is_full: true }))
+  it('full with the list on → the registration form itself, with a line saying the pair will join the waiting list', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles', is_full: true }))
     renderPage()
-    expect(screen.getByText(i18n.t('corporate.reg.waitlistTitle'))).toBeInTheDocument()
-    expect(screen.queryByText(/all spots are taken/i)).not.toBeInTheDocument()
-    const link = screen.getByTestId('corporate-waitlist-link')
-    expect(link).toHaveAttribute('href', '/tournaments/t-1')
-    expect(link).toHaveTextContent(i18n.t('tournament.tournamentJoinWaitlist'))
-    // A tournament with no waiver has nothing to warn about.
-    expect(screen.queryByTestId('corporate-waitlist-waiver-note')).not.toBeInTheDocument()
+    expect(screen.getByRole('form')).toBeInTheDocument()
+    expect(screen.getByTestId('corporate-waitlist-join-line')).toHaveTextContent(
+      i18n.t('corporate.reg.waitlistJoinLine'),
+    )
+    expect(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCtaWaitlist') })).toBeInTheDocument()
+    // No more link out to the tournament page.
+    expect(screen.queryByTestId('corporate-waitlist-link')).not.toBeInTheDocument()
   })
 
-  it('full with a residents\' waiver → says the waiver does not carry onto the waiting list', () => {
-    mockUseTournament.mockReturnValue(tr({ is_full: true, fee_waiver_type: 'holon_resident' }))
-    renderPage({ feeWaiver: { type: 'holon_resident' } })
-    expect(screen.getByTestId('corporate-waitlist-waiver-note'))
-      .toHaveTextContent(i18n.t('tournament.tournamentWaitlistNoWaiverNote'))
+  it('full with the list on → the fee note says the hold is charged only if a spot opens', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles', is_full: true }))
+    renderPage()
+    expect(screen.getByText(i18n.t('corporate.reg.holdNoteWaitlist'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('corporate.reg.holdNote'))).not.toBeInTheDocument()
   })
 
-  it('full and already queued → shows the position, not a second join prompt', () => {
+  it('a tournament with a free seat shows no waiting-list line and the normal button', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    renderPage()
+    expect(screen.queryByTestId('corporate-waitlist-join-line')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCta') })).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.holdNote'))).toBeInTheDocument()
+  })
+
+  it('submitting the waiting-list form runs the same register call', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles', is_full: true }))
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('corporate.reg.submitCtaWaitlist') }))
+    await waitFor(() => expect(register).toHaveBeenCalledWith({ phase: 'idle' }))
+  })
+
+  const queuedEntry = (registration: Record<string, unknown> | null) => ({
+    id: 'w-1', position: 4, joined_at: null, entry_fee: 150, service_fee: 0, registration,
+  })
+
+  it('queued with an unpaid sign-up → waiting card: place in line, awaiting payment, Complete payment resumes with return_to', () => {
     mockUseTournament.mockReturnValue(tr({
       is_full: true,
-      my_waitlist_entry: { id: 'w-1', position: 4, joined_at: null, entry_fee: 150, service_fee: 0 },
+      my_waitlist_entry: queuedEntry({
+        id: 'r-9', tournament_id: 't-1', player_1_id: 'p-1', status: 'payment_pending',
+        payment_status: null, player_2_name: 'Yossi Levi',
+      }),
     }))
     renderPage()
+    expect(screen.queryByRole('form')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.t('tournament.tournamentWaitlistPosition', { position: 4 }))).toBeInTheDocument()
-    expect(screen.queryByText(i18n.t('corporate.reg.waitlistTitle'))).not.toBeInTheDocument()
-    expect(screen.getByTestId('corporate-waitlist-link')).toHaveAttribute('href', '/tournaments/t-1')
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentAwaiting'),
+    )
+    expect(screen.getByText('Yossi Levi')).toBeInTheDocument()
+    expect(screen.getByTestId('tournament-leave-waitlist-button')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('waitlist-complete-payment'))
+    expect(screen.getByTestId('route-probe').textContent).toBe(
+      'registration_id=r-9&tournament_id=t-1&waitlist=1&return_to=%2Fjoin%2Facme',
+    )
+  })
+
+  it('queued with the hold in place → payment held, no payment button', () => {
+    mockUseTournament.mockReturnValue(tr({
+      is_full: true,
+      my_waitlist_entry: queuedEntry({
+        id: 'r-9', tournament_id: 't-1', player_1_id: 'p-1', status: 'registered', payment_status: 'payment_held',
+      }),
+    }))
+    renderPage()
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentHeld'),
+    )
+    expect(screen.queryByTestId('waitlist-complete-payment')).not.toBeInTheDocument()
+  })
+
+  it('queued by an old card-only join → position and Leave, no payment line', () => {
+    mockUseTournament.mockReturnValue(tr({ is_full: true, my_waitlist_entry: queuedEntry(null) }))
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.tournamentWaitlistPosition', { position: 4 }))).toBeInTheDocument()
+    expect(screen.getByTestId('tournament-leave-waitlist-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-payment-state')).not.toBeInTheDocument()
+  })
+
+  it('a successful Leave hides the waiting card at once, before the refetch lands', async () => {
+    mockUseTournament.mockReturnValue(tr({
+      is_full: true,
+      my_waitlist_entry: queuedEntry({
+        id: 'r-9', tournament_id: 't-1', player_1_id: 'p-1', status: 'payment_pending', payment_status: null,
+      }),
+    }))
+    mockLeave.mockResolvedValue({ success: true, data: { left: true } } as any)
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-leave-waitlist-button'))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: i18n.t('tournament.tournamentLeaveWaitlist') }),
+    )
+    await waitFor(() => expect(mockLeave).toHaveBeenCalledWith('t-1'))
+    await waitFor(() => expect(screen.queryByTestId('tournament-waitlist-card')).not.toBeInTheDocument())
+    expect(refetchTournament).toHaveBeenCalled()
+  })
+
+  it('a register error after the form was swapped for the waiting card still reaches the screen', () => {
+    mockUseTournament.mockReturnValue(tr({
+      is_full: true,
+      my_waitlist_entry: queuedEntry({
+        id: 'r-9', tournament_id: 't-1', player_1_id: 'p-1', status: 'registered', payment_status: 'completed',
+      }),
+    }))
+    mockUseRegistration.mockReturnValue({
+      register, isRegistering: false,
+      registerError: 'Something went wrong confirming your free registration',
+      gateError: null, setRegisterError: vi.fn(), setGateError: vi.fn(),
+    } as any)
+    renderPage()
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong confirming your free registration')
   })
 
   it('signed out → one CTA that stashes the return path and opens the sign-in gate', async () => {
@@ -278,14 +384,14 @@ describe('CorporateRegistrationPage — post-refetch register error (I2)', () =>
   })
 
   it('a stale registerError does not leak onto the full-tournament card (TOURNAMENT_FULL sets both)', () => {
-    mockUseTournament.mockReturnValue(tr({ is_full: true }))
+    mockUseTournament.mockReturnValue(tr({ is_full: true, waitlist_enabled: false }))
     mockUseRegistration.mockReturnValue({
       register, isRegistering: false,
       registerError: 'The tournament is full',
       gateError: null, setRegisterError: vi.fn(), setGateError: vi.fn(),
     } as any)
     renderPage()
-    expect(screen.getByText(i18n.t('corporate.reg.waitlistTitle'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('corporate.reg.fullTitle'))).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

@@ -45,6 +45,14 @@ export function translateRegistrationError(message: string, t: TFunction): strin
   if (/^Tournament registration is \w+$/.test(message)) {
     return t('tournament.registrationErrors.registrationNotOpen')
   }
+  // register now queues a pair when the waiting list is the only way in, and
+  // refuses one whose registrant or named partner already waits (409).
+  if (message === 'You are already on the waiting list') {
+    return t('tournament.registrationErrors.alreadyWaiting')
+  }
+  if (message === 'That partner is already on the waiting list with someone else') {
+    return t('tournament.registrationErrors.partnerAlreadyWaiting')
+  }
   return message
 }
 
