@@ -536,6 +536,11 @@ export interface PlayerMe {
   email?: string | null
   skill_level: number | null
   skill_tier?: 'bronze' | 'silver' | 'gold' | null
+  /** The band the player is SHOWN in, as rally-api labels it: "4.0 - 4.5 (B1)". Since rally-api's
+      display hysteresis (2026-10-22) this is a STORED band that moves only once the level is 0.05
+      inside another band, so it can lag `skill_level`: a 4.03 may still read "(B2)". Read with
+      `bandFromLabel`; never re-derived from the number. Absent on older backends. */
+  mapped_skill_level?: string | null
   /** rally-api step 0: the scale `skill_level` is on (7, then 5 after the flip). Absent on older
       builds. Read by SkillLadderProvider (contract §3) and never written back. */
   level_scale?: number | null

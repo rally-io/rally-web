@@ -1,4 +1,4 @@
-import { formatLevelWithTier } from '@/lib/skillTiers'
+import { bandFromLabel, formatLevelWithTier } from '@/lib/skillTiers'
 import { normalizeSkillLevel, typedBounds } from '@/lib/skillLevel'
 import type { SkillLadder } from '@/lib/skillLadder'
 import { DEFAULT_COUNTRY } from '@/constants/countryCodes'
@@ -37,12 +37,19 @@ export function readProfileDetails(
   // as a plausible "0.0 (D2)" and call the profile complete — the modal would
   // never open and rally-api would refuse the register the player then makes.
   const level = normalizeSkillLevel(merged?.skill_level, typedBounds(ladder))
+  // The band rally-api shows the player in (`mapped_skill_level`, sticky: it can lag the number
+  // by up to 0.05), read off the SAVED profile. A level the modal has just written is a
+  // declaration, which rally-api re-labels with the band the number falls in, so the profile's
+  // band is stale for it until the refetch: derive from the number then, as before. (A re-declared
+  // but unchanged number is re-labelled the same way; it keeps the served band until the refetch.)
+  const levelJustChanged = justSaved?.skill_level != null && justSaved.skill_level !== profile?.skill_level
+  const shownBand = levelJustChanged ? null : bandFromLabel(merged?.mapped_skill_level)
   const details: Omit<ProfileDetails, 'complete'> = {
     name: name || null,
     // PlayerMe carries no country_code, so the dial prefix comes from the
     // shared constant — the same assumption the phone field itself makes.
     phone: merged?.contact_number ? `${DEFAULT_COUNTRY.dial} ${merged.contact_number}` : null,
-    level: level == null ? null : formatLevelWithTier(level, ladder),
+    level: level == null ? null : formatLevelWithTier(level, ladder, shownBand),
   }
   return { ...details, complete: !!(details.name && details.phone && details.level) }
 }
