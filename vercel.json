@@ -33,6 +33,10 @@
       "destination": "/api/player-season-og?id=:id"
     },
     {
+      "source": "/elections",
+      "destination": "/api/elections-og"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

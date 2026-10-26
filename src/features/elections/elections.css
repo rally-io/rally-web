@@ -1,0 +1,221 @@
+/* /elections campaign page. Scoped under .elx so nothing leaks into the site. */
+
+.elx {
+  --elx-navy: #071233;
+  --elx-navy-2: #0c1d55;
+  --elx-paper: #f5f5ef;
+  --elx-ink: #141a2e;
+  --elx-wa: #25d366;
+  min-height: 100svh;
+  background:
+    radial-gradient(120% 60% at 85% -10%, rgba(0, 85, 255, 0.45), transparent 60%),
+    radial-gradient(90% 50% at 0% 110%, rgba(204, 255, 0, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--elx-navy-2) 0%, var(--elx-navy) 55%, #040a1f 100%);
+  color: #fff;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Faint padel-court net behind everything */
+.elx::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, black 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Torn lime sticker, like the post */
+.elx-sticker {
+  display: inline-block;
+  background: var(--color-rally-accent);
+  color: var(--elx-ink);
+  transform: rotate(-2.5deg);
+  clip-path: polygon(
+    0% 12%, 4% 0%, 11% 9%, 19% 2%, 27% 10%, 36% 1%, 45% 8%, 55% 0%, 63% 9%, 72% 2%,
+    81% 10%, 90% 1%, 97% 9%, 100% 3%, 98% 50%, 100% 92%, 94% 100%, 86% 91%, 77% 99%,
+    68% 90%, 58% 100%, 48% 92%, 39% 99%, 30% 90%, 21% 100%, 12% 91%, 4% 100%, 0% 88%, 2% 50%
+  );
+  animation: elx-slap 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) 0.25s both;
+}
+
+@keyframes elx-slap {
+  from {
+    transform: rotate(-12deg) scale(1.6);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-2.5deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.elx-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #ff3b3b;
+  box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.7);
+  animation: elx-pulse 1.4s ease-out infinite;
+}
+
+@keyframes elx-pulse {
+  70% {
+    box-shadow: 0 0 0 8px rgba(255, 59, 59, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 59, 59, 0);
+  }
+}
+
+.elx-poll-row {
+  transition: transform 0.7s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.elx-poll-bar {
+  transition: width 1.1s cubic-bezier(0.65, 0, 0.35, 1);
+  background: linear-gradient(90deg, rgba(204, 255, 0, 0.55), var(--color-rally-accent));
+}
+
+[dir='rtl'] .elx-poll-bar {
+  background: linear-gradient(270deg, rgba(204, 255, 0, 0.55), var(--color-rally-accent));
+}
+
+/* Ballot paper */
+.elx-paper {
+  background: var(--elx-paper);
+  color: var(--elx-ink);
+  border-radius: 6px;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.06),
+    0 6px 18px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+.elx-paper::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed rgba(20, 26, 46, 0.18);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.elx-paper[data-selected='true'] {
+  outline: 3px solid var(--color-rally-accent);
+  outline-offset: 2px;
+}
+
+.elx-stamp {
+  animation: elx-stamp 0.35s cubic-bezier(0.2, 1.8, 0.4, 1) both;
+}
+
+@keyframes elx-stamp {
+  from {
+    transform: rotate(-30deg) scale(2.2);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-12deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.elx-step-in {
+  animation: elx-step-in 0.35s ease-out both;
+}
+
+@keyframes elx-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The ball ballot box + the slip dropping into its slot */
+.elx-ball {
+  animation: elx-bob 3s ease-in-out infinite;
+}
+
+@keyframes elx-bob {
+  50% {
+    transform: translateY(-6px) rotate(-2deg);
+  }
+}
+
+.elx-slip-drop {
+  animation: elx-drop 1.15s cubic-bezier(0.55, 0, 0.6, 1) 0.15s both;
+}
+
+@keyframes elx-drop {
+  0% {
+    transform: translate(-50%, -150px) rotate(-8deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(-50%, -6px) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, 92px) rotate(0deg);
+  }
+}
+
+.elx-ball-gulp {
+  animation: elx-gulp 0.35s ease-out 1.05s both;
+}
+
+@keyframes elx-gulp {
+  40% {
+    transform: scale(1.06, 0.95);
+  }
+}
+
+/* Confetti on the thank-you screen */
+.elx-confetti {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: elx-fall var(--dur) cubic-bezier(0.3, 0.6, 0.6, 1) var(--delay) both;
+}
+
+@keyframes elx-fall {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(var(--dx), 105svh, 0) rotate(var(--rot));
+    opacity: 0.2;
+  }
+}
+
+.elx-wa {
+  background: var(--elx-wa);
+  box-shadow: 0 0 36px rgba(37, 211, 102, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elx *,
+  .elx *::before,
+  .elx *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .elx-confetti {
+    display: none;
+  }
+}
