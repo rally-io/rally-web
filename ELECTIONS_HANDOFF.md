@@ -12,14 +12,14 @@ The front end is complete. **The only missing piece is the backend vote API.** U
 4. `?step=review`: "שלשלו לקלפי". If the user is signed out, it calls `requireSignIn()`.
 5. The ballot drops into the ball, then the thank-you screen with the WhatsApp community CTA and share.
 
-Sign-in happens only at the moment of casting. The ballot is parked in `localStorage` (`rally.elections.pendingVote`, 3-day TTL, ids validated against the ballot list) so it survives each sign-in path:
+Sign-in happens only at the moment of casting, through the shared `AuthGateModal` (Google, Apple, Facebook or email). On `/elections` the modal shows its own copy (`auth.gate.elections_*`) and the Rally logo. The ballot is parked in `localStorage` (`rally.elections.pendingVote`, 3-day TTL, ids validated against the ballot list), and the page casts it automatically once a signed-in session with no recorded vote appears. Every sign-in path lands back on `/elections` through main's `next` return path:
 
 | Sign-in path | What happens |
 |---|---|
-| Email inside the modal | The session appears, then `my-vote` loads and returns null, then the parked ballot is cast automatically. |
-| Google (full-page redirect) | `rally:auth-return` brings the user back to `/elections`, then the same auto-cast runs. |
-| Email sign-up with verification (opens in a new tab) | `AuthCallbackPage` falls back to `/elections` when a parked ballot exists, then the same auto-cast runs. |
-| User closes the modal | The parked ballot is cleared. |
+| Email inside the modal | The session appears, then `my-vote` loads and returns null, then the parked ballot is cast. |
+| Google / Apple / Facebook (full-page redirect) | `/auth/callback?next=/elections…` returns the voter, then the same auto-cast runs. |
+| Email sign-up with verification (opens in a new tab) | The verification link carries the same `next`, then the same auto-cast runs. |
+| Voter closes the modal | The parked ballot is cleared. |
 
 A signed-in user who already voted sees the thank-you screen with their recorded vote. A `409` on submit is treated the same way.
 
@@ -86,16 +86,12 @@ A successful vote also fires `trackLead('elections', { segment: 'vote' })` (pixe
 
 `/elections` is rewritten to `api/elections-og.ts`, which injects the title, description and `public/og-elections.jpg` (cropped from the campaign post).
 
-## Optional follow-up
-
-The sign-in modal subtitle is generic ("register, book courts…"). A vote-specific line such as "התחברו כדי שהקול שלכם ייספר" would likely lift conversion. That needs `requireSignIn({ reason })` threaded through `AuthGateContext` into `AuthGateModal`. I left it out to keep this PR off the shared auth code.
-
 ## Files
 
 - `src/pages/ElectionsPage.tsx`: the step machine (bare route, no navbar).
 - `src/features/elections/`: ballot data, config, components, `pendingVote`/`draftVote` storage, `useElectionVote`, CSS.
 - `src/services/api/elections.ts`: the API seam and the mock.
 - `api/elections-og.ts` and `vercel.json`: link preview.
-- `src/pages/auth/AuthCallbackPage.tsx`: return to `/elections` after email verification.
+- `src/components/auth/AuthGateModal.tsx`: the elections title, subtitle and logo in the sign-in modal.
 
 Tests: `src/pages/ElectionsPage.test.tsx`. On Node 26+, run vitest with `NODE_OPTIONS=--no-experimental-webstorage`. Node's built-in `localStorage` otherwise shadows jsdom's, and every localStorage test in the repo fails. This is not specific to this page.

@@ -148,7 +148,9 @@
       "modal_title": "Sign in to continue",
       "modal_subtitle": "Use your account to register, book courts, and track your activity.",
       "sign_in_to_view": "Sign in to view your activity",
-      "sign_in_button": "Sign in / Create account"
+      "sign_in_button": "Sign in / Create account",
+      "elections_title": "One step before your vote is in",
+      "elections_subtitle": "To make it count, just sign up or sign in to your Rally account. One tap with Google, Apple or Facebook."
     }
   },
   "user_menu": {
@@ -1783,7 +1785,7 @@
       "no_chain": "No chain",
       "edit": "Change",
       "cta": "Cast my vote",
-      "note_signin": "To keep it one vote per person, we'll ask you to sign in to Rally. Takes 10 seconds.",
+      "note_signin": "To make it count, just sign in with your Rally account: Google, Apple or Facebook. Takes 10 seconds.",
       "note_signed_in": "One vote per user. Once it's in, it's in.",
       "error": "Something went wrong counting your vote. Try again."
     },
