@@ -6,11 +6,18 @@ import { CLUBS } from './ballotData'
 import { ELECTION_WINNER_DATE, logoFor } from './config'
 
 // Phone: a compact strip that fits the one-screen intro. Desktop: a large board
-// with more clubs and logos big enough to recognise at a glance.
-const LAYOUT = {
-  mobile: { rowH: 38, rows: 4 },
-  desktop: { rowH: 66, rows: 7 },
+// with logos big enough to recognise at a glance. The row count follows the
+// screen height so the intro fills one screen without overflowing it.
+const ROW_H = { mobile: 38, desktop: 66 }
+const MAX_ROWS = 7
+
+function rowsFor(width: number, height: number) {
+  if (width >= 768) return height >= 820 ? 7 : 6
+  if (height >= 900) return 6
+  if (height >= 780) return 5
+  return 4
 }
+
 const RESORT_EVERY = 3
 
 function sampleClubs() {
@@ -20,7 +27,7 @@ function sampleClubs() {
   for (const c of [...CLUBS].sort(() => Math.random() - 0.5)) {
     if (logoFor(c.brand) && !byBrand.has(c.brand)) byBrand.set(c.brand, c)
   }
-  return [...byBrand.values()].slice(0, LAYOUT.desktop.rows)
+  return [...byBrand.values()].slice(0, MAX_ROWS)
 }
 
 function prefersReducedMotion() {
@@ -29,19 +36,18 @@ function prefersReducedMotion() {
   )
 }
 
-function useIsDesktop() {
-  const query = '(min-width: 768px)'
-  const [match, setMatch] = useState(
-    () => typeof window !== 'undefined' && !!window.matchMedia?.(query).matches,
-  )
+function useViewport() {
+  const read = () =>
+    typeof window === 'undefined'
+      ? { w: 390, h: 844 }
+      : { w: window.innerWidth, h: window.innerHeight }
+  const [size, setSize] = useState(read)
   useEffect(() => {
-    const mq = window.matchMedia?.(query)
-    if (!mq) return
-    const onChange = () => setMatch(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
+    const onResize = () => setSize(read())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
-  return match
+  return size
 }
 
 /**
@@ -51,8 +57,9 @@ function useIsDesktop() {
  */
 export function LivePoll() {
   const { t } = useTranslation()
-  const desktop = useIsDesktop()
-  const { rowH, rows } = desktop ? LAYOUT.desktop : LAYOUT.mobile
+  const { w, h } = useViewport()
+  const rowH = w >= 768 ? ROW_H.desktop : ROW_H.mobile
+  const rows = rowsFor(w, h)
   const all = useMemo(sampleClubs, [])
   const clubs = all.slice(0, rows)
 

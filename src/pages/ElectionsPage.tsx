@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Gift } from 'lucide-react'
@@ -242,11 +242,11 @@ export default function ElectionsPage() {
     <div className="elx">
       <div
         className={cn(
-          'relative mx-auto max-w-md px-4 pb-10',
+          'relative mx-auto flex min-h-[100svh] max-w-md flex-col px-4 pb-4',
           wide ? 'md:max-w-6xl md:px-8' : 'md:max-w-3xl',
         )}
       >
-        <header className="flex items-center justify-between py-4">
+        <header className="flex items-center justify-between py-4 [@media(max-width:767px)_and_(max-height:700px)]:py-3">
           <Link to="/" className="flex items-center gap-2" aria-label="Rally">
             <img
               src="/rally-logo.jpg"
@@ -267,30 +267,32 @@ export default function ElectionsPage() {
 
 function Intro({ onStart }: { onStart: () => void }) {
   const { t } = useTranslation()
-  // Mobile: one column with a sticky CTA. Desktop (md+): headline + prize + CTA
-  // in the first column, a large live poll filling the second.
+  // Mobile: one column with a sticky CTA; spare height on tall phones is split
+  // above and below the content (mt-auto / mb-auto), and short phones get tighter
+  // type and gaps. Desktop (md+): headline + prize + CTA in the first column, a
+  // large live poll filling the second.
   return (
-    <div className="pb-48 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:items-center md:gap-x-14 md:pb-16 md:pt-6">
-      <div className="md:col-start-1 md:row-start-1">
-        <h1 className="hero-rise hero-rise-1 text-center font-display text-[52px] font-black leading-[0.95] md:text-start md:text-[96px]">
+    <div className="flex flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:items-center md:gap-x-14 md:pb-16 md:pt-6">
+      <div className="mt-auto md:col-start-1 md:row-start-1 md:mt-0">
+        <h1 className="hero-rise hero-rise-1 text-center font-display text-[52px] font-black leading-[0.95] [@media(max-width:767px)_and_(max-height:700px)]:text-[42px] md:text-start md:text-[96px]">
           {t('elections.hero.title')}
         </h1>
-        <div className="mt-3 text-center md:mt-5 md:text-start">
-          <span className="elx-sticker px-5 py-2.5 font-display text-[22px] font-black leading-tight md:px-7 md:py-3.5 md:text-[32px]">
+        <div className="mt-3 text-center [@media(max-width:767px)_and_(max-height:700px)]:mt-2 md:mt-5 md:text-start">
+          <span className="elx-sticker px-5 py-2.5 font-display text-[22px] font-black leading-tight [@media(max-width:767px)_and_(max-height:700px)]:py-2 [@media(max-width:767px)_and_(max-height:700px)]:text-[19px] md:px-7 md:py-3.5 md:text-[32px]">
             {t('elections.hero.sticker')}
           </span>
         </div>
-        <p className="hero-rise hero-rise-2 mx-auto mt-4 max-w-[22rem] text-center text-[15px] leading-relaxed text-white/80 md:mx-0 md:mt-7 md:max-w-md md:text-start md:text-[20px]">
+        <p className="hero-rise hero-rise-2 mx-auto mt-4 max-w-[22rem] text-center text-[15px] leading-relaxed text-white/80 [@media(max-width:767px)_and_(max-height:700px)]:mt-2 [@media(max-width:767px)_and_(max-height:700px)]:text-[14px] [@media(max-width:767px)_and_(max-height:700px)]:leading-snug md:mx-0 md:mt-7 md:max-w-md md:text-start md:text-[20px]">
           {t('elections.hero.sub')}
         </p>
       </div>
 
-      <div className="hero-rise hero-rise-3 mt-5 md:col-start-2 md:row-span-2 md:row-start-1 md:mt-0">
+      <div className="hero-rise hero-rise-3 mt-5 [@media(max-width:767px)_and_(max-height:700px)]:mt-3 md:col-start-2 md:row-span-2 md:row-start-1 md:mt-0">
         <LivePoll />
       </div>
 
-      <div className="md:col-start-1 md:row-start-2 md:mt-8 md:self-start">
-        <div className="hero-rise hero-rise-4 mt-4 flex items-center gap-3 rounded-2xl border border-rally-accent/30 bg-rally-accent/10 px-4 py-3 md:mt-0 md:max-w-md md:px-5 md:py-4">
+      <div className="mb-auto md:col-start-1 md:row-start-2 md:mb-0 md:mt-8 md:self-start">
+        <div className="hero-rise hero-rise-4 mt-4 flex items-center gap-3 rounded-2xl border border-rally-accent/30 bg-rally-accent/10 px-4 py-3 [@media(max-width:767px)_and_(max-height:700px)]:mt-3 [@media(max-width:767px)_and_(max-height:700px)]:py-2.5 md:mt-0 md:max-w-md md:px-5 md:py-4">
           <Gift className="h-6 w-6 shrink-0 text-rally-accent md:h-8 md:w-8" />
           <p className="text-[14px] leading-snug md:text-[17px]">
             <span className="font-bold">{t('elections.hero.prize')}</span>{' '}
@@ -335,7 +337,7 @@ function BallotStep({
   // (filled) transform animation makes its node the containing block for fixed
   // descendants, which would pin the bar under the list instead of the screen.
   return (
-    <div className="pb-48">
+    <div>
       <div className="elx-step-in">
         <div className="flex items-center gap-3">
           <button
@@ -391,7 +393,7 @@ function Review({
   const club = getClub(clubId)
   const chain = getBrand(chainId)
   return (
-    <div className="pb-48 text-center">
+    <div className="text-center">
       <div className="elx-step-in">
         <BallotBox />
         <h1 className="mt-2 font-display text-[30px] font-black leading-tight">
@@ -499,18 +501,41 @@ function PickedLine({ brandId, name }: { brandId?: string; name?: string }) {
   )
 }
 
+/**
+ * CTA bar pinned to the bottom of the phone screen. It renders an in-flow spacer
+ * of its own measured height, so the page's last card scrolls exactly clear of
+ * the bar on every device, with no guessed padding and no empty tail.
+ */
 function StickyBar({ children, className }: { children: ReactNode; className?: string }) {
+  const barRef = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState(0)
+
+  useLayoutEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const measure = () => setHeight(el.offsetHeight)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
-    <div
-      className={cn(
-        // Solid behind the countdown and button so page text never shows through;
-        // the short fade above it softens the edge while content scrolls under.
-        "fixed inset-x-0 bottom-0 z-20 bg-[#040a1f] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 before:pointer-events-none before:absolute before:inset-x-0 before:-top-8 before:h-8 before:bg-gradient-to-t before:from-[#040a1f] before:to-transparent before:content-['']",
-        className,
-      )}
-    >
-      <div className="mx-auto max-w-md">{children}</div>
-    </div>
+    <>
+      <div aria-hidden className={className} style={{ height: height + 12 }} />
+      <div
+        ref={barRef}
+        className={cn(
+          // Solid behind the countdown and button so page text never shows through;
+          // the short fade above it softens the edge while content scrolls under.
+          "fixed inset-x-0 bottom-0 z-20 bg-[#040a1f] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 before:pointer-events-none before:absolute before:inset-x-0 before:-top-8 before:h-8 before:bg-gradient-to-t before:from-[#040a1f] before:to-transparent before:content-['']",
+          className,
+        )}
+      >
+        <div className="mx-auto max-w-md">{children}</div>
+      </div>
+    </>
   )
 }
 
