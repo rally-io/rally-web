@@ -73,7 +73,11 @@ export function ClubBallot({
         ))}
       </div>
 
-      <ul className="mt-4 space-y-2.5" role="radiogroup" aria-label={t('elections.club.title')}>
+      <ul
+        className="mt-4 grid gap-2.5 md:grid-cols-2 md:gap-3"
+        role="radiogroup"
+        aria-label={t('elections.club.title')}
+      >
         {clubs.map((club) => {
           const isSel = club.id === selected
           return (

@@ -8,7 +8,7 @@ The front end is complete. **The only missing piece is the backend vote API.** U
 
 1. `/elections`: the hero, an animated "live poll" teaser (decorative, no numbers, labelled as illustration), the prize, a countdown and the CTA.
 2. `?step=club`: search box, region chips and 61 club ballots.
-3. `?step=chain`: 9 chains. This ballot can be skipped (`chain_id: null`).
+3. `?step=chain`: 10 chains (the 9 multi-branch brands plus Padel Center). This ballot can be skipped (`chain_id: null`).
 4. `?step=review`: "שלשלו לקלפי". If the user is signed out, it calls `requireSignIn()`.
 5. The ballot drops into the ball, then the thank-you screen with the WhatsApp community CTA and share.
 
@@ -56,7 +56,7 @@ create table election_votes (
 );
 ```
 
-- The allowed ids are the `id` fields in `src/features/elections/ballotData.ts` (61 clubs, 29 brands). Chains are the brands with `branches > 1`. Copy the lists to the server, or check against a static JSON. **Never rename an id once voting is open.**
+- The allowed ids are the `id` fields in `src/features/elections/ballotData.ts` (61 clubs, 29 brands). Chains are `CHAINS` in `config.ts`: brands with `branches > 1` plus `CHAIN_OVERRIDES` (Padel Center). Copy the lists to the server, or check against a static JSON. **Never rename an id once voting is open.**
 - Raffle export on 15.11: voters joined to their name and phone. Draw from that pool only. The racket-raffle legal checklist from October still applies: free entry, record the draw, give the winner 48h before a redraw, publish only the first name and last initial.
 
 ## Before going live

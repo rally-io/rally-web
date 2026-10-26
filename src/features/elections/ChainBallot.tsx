@@ -12,7 +12,7 @@ export function ChainBallot({
   const { t } = useTranslation()
   return (
     <div
-      className="grid grid-cols-2 gap-3"
+      className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4"
       role="radiogroup"
       aria-label={t('elections.chain.title')}
     >

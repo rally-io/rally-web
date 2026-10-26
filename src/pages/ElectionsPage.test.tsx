@@ -50,7 +50,8 @@ describe('ElectionsPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'To the ballot' }))
+    // Two CTAs: the mobile sticky one and the desktop inline one (CSS picks which shows).
+    await user.click(screen.getAllByRole('button', { name: 'To the ballot' })[0])
     expect(screen.getByRole('heading', { name: "Israel's Club" })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Pick a club' })).toBeDisabled()
 

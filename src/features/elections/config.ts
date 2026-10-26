@@ -50,9 +50,15 @@ export function logoFor(brandId: string): string | null {
   return LOGOS.has(brandId) ? `/elections/logos/${brandId}.webp` : null
 }
 
-export const CHAINS: ElectionBrand[] = BRANDS.filter((b) => b.branches > 1).sort(
-  (a, b) => b.branches - a.branches,
-)
+/**
+ * Brands that run (or are building) a chain even with one branch today.
+ * Padel Center: confirmed as a chain by Rally on 26.10.2026.
+ */
+const CHAIN_OVERRIDES = new Set<string>(['padel-center'])
+
+export const CHAINS: ElectionBrand[] = BRANDS.filter(
+  (b) => b.branches > 1 || CHAIN_OVERRIDES.has(b.id),
+).sort((a, b) => b.branches - a.branches)
 
 const brandById = new Map(BRANDS.map((b) => [b.id, b]))
 const clubById = new Map(CLUBS.map((c) => [c.id, c]))

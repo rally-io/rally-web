@@ -147,6 +147,7 @@ export default function ElectionsPage() {
   }
 
   let body: ReactNode
+  let wide = false
   if (phase === 'dropping') {
     body = (
       <div className="elx-step-in flex min-h-[70svh] flex-col items-center justify-center text-center">
@@ -161,6 +162,7 @@ export default function ElectionsPage() {
   } else if (!isVotingOpen()) {
     body = <Closed />
   } else if (effectiveStep === 'intro') {
+    wide = true
     body = <Intro onStart={() => goto('club')} />
   } else if (effectiveStep === 'club') {
     body = (
@@ -238,7 +240,12 @@ export default function ElectionsPage() {
 
   return (
     <div className="elx">
-      <div className="relative mx-auto max-w-md px-4 pb-10">
+      <div
+        className={cn(
+          'relative mx-auto max-w-md px-4 pb-10',
+          wide ? 'md:max-w-6xl md:px-8' : 'md:max-w-3xl',
+        )}
+      >
         <header className="flex items-center justify-between py-4">
           <Link to="/" className="flex items-center gap-2" aria-label="Rally">
             <img
@@ -260,35 +267,45 @@ export default function ElectionsPage() {
 
 function Intro({ onStart }: { onStart: () => void }) {
   const { t } = useTranslation()
+  // Mobile: one column with a sticky CTA. Desktop (md+): headline + prize + CTA
+  // in the first column, a large live poll filling the second.
   return (
-    <div className="pb-32">
-      <h1 className="hero-rise hero-rise-1 text-center font-display text-[52px] font-black leading-[0.95]">
-        {t('elections.hero.title')}
-      </h1>
-      <div className="mt-3 text-center">
-        <span className="elx-sticker px-5 py-2.5 font-display text-[22px] font-black leading-tight">
-          {t('elections.hero.sticker')}
-        </span>
-      </div>
-      <p className="hero-rise hero-rise-2 mx-auto mt-4 max-w-[22rem] text-center text-[15px] leading-relaxed text-white/80">
-        {t('elections.hero.sub')}
-      </p>
-
-      <div className="hero-rise hero-rise-3 mt-5">
-        <LivePoll />
-      </div>
-
-      <div className="hero-rise hero-rise-4 mt-4 flex items-center gap-3 rounded-2xl border border-rally-accent/30 bg-rally-accent/10 px-4 py-3">
-        <Gift className="h-6 w-6 shrink-0 text-rally-accent" />
-        <p className="text-[14px] leading-snug">
-          <span className="font-bold">{t('elections.hero.prize')}</span>{' '}
-          <span className="text-white/70">
-            {t('elections.hero.prize_date', { date: ELECTION_WINNER_DATE })}
+    <div className="pb-32 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:items-center md:gap-x-14 md:pb-16 md:pt-6">
+      <div className="md:col-start-1 md:row-start-1">
+        <h1 className="hero-rise hero-rise-1 text-center font-display text-[52px] font-black leading-[0.95] md:text-start md:text-[96px]">
+          {t('elections.hero.title')}
+        </h1>
+        <div className="mt-3 text-center md:mt-5 md:text-start">
+          <span className="elx-sticker px-5 py-2.5 font-display text-[22px] font-black leading-tight md:px-7 md:py-3.5 md:text-[32px]">
+            {t('elections.hero.sticker')}
           </span>
+        </div>
+        <p className="hero-rise hero-rise-2 mx-auto mt-4 max-w-[22rem] text-center text-[15px] leading-relaxed text-white/80 md:mx-0 md:mt-7 md:max-w-md md:text-start md:text-[20px]">
+          {t('elections.hero.sub')}
         </p>
       </div>
 
-      <StickyBar>
+      <div className="hero-rise hero-rise-3 mt-5 md:col-start-2 md:row-span-2 md:row-start-1 md:mt-0">
+        <LivePoll />
+      </div>
+
+      <div className="md:col-start-1 md:row-start-2 md:mt-8 md:self-start">
+        <div className="hero-rise hero-rise-4 mt-4 flex items-center gap-3 rounded-2xl border border-rally-accent/30 bg-rally-accent/10 px-4 py-3 md:mt-0 md:max-w-md md:px-5 md:py-4">
+          <Gift className="h-6 w-6 shrink-0 text-rally-accent md:h-8 md:w-8" />
+          <p className="text-[14px] leading-snug md:text-[17px]">
+            <span className="font-bold">{t('elections.hero.prize')}</span>{' '}
+            <span className="text-white/70">
+              {t('elections.hero.prize_date', { date: ELECTION_WINNER_DATE })}
+            </span>
+          </p>
+        </div>
+        <div className="mt-6 hidden max-w-md md:block">
+          <Countdown className="mb-3 justify-start" />
+          <PrimaryButton onClick={onStart}>{t('elections.hero.cta')}</PrimaryButton>
+        </div>
+      </div>
+
+      <StickyBar className="md:hidden">
         <div className="mb-2">
           <Countdown />
         </div>
@@ -482,9 +499,14 @@ function PickedLine({ brandId, name }: { brandId?: string; name?: string }) {
   )
 }
 
-function StickyBar({ children }: { children: ReactNode }) {
+function StickyBar({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-[#040a1f] via-[#040a1f]/95 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6">
+    <div
+      className={cn(
+        'fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-[#040a1f] via-[#040a1f]/95 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6',
+        className,
+      )}
+    >
       <div className="mx-auto max-w-md">{children}</div>
     </div>
   )

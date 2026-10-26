@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
 import { ELECTION_CLOSES_AT } from './config'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-export function Countdown() {
+export function Countdown({ className }: { className?: string }) {
   const { t } = useTranslation()
   const [now, setNow] = useState(() => Date.now())
 
@@ -20,7 +21,7 @@ export function Countdown() {
   const s = Math.floor(left / 1000) % 60
 
   return (
-    <div className="flex items-center justify-center gap-2 text-sm text-white/70">
+    <div className={cn('flex items-center justify-center gap-2 text-sm text-white/70', className)}>
       <span>{t('elections.countdown.label')}</span>
       <span className="font-display font-bold text-white">
         {t('elections.countdown.days', { count: days })}
