@@ -270,7 +270,7 @@ function Intro({ onStart }: { onStart: () => void }) {
   // Mobile: one column with a sticky CTA. Desktop (md+): headline + prize + CTA
   // in the first column, a large live poll filling the second.
   return (
-    <div className="pb-32 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:items-center md:gap-x-14 md:pb-16 md:pt-6">
+    <div className="pb-48 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] md:items-center md:gap-x-14 md:pb-16 md:pt-6">
       <div className="md:col-start-1 md:row-start-1">
         <h1 className="hero-rise hero-rise-1 text-center font-display text-[52px] font-black leading-[0.95] md:text-start md:text-[96px]">
           {t('elections.hero.title')}
@@ -335,7 +335,7 @@ function BallotStep({
   // (filled) transform animation makes its node the containing block for fixed
   // descendants, which would pin the bar under the list instead of the screen.
   return (
-    <div className="pb-36">
+    <div className="pb-48">
       <div className="elx-step-in">
         <div className="flex items-center gap-3">
           <button
@@ -391,7 +391,7 @@ function Review({
   const club = getClub(clubId)
   const chain = getBrand(chainId)
   return (
-    <div className="pb-40 text-center">
+    <div className="pb-48 text-center">
       <div className="elx-step-in">
         <BallotBox />
         <h1 className="mt-2 font-display text-[30px] font-black leading-tight">
@@ -503,7 +503,9 @@ function StickyBar({ children, className }: { children: ReactNode; className?: s
   return (
     <div
       className={cn(
-        'fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-[#040a1f] via-[#040a1f]/95 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-6',
+        // Solid behind the countdown and button so page text never shows through;
+        // the short fade above it softens the edge while content scrolls under.
+        "fixed inset-x-0 bottom-0 z-20 bg-[#040a1f] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 before:pointer-events-none before:absolute before:inset-x-0 before:-top-8 before:h-8 before:bg-gradient-to-t before:from-[#040a1f] before:to-transparent before:content-['']",
         className,
       )}
     >

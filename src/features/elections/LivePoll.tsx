@@ -8,7 +8,7 @@ import { ELECTION_WINNER_DATE, logoFor } from './config'
 // Phone: a compact strip that fits the one-screen intro. Desktop: a large board
 // with more clubs and logos big enough to recognise at a glance.
 const LAYOUT = {
-  mobile: { rowH: 38, rows: 5 },
+  mobile: { rowH: 38, rows: 4 },
   desktop: { rowH: 66, rows: 7 },
 }
 const RESORT_EVERY = 3
