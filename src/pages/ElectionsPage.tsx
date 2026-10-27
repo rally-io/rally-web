@@ -150,8 +150,6 @@ export default function ElectionsPage() {
 
   let body: ReactNode
   let wide = false
-  // the club step widens on large screens to fit its photo rail beside the list
-  let railWide = false
   if (phase === 'dropping') {
     body = (
       <div className="elx-step-in flex min-h-[70svh] flex-col items-center justify-center text-center">
@@ -169,7 +167,6 @@ export default function ElectionsPage() {
     wide = true
     body = <Intro onStart={() => goto('club')} />
   } else if (effectiveStep === 'club') {
-    railWide = true
     body = (
       <BallotStep
         index={1}
@@ -248,11 +245,7 @@ export default function ElectionsPage() {
       <div
         className={cn(
           'relative mx-auto flex min-h-[100svh] max-w-md flex-col px-4 pb-4',
-          wide
-            ? 'md:max-w-6xl md:px-8'
-            : railWide
-              ? 'md:max-w-3xl lg:max-w-6xl lg:px-8'
-              : 'md:max-w-3xl',
+          wide ? 'md:max-w-6xl md:px-8' : 'md:max-w-3xl',
         )}
       >
         <header className="flex items-center justify-between py-4 [@media(max-width:767px)_and_(max-height:700px)]:py-3">
@@ -522,11 +515,7 @@ function StickyBar({ children, className }: { children: ReactNode; className?: s
   useLayoutEffect(() => {
     const el = barRef.current
     if (!el) return
-    const measure = () => {
-      setHeight(el.offsetHeight)
-      // the club ballot's pinned photo column stops clear of this bar
-      el.closest<HTMLElement>('.elx')?.style.setProperty('--elx-bar-h', `${el.offsetHeight}px`)
-    }
+    const measure = () => setHeight(el.offsetHeight)
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(measure)
