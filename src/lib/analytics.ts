@@ -198,6 +198,33 @@ export function trackLead(source: string, details: LeadDetails = {}) {
   sendToCapi('Lead', eventId, pixelParams, em || ph ? { em, ph } : undefined)
 }
 
+export type ElectionsStep =
+  | 'start'
+  | 'pick_club'
+  | 'pick_chain'
+  | 'signin_prompt'
+  | 'vote'
+  | 'whatsapp_click'
+  | 'share'
+
+/**
+ * Funnel step on the /elections campaign page. Browser-only (pixel custom
+ * event + GA4): these are for funnel reporting, not ad optimisation. The vote
+ * itself additionally fires trackLead('elections') from the page.
+ */
+export function trackElections(step: ElectionsStep, params: Record<string, string> = {}) {
+  try {
+    window.fbq?.('trackCustom', 'Elections2026', { step, ...params })
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.gtag?.('event', `elections_${step}`, params)
+  } catch {
+    /* ignore */
+  }
+}
+
 const STORE_LINK = /apps\.apple\.com|play\.google\.com|onelink\.me/
 
 function storeOf(url: string): string {
