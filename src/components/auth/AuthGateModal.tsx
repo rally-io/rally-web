@@ -9,7 +9,7 @@ import { safeReturnTo } from '@/lib/authReturn'
 export function AuthGateModal() {
   const { t, i18n } = useTranslation()
   const location = useLocation()
-  const { open, cancel, confirmSignIn } = useAuthGateInternals()
+  const { open, cancel, leave, confirmSignIn } = useAuthGateInternals()
   const tournament = /^\/tournaments\/[^/]+/.test(location.pathname)
   // The /elections ballot asks for sign-in at the moment of casting, so the
   // copy talks about the vote rather than bookings.
@@ -25,7 +25,7 @@ export function AuthGateModal() {
         <DialogDescription className="text-sm text-rally-text-2">{t(`auth.gate.${copy}_subtitle`)}</DialogDescription>
       </DialogHeader>
       <div className="px-6 pb-6">
-        {open && <AuthFlow next={safeReturnTo(location.pathname + location.search + location.hash)} onSuccess={confirmSignIn} onLeave={cancel} initialMode={initialMode} />}
+        {open && <AuthFlow next={safeReturnTo(location.pathname + location.search + location.hash)} onSuccess={confirmSignIn} onLeave={leave} initialMode={initialMode} />}
         <LegalDisclaimer />
       </div>
     </DialogContent>

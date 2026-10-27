@@ -17,6 +17,11 @@ export interface AuthGateContextValue {
 interface AuthGateInternals {
   open: boolean
   cancel: () => void
+  // The modal's flow continues on a full auth page (email verification, forgot
+  // password): the modal closes and requireSignIn() rejects with
+  // LEFT_FOR_AUTH_PAGE, not USER_CANCELLED, so a caller can keep what the round
+  // trip needs (the /elections ballot, cast when the verification link returns).
+  leave: () => void
   // Called when the modal's own sign-in/sign-up flow just succeeded — resolves
   // the pending requireSignIn() promise directly instead of waiting on the
   // `open && session` effect below, which can lose the race against a modal
@@ -61,6 +66,12 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
     pendingRef.current = null
   }, [])
 
+  const leave = useCallback(() => {
+    setOpen(false)
+    pendingRef.current?.reject(new Error('LEFT_FOR_AUTH_PAGE'))
+    pendingRef.current = null
+  }, [])
+
   const confirmSignIn = useCallback(() => {
     setOpen(false)
     pendingRef.current?.resolve()
@@ -69,8 +80,8 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthGateContextValue>(() => ({ requireSignIn }), [requireSignIn])
   const internals = useMemo<AuthGateInternals>(
-    () => ({ open, cancel, confirmSignIn }),
-    [open, cancel, confirmSignIn],
+    () => ({ open, cancel, leave, confirmSignIn }),
+    [open, cancel, leave, confirmSignIn],
   )
 
   return (

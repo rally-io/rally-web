@@ -138,8 +138,10 @@ export default function ElectionsPage() {
       try {
         await requireSignIn()
         // Signed in inside the modal: the effect above casts it once my-vote has loaded.
-      } catch {
-        pendingVote.clear()
+      } catch (err) {
+        // Sign-up by email continues on the verification page, and the link in the
+        // email brings the voter back here to cast the parked ballot: keep it.
+        if (!(err instanceof Error && err.message === 'LEFT_FOR_AUTH_PAGE')) pendingVote.clear()
       }
       return
     }

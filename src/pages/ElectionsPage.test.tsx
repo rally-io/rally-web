@@ -80,6 +80,18 @@ describe('ElectionsPage', () => {
     await waitFor(() => expect(pendingVote.get()).toBeNull())
   })
 
+  it('keeps the parked ballot when sign-up continues on the email-verification page', async () => {
+    requireSignIn.mockRejectedValue(new Error('LEFT_FOR_AUTH_PAGE'))
+    pendingVote.set({ club_id: CLUB, chain_id: null })
+    const user = userEvent.setup()
+    renderPage('/elections?step=review')
+
+    await user.click(screen.getByRole('button', { name: 'Cast my vote' }))
+    await waitFor(() => expect(requireSignIn).toHaveBeenCalledTimes(1))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(pendingVote.get()).toEqual({ club_id: CLUB, chain_id: null })
+  })
+
   it('casts the parked ballot once when the voter comes back signed in', async () => {
     auth.user = { id: 'u1', email: 'dana@example.com' }
     pendingVote.set({ club_id: CLUB, chain_id: 'padel-israel' })
