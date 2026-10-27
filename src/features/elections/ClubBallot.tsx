@@ -26,6 +26,9 @@ const WIDE_QUERY = '(min-width: 1024px)'
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
+/** The phone band's bottom padding (elections.css): the row hidden under the band ends there. */
+const BAND_PAD = 12
+
 /** Rail geometry, in px. P: the slip under the open photo; Po: the open photo; Pp: a preview. */
 interface Geometry {
   wide: boolean
@@ -45,6 +48,8 @@ interface Geometry {
   H: number
   /** height of the fixed CTA bar at the bottom of the screen */
   barH: number
+  /** phone band: how far above the band's bottom edge the reading line sits (0 beside the column) */
+  cover: number
 }
 
 interface CardParts {
@@ -60,7 +65,9 @@ interface CardParts {
  * with a "spotlight" rail of club photos that follows the list. Scrolling moves a
  * reading line through the list; the club on it opens out in the rail and its
  * neighbours show as smaller previews. Tapping a preview brings that club to the
- * line; tapping the open card, or the club in the list, picks it.
+ * line; tapping the open card, or the club in the list, picks it. On a phone the line
+ * runs under the band, so the club open in the band is the row hidden beneath it and
+ * no club shows twice.
  */
 export function ClubBallot({
   selected,
@@ -75,6 +82,7 @@ export function ClubBallot({
   const [activeId, setActiveId] = useState<string | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const railRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
   const rows = useRef(new Map<string, HTMLButtonElement>())
   const cards = useRef(new Map<string, CardParts>())
   // set by the rail effect; a no-op where the rail does not run (no rAF, e.g. jsdom)
@@ -93,7 +101,8 @@ export function ClubBallot({
   useEffect(() => {
     const rail = railRef.current
     const wrap = wrapRef.current
-    if (!rail || !wrap || !clubs.length || typeof window.requestAnimationFrame !== 'function') {
+    const list = listRef.current
+    if (!rail || !wrap || !list || !clubs.length || typeof window.requestAnimationFrame !== 'function') {
       return
     }
     const order = clubs.map((c) => c.id)
@@ -151,6 +160,40 @@ export function ClubBallot({
         dim: wide ? 0.3 : 0.4,
         H: rail.clientHeight,
         barH: parseFloat(getComputedStyle(rail).getPropertyValue('--elx-bar-h')) || 110,
+        cover: wide ? 0 : BAND_PAD + (rows.current.get(order[0])?.offsetHeight ?? 68) / 2,
+      }
+      fitList()
+    }
+
+    // On a phone the list starts with its first row under the band, and ends with room for
+    // the last row to scroll under it too, so every club reaches the line hidden. The room
+    // never shrinks past where the visitor has scrolled: Safari's toolbar resizes the page
+    // as it scrolls, and pulling the end of the page up under a visitor would jolt it.
+    const fitList = () => {
+      const geo = g
+      if (!geo) return
+      if (geo.wide) {
+        list.style.removeProperty('margin-top')
+        list.style.removeProperty('padding-bottom')
+        return
+      }
+      const first = rows.current.get(order[0])
+      const last = rows.current.get(order[order.length - 1])
+      if (!first || !last) return
+      list.style.marginTop = `${-(first.offsetHeight + BAND_PAD)}px`
+      const doc = document.documentElement
+      const pad = () => parseFloat(list.style.paddingBottom) || 0
+      // iOS reports a scroll past the end while the page bounces there, which must not count
+      const left = Math.max(0, doc.scrollHeight - window.innerHeight - window.scrollY)
+      const floor = Math.max(0, pad() - left)
+      // with the band pinned at the top, the last row's centre has to reach the line; more
+      // passes cover a short list, where the page's min-height takes up the first one
+      for (let pass = 0; pass < 3; pass++) {
+        const r = last.getBoundingClientRect()
+        const scrollNeeded = (r.top + r.bottom) / 2 + window.scrollY - (wrap.offsetHeight - geo.cover)
+        const next = Math.max(floor, Math.ceil(pad() + scrollNeeded + window.innerHeight - doc.scrollHeight))
+        if (Math.abs(next - pad()) < 1) break
+        list.style.paddingBottom = `${next}px`
       }
     }
 
@@ -212,14 +255,14 @@ export function ClubBallot({
       })
     }
 
-    // The reading line: the open card's centre beside a pinned column, or just under
-    // the pinned band. At the top of the page it starts on the first club (beside the
-    // column, the first rows sit above the card's centre) and moves down to its place
-    // as the page scrolls; over the last stretch it slides down to the last club. So
-    // every club reaches it by scrolling, with no empty space above or under the list.
+    // The reading line: the open card's centre beside a pinned column, or under the
+    // band's bottom edge, where the band hides the club it shows open. Beside the column,
+    // at the top of the page it starts on the first club (the first rows sit above the
+    // card's centre) and moves down to its place as the page scrolls; over the last
+    // stretch it slides down to the last club. So every club reaches it by scrolling.
     const readingLine = () => {
       const r = wrap.getBoundingClientRect()
-      let y = g?.wide ? rail.getBoundingClientRect().top + focus() : r.bottom + 28
+      let y = g?.wide ? rail.getBoundingClientRect().top + focus() : r.bottom - (g?.cover ?? 0)
       const first = rows.current.get(order[0])
       const last = rows.current.get(order[order.length - 1])
       if (!first || !last) return y
@@ -250,8 +293,13 @@ export function ClubBallot({
         const c = (r.top + r.bottom) / 2
         if (c > y) {
           if (prev === null) return 0
-          // hold each club open for a moment, then hand over to the next one
-          const s = clamp(((y - prev) / (c - prev) - 0.2) / 0.6, 0, 1)
+          // hold each club open for a moment, then hand over to the next one: beside the
+          // column over the middle of the way; under the band, halfway once the next club's
+          // row has gone under the band (its centre BAND_PAD below the line), so the club the
+          // band shows open is never a row on screen
+          const mid = g?.wide === false ? 1 - BAND_PAD / (c - prev) : 0.5
+          const half = Math.min(0.3, 1 - mid)
+          const s = clamp(((y - prev) / (c - prev) - (mid - half)) / (2 * half), 0, 1)
           return i - 1 + s * s * (3 - 2 * s)
         }
         prev = c
@@ -339,8 +387,10 @@ export function ClubBallot({
       if (i < 0 || !row) return
       held = i
       const r = row.getBoundingClientRect()
+      // the phone band pins as the page scrolls, and the line moves up with it
+      const line = g && !g.wide ? Math.min(readingLine(), wrap.offsetHeight - g.cover) : readingLine()
       window.scrollBy({
-        top: (r.top + r.bottom) / 2 - readingLine(),
+        top: (r.top + r.bottom) / 2 - line,
         behavior: moves() ? 'smooth' : 'auto',
       })
       track()
@@ -362,9 +412,29 @@ export function ClubBallot({
     // the column's height follows the CTA bar, which grows once a club is picked
     const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(remeasure)
     ro?.observe(rail)
+    // the CTA bar's spacer under the list gets its height after this first measure, and
+    // grows once a club is picked; refit the end of the list the next frame, since the
+    // refit itself resizes the page
+    let refit = 0
+    const pageRo =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => {
+            cancelAnimationFrame(refit)
+            refit = requestAnimationFrame(() => {
+              fitList()
+              track()
+            })
+          })
+    pageRo?.observe(document.body)
     return () => {
       bringToLine.current = () => {}
+      // the next list (or no list: nothing found) starts from the plain layout
+      list.style.removeProperty('margin-top')
+      list.style.removeProperty('padding-bottom')
       cancelAnimationFrame(raf)
+      cancelAnimationFrame(refit)
+      pageRo?.disconnect()
       clearTimeout(idle)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', remeasure)
@@ -484,6 +554,7 @@ export function ClubBallot({
 
       <div className="lg:col-span-5 lg:col-start-8 lg:row-start-2">
         <ul
+          ref={listRef}
           className="mt-4 grid grid-cols-1 gap-2.5"
           role="radiogroup"
           aria-label={t('elections.club.title')}
@@ -505,6 +576,7 @@ export function ClubBallot({
                   }}
                   onFocus={(e) => {
                     // keyboard focus brings the club to the reading line, so the rail opens it
+                    // (on a phone, under the band: the focused row rises over it, elections.css)
                     if (isFocusVisible(e.currentTarget)) bringToLine.current(club.id)
                   }}
                   className="elx-paper flex w-full items-center gap-3 px-3.5 py-3 text-start active:scale-[0.99]"
