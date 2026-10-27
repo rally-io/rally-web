@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // Relative imports need an explicit extension here: package.json sets
 // "type": "module", so these run as ESM and Node's resolver throws
 // ERR_MODULE_NOT_FOUND at load time otherwise, 500ing every request before
-// the handler runs. api/esm-imports.test.ts guards this.
+// the handler runs. api/_esm-imports.test.ts guards this.
 import { getCorporateEvent } from '../src/constants/corporateEvents.js'
 import { injectOg, absoluteUrl } from '../src/lib/og.js'
 
