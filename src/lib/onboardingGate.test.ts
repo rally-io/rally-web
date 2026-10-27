@@ -23,10 +23,11 @@ describe('isOnboardingGateExempt', () => {
     // A shared live-bracket link is a bare spectator screen — gating it would
     // bounce a signed-in but incomplete player away from someone else's game.
     '/live/abc', '/live', '/LIVE/abc',
+    '/elections', '/elections/', '/Elections',
   ])('exempts %s', (p) => {
     expect(isOnboardingGateExempt(p)).toBe(true)
   })
-  it.each(['/', '/tournaments', '/tournaments/t-1', '/clubs/c-1', '/my-activity', '/profile/edit/extra', '/joined'])('gates %s', (p) => {
+  it.each(['/', '/tournaments', '/tournaments/t-1', '/clubs/c-1', '/my-activity', '/profile/edit/extra', '/joined', '/electionsx'])('gates %s', (p) => {
     expect(isOnboardingGateExempt(p)).toBe(false)
   })
 })
