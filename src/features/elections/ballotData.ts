@@ -98,6 +98,8 @@ export const BRANDS: ElectionBrand[] = [
   { id: 'total-padel', name: 'טוטאל פאדל', nameEn: 'Total Padel', branches: 1 },
   { id: 'sol-padel', name: 'פאדל סול', nameEn: 'Sol Padel', branches: 1 },
   { id: 'padel-eilat', name: 'פאדל אילת', nameEn: 'Padel Eilat', branches: 1 },
+  // Added by hand on 28.10.2026, while voting was open (not in the CSV).
+  { id: 'head-padel', name: 'Head Padel', nameEn: 'Head Padel', branches: 1 },
 ]
 
 export const CLUBS: ElectionClub[] = [
@@ -562,5 +564,14 @@ export const CLUBS: ElectionClub[] = [
     name: 'האקדמיה לטניס ופאדל אילת',
     city: 'אילת',
     region: 'south',
+  },
+  // Added by hand on 28.10.2026, while voting was open (not in the CSV). Not a Rally club yet.
+  // Region as for the other Caesarea rows above. rally-api CLUB_IDS gained the id in the same change.
+  {
+    id: 'head-padel-caesarea',
+    brand: 'head-padel',
+    name: 'Head Padel קיסריה',
+    city: 'קיסריה',
+    region: 'haifa',
   },
 ]
