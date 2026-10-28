@@ -29,6 +29,7 @@ import { Logo } from '@/components/ui/Logo'
 import { cn } from '@/lib/utils'
 import { describeLevel, LevelChip } from '@/components/players/level'
 import { BallMark } from '@/components/icons/BallMark'
+import { isVotingOpen } from '@/features/elections/config'
 
 type SkillTier = 'bronze' | 'silver' | 'gold'
 
@@ -81,19 +82,30 @@ export function Navbar() {
   const isSignedIn = !!session
 
   // Player destinations first, business links last. Seven is the ceiling — an eighth
-  // link means something here has to go, not a smaller font.
+  // link means something here has to go, not a smaller font. The elections tab is the one
+  // exception: it shows only while voting is open and leaves by itself when the polls close.
   // `state` travels with the navigation (never a query param a visitor could copy): the ball
   // page reads it as the door the visit came through, so nav opens are not "direct" opens.
-  const navLinks: { to: string; label: string; icon: LucideIcon; state?: { source: 'nav' } }[] = [
+  // `emoji` takes the icon's place in the drawer and leads the label in the bar.
+  const navLinks: {
+    to: string
+    label: string
+    icon?: LucideIcon
+    emoji?: string
+    state?: { source: 'nav' }
+  }[] = [
     { to: '/', label: t('nav.app'), icon: Home },
     { to: '/tournaments', label: t('nav.tournaments'), icon: Trophy },
     { to: '/ranking', label: t('nav.ranking'), icon: Medal },
     { to: '/network', label: t('nav.ball'), icon: BallIcon, state: { source: 'nav' } },
+    ...(isVotingOpen() ? [{ to: '/elections', label: t('nav.elections'), emoji: '🇮🇱' }] : []),
     // { to: '/clubs', label: t('nav.clubs'), icon: MapPin },
     { to: '/crm', label: t('nav.crm'), icon: LayoutDashboard },
     { to: '/coaches', label: t('nav.coaches'), icon: Dumbbell },
     { to: '/contact', label: t('nav.contact'), icon: Mail },
   ]
+  // Eight labels fit one line from 1280px, in English too, only with a little less room each.
+  const tight = navLinks.length > 7
 
   // Mirrors the mobile drawer (AppDrawerItems). Items without a web route are
   // marked `comingSoon` — they render disabled with a "Soon" badge until the
@@ -167,7 +179,7 @@ export function Navbar() {
           <Logo size="md" showText={true} />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className={cn('hidden md:flex items-center', tight ? 'gap-0' : 'gap-1')}>
           {navLinks.map((link) => {
             const isActive = location.pathname === link.to
             return (
@@ -176,12 +188,18 @@ export function Navbar() {
                 to={link.to}
                 state={link.state}
                 className={cn(
-                  'relative font-display font-semibold text-base px-4 py-2.5 rounded-lg transition-all duration-200',
+                  'relative font-display font-semibold text-base py-2.5 rounded-lg transition-all duration-200',
+                  tight ? 'px-3' : 'px-4',
                   isActive
                     ? 'text-rally-accent'
                     : 'text-rally-text-2 hover:text-rally-text hover:bg-white/5',
                 )}
               >
+                {link.emoji && (
+                  <span aria-hidden className="me-1.5">
+                    {link.emoji}
+                  </span>
+                )}
                 {link.label}
                 {isActive && (
                   <span
@@ -366,7 +384,13 @@ export function Navbar() {
                     : 'text-rally-text-2 hover:text-rally-text hover:bg-white/5 border border-transparent',
                 )}
               >
-                <Icon size={20} className={isActive ? 'text-rally-accent' : 'text-rally-text-muted'} />
+                {Icon ? (
+                  <Icon size={20} className={isActive ? 'text-rally-accent' : 'text-rally-text-muted'} />
+                ) : (
+                  <span aria-hidden className="w-5 text-center text-xl leading-none">
+                    {link.emoji}
+                  </span>
+                )}
                 <span>{link.label}</span>
               </Link>
             )
