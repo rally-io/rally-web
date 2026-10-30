@@ -88,3 +88,17 @@ describe('api/ serverless functions', () => {
     expect(bad, `${file}: a module it imports has an extensionless relative import`).toEqual([])
   })
 })
+
+// Without a framework, Vercel builds every file in api/ as its own function, test
+// files included, unless the name starts with `_` or `.` or ends in .d.ts. The
+// Hobby plan allows 12 per deployment, and a 13th fails the whole deployment with
+// no reason in the commit status (2026-10-27, when elections-og.ts arrived). That
+// is why the tests in this folder start with `_`.
+describe('api/ function count', () => {
+  it('stays within the Hobby plan limit of 12 functions', () => {
+    const functions = readdirSync(API_DIR).filter(
+      (f) => /\.(js|ts|mjs|cjs)$/.test(f) && !/^[_.]/.test(f) && !f.endsWith('.d.ts'),
+    )
+    expect(functions.length, `api/ builds ${functions.join(', ')}`).toBeLessThanOrEqual(12)
+  })
+})

@@ -11,7 +11,8 @@
     "signin": "Sign in",
     "coaches": "Join as a Coach",
     "ball": "The Rally ball",
-    "ranking": "Ranking"
+    "ranking": "Ranking",
+    "elections": "Elections"
   },
   "common": {
     "loading": "Loading...",
@@ -148,7 +149,9 @@
       "modal_title": "Sign in to continue",
       "modal_subtitle": "Use your account to register, book courts, and track your activity.",
       "sign_in_to_view": "Sign in to view your activity",
-      "sign_in_button": "Sign in / Create account"
+      "sign_in_button": "Sign in / Create account",
+      "elections_title": "One step before your vote is in",
+      "elections_subtitle": "To make it count, just sign up or sign in to your Rally account. One tap with Google, Apple or Facebook."
     }
   },
   "user_menu": {
@@ -1853,6 +1856,87 @@
       "courtSideFit": "Sides fit: you {{mine}}, them {{theirs}}",
       "availability": "Also free {{slot}}",
       "similarLevel": "Similar level"
+    }
+  },
+  "elections": {
+    "badge": "Elections 2026",
+    "hero": {
+      "title": "Elections 2026",
+      "sticker": "Vote for Israel's best club",
+      "sub": "One ballot for a club, one for a chain. This time the players decide who's best.",
+      "prize": "Every voter enters the draw for a Bullpadel racket.",
+      "prize_date": "Draw on {{date}}.",
+      "cta": "To the ballot"
+    },
+    "poll": {
+      "title": "Who's leading?",
+      "live": "LIVE",
+      "note": "Illustration only. Real results revealed on {{date}}."
+    },
+    "countdown": {
+      "label": "Polls close in",
+      "days_one": "1 day",
+      "days_other": "{{count}} days"
+    },
+    "step": "Ballot {{index}} of {{total}}",
+    "back": "Back",
+    "club": {
+      "title": "Israel's Club",
+      "subtitle": "Where do you love to play? One club.",
+      "search": "Search a club or city",
+      "empty": "Nothing found. Try another name or city.",
+      "next": "Next ballot: the chain",
+      "pick_first": "Pick a club"
+    },
+    "regions": {
+      "all": "All",
+      "tlv": "Tel Aviv",
+      "sharon": "Sharon",
+      "center": "Center",
+      "shfela": "Shfela",
+      "jerusalem": "Jerusalem",
+      "haifa": "Haifa area",
+      "north": "North",
+      "south": "South"
+    },
+    "chain": {
+      "title": "Israel's Chain",
+      "subtitle": "One chain, all its branches. Who does it best?",
+      "branches_one": "1 branch",
+      "branches_other": "{{count}} branches",
+      "next": "Review",
+      "pick_first": "Pick a chain",
+      "skip": "Skip the chain ballot"
+    },
+    "review": {
+      "title": "Your ballots are ready",
+      "subtitle": "One more tap and your vote is in.",
+      "club": "Club",
+      "chain": "Chain",
+      "no_chain": "No chain",
+      "edit": "Change",
+      "cta": "Cast my vote",
+      "note_signin": "To make it count, just sign in with your Rally account: Google, Apple or Facebook. Takes 10 seconds.",
+      "note_signed_in": "One vote per user. Once it's in, it's in.",
+      "error": "Something went wrong counting your vote. Try again."
+    },
+    "counting": "Counting your vote...",
+    "box_alt": "A ballot box shaped like a padel ball",
+    "done": {
+      "title": "You voted!",
+      "title_already": "You already voted",
+      "raffle": "You're in the draw for a Bullpadel racket.",
+      "your_club": "Your club",
+      "your_chain": "Your chain",
+      "wa_title": "The racket winner and the results are announced on {{date}} in the Rally WhatsApp community",
+      "wa_cta": "Join the community",
+      "share": "Bring more voters",
+      "share_text": "I voted in Rally's Elections 2026 for Israel's best padel club: {{club}}. Your turn, there's a Bullpadel racket draw too",
+      "app": "Don't have Rally yet? Download"
+    },
+    "closed": {
+      "title": "The polls are closed",
+      "body": "Thanks to everyone who voted. Results and the raffle winner are announced on {{date}} in the WhatsApp community."
     }
   }
 }

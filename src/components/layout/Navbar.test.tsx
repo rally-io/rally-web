@@ -6,6 +6,12 @@ import { Navbar } from './Navbar'
 
 const signOut = vi.fn()
 const clearSession = vi.fn()
+const mockVoting = vi.hoisted(() => ({ open: true }))
+
+vi.mock('@/features/elections/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/elections/config')>()),
+  isVotingOpen: () => mockVoting.open,
+}))
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
@@ -71,20 +77,47 @@ describe('Navbar sign out', () => {
 
 describe('nav order and names', () => {
   afterEach(async () => {
+    mockVoting.open = true
     await i18n.changeLanguage('he')
   })
 
+  // The flag is decoration (aria-hidden), so compare the names a screen reader reads.
+  const linkNames = (nav: HTMLElement) =>
+    within(nav).getAllByRole('link').map((a) => a.textContent?.replace(/\p{Regional_Indicator}/gu, '').trim())
+
   it.each([
-    ['he', ['אפליקציה', 'טורנירים', 'דירוג', 'הכדור של Rally', 'מערכת למועדונים', 'הצטרפו כמאמנים', 'צור קשר']],
-    ['en', ['App', 'Tournaments', 'Ranking', 'The Rally ball', 'Club System', 'Join as a Coach', 'Contact']],
-  ])('lists the seven links player-first in %s', async (lng, labels) => {
+    ['he', ['אפליקציה', 'טורנירים', 'דירוג', 'הכדור של Rally', 'בחירות 2026', 'מערכת למועדונים', 'הצטרפו כמאמנים', 'צור קשר']],
+    ['en', ['App', 'Tournaments', 'Ranking', 'The Rally ball', 'Elections', 'Club System', 'Join as a Coach', 'Contact']],
+  ])('lists the links player-first in %s, elections last of the player ones while voting is open', async (lng, labels) => {
     await i18n.changeLanguage(lng)
     renderNavbar()
     const nav = screen.getAllByRole('navigation')[0]
-    const links = within(nav).getAllByRole('link').map((a) => a.textContent?.trim())
-    expect(links).toEqual(labels)
+    expect(linkNames(nav)).toEqual(labels)
     const ball = within(nav).getByRole('link', { name: labels[3] })
     expect(ball).toHaveAttribute('href', '/network')
+  })
+
+  it('the elections tab leads with the Israeli flag in the bar and wears it as the icon in the drawer', () => {
+    renderNavbar()
+    const bar = within(screen.getAllByRole('navigation')[0]).getByRole('link', { name: 'בחירות 2026' })
+    expect(bar).toHaveAttribute('href', '/elections')
+    expect(bar.firstElementChild).toHaveTextContent('🇮🇱')
+    expect(bar.firstElementChild).toHaveAttribute('aria-hidden', 'true')
+
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    const drawer = within(screen.getAllByRole('navigation')[1]).getByRole('link', { name: 'בחירות 2026' })
+    expect(drawer).toHaveAttribute('href', '/elections')
+    expect(drawer.firstElementChild).toHaveTextContent('🇮🇱')
+    expect(drawer.querySelector('svg')).toBeNull()
+  })
+
+  it('drops the elections tab once the polls close, back to seven links', () => {
+    mockVoting.open = false
+    renderNavbar()
+    fireEvent.click(screen.getByLabelText('Toggle menu'))
+    const [bar, drawer] = screen.getAllByRole('navigation')
+    expect(linkNames(bar)).toEqual(['אפליקציה', 'טורנירים', 'דירוג', 'הכדור של Rally', 'מערכת למועדונים', 'הצטרפו כמאמנים', 'צור קשר'])
+    expect(within(drawer).queryByRole('link', { name: 'בחירות 2026' })).toBeNull()
   })
 
   it('the drawer draws the ball with its own mark, not a generic graph glyph', () => {

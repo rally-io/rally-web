@@ -11,7 +11,9 @@ export function computeNeedsDetails(status: OnboardingStatus | null): boolean {
 
 // Routes that either ARE the details step, are part of authentication, collect the
 // details themselves (/join/*), are mid-payment, are a bare spectator screen
-// (/live/:token), or are legal pages a player may need to read before finishing.
+// (/live/:token), are the /elections ballot (a voter signs in only to cast, and the
+// parked ballot is cast on return; a detour to the details step first would lose
+// the vote), or are legal pages a player may need to read before finishing.
 // React Router matches routes case-insensitively, so these must too — every regex
 // carries the `i` flag. The routes that can't have a nested path also tolerate an
 // optional trailing slash.
@@ -24,6 +26,7 @@ const EXEMPT = [
   /^\/payment-method\/?$/i,
   /^\/payments(\/|$)/i,
   /^\/live(\/|$)/i,
+  /^\/elections(\/|$)/i,
   /^\/terms\/?$/i,
   /^\/privacy\/?$/i,
 ]

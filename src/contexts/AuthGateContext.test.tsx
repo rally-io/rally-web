@@ -106,4 +106,23 @@ describe('AuthGateContext', () => {
     await expect(promise).rejects.toThrow('USER_CANCELLED')
     expect(result.current.internals.open).toBe(false)
   })
+
+  it('rejects with LEFT_FOR_AUTH_PAGE when the flow moves on to a full auth page', async () => {
+    const { result } = renderHook(
+      () => ({ gate: useAuthGate(), internals: useAuthGateInternals() }),
+      { wrapper: ({ children }) => <Harness initialSession={null}>{children}</Harness> },
+    )
+
+    let promise!: Promise<void>
+    act(() => {
+      promise = result.current.gate.requireSignIn()
+    })
+
+    act(() => {
+      result.current.internals.leave()
+    })
+
+    await expect(promise).rejects.toThrow('LEFT_FOR_AUTH_PAGE')
+    expect(result.current.internals.open).toBe(false)
+  })
 })
