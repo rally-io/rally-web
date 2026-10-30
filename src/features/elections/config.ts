@@ -25,6 +25,7 @@ const LOGOS = new Set<string>([
   'ginosar',
   'green-padel',
   'gt-padel',
+  'head-padel',
   'house-padel',
   'itec',
   'maccabim',
