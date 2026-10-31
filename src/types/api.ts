@@ -265,6 +265,7 @@ export interface MyRegistration {
   team_name?: string | null
   status: string
   payment_status?: string | null
+  service_fee?: number | null
   fee_waiver_type?: string | null
   fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
   /** The level category the pair chose at registration, or null. */

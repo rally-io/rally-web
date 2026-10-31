@@ -519,6 +519,18 @@ describe('TournamentDetailPage refetches when its registration state goes stale'
     expect(screen.queryByTestId('tournament-waitlist-card')).not.toBeInTheDocument()
   })
 
+  it('refetches the tournament after a sign-up, so Back shows it instead of the form', async () => {
+    const q = tr({ format: 'singles' })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150, waitlist_position: 1 } } as any)
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    await waitFor(() => expect(mockRegisterTournament).toHaveBeenCalled())
+    await waitFor(() => expect(q.refetch).toHaveBeenCalledTimes(1))
+  })
+
   it('refetches the tournament when the server says the viewer is already registered, and keeps the error', async () => {
     const q = tr({ format: 'singles' })
     mockUseTournament.mockReturnValue(q)

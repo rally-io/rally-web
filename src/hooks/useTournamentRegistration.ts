@@ -106,6 +106,14 @@ export interface UseTournamentRegistrationOptions {
    *  rally-api translates its messages from Accept-Language, so a Hebrew site
    *  never sees the English sentence. */
   onRegisterRejected?: () => void
+  /** The hook is done with a registration it created: any free or coupon
+   *  confirmation has finished, and the payment hand-off (if any) is under way.
+   *  What the caller loaded still shows the player as not signed up, and React
+   *  Query keeps serving it for 5 minutes (src/main.tsx), so the caller refetches.
+   *  Not before the confirmation: that would cache the row without it. Fires
+   *  however this ended (a failed confirmation, 'stay', the caller gone mid-flight)
+   *  because the row exists in all of them. Never fires when no row was created. */
+  onRegistrationSettled?: () => void
   /** Keep a residual 422 PROFILE_FIELDS_REQUIRED inline instead of the global
    *  redirect to /profile/edit. */
   skipProfileRedirect?: boolean
@@ -147,7 +155,8 @@ export function useTournamentRegistration(
   const { t } = useTranslation()
   const navigate = useNavigate()
   const {
-    returnTo, onTournamentFull, onRegisterRejected, skipProfileRedirect, onRegistered, registrationSource,
+    returnTo, onTournamentFull, onRegisterRejected, onRegistrationSettled, skipProfileRedirect, onRegistered,
+    registrationSource,
   } = options
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
@@ -193,6 +202,7 @@ export function useTournamentRegistration(
       setIsRegistering(true)
       setRegisterError(null)
       setGateError(null)
+      let created = false
       try {
         const payload = buildRegisterPayload(
           tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel, registrationSource, preferredDay,
@@ -200,6 +210,7 @@ export function useTournamentRegistration(
         const result = skipProfileRedirect
           ? await registerTournament(tournament.id, payload, { skipProfileRedirect: true })
           : await registerTournament(tournament.id, payload)
+        created = result.success
         if (!mounted.current) return
         if (!result.success) {
           setRegisterError(translateRegistrationError(result.error.message, t))
@@ -332,11 +343,12 @@ export function useTournamentRegistration(
         )
       } finally {
         if (mounted.current) setIsRegistering(false)
+        if (created) onRegistrationSettled?.()
       }
     },
     [
-      tournament, t, navigate, returnTo, onTournamentFull, onRegisterRejected, skipProfileRedirect, onRegistered,
-      registrationSource,
+      tournament, t, navigate, returnTo, onTournamentFull, onRegisterRejected, onRegistrationSettled,
+      skipProfileRedirect, onRegistered, registrationSource,
     ],
   )
 

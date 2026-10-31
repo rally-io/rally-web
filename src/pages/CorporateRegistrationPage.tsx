@@ -86,6 +86,11 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
    * registered card, which is where the player reads why and retries.
    */
   const [evidenceError, setEvidenceError] = useState<string | null>(null)
+  // What this page loaded is out of date after any of the three outcomes below. A
+  // refusal may be "already on the waiting list", so the form has to give way there too.
+  const rereadTournament = () => {
+    void queryClient.invalidateQueries({ queryKey: ['tournament', event.tournamentId] })
+  }
   const registration = useTournamentRegistration(tr, gate, {
     returnTo,
     skipProfileRedirect: true,
@@ -93,9 +98,9 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
     // registration_channel.py) refuses any registration without this marker.
     registrationSource: 'event_page',
     onRegistered: (reg) => pendingUploadRef.current?.(reg),
-    onTournamentFull: () => {
-      void queryClient.invalidateQueries({ queryKey: ['tournament', event.tournamentId] })
-    },
+    onTournamentFull: rereadTournament,
+    onRegisterRejected: rereadTournament,
+    onRegistrationSettled: rereadTournament,
   })
   /**
    * Once the form has been shown, it stays: the readiness skeleton below is a

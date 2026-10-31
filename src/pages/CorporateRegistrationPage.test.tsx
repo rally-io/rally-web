@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient } from '@tanstack/react-query'
 import i18n from '@/i18n'
 
 import {
@@ -220,6 +221,34 @@ describe('CorporateRegistrationPage — states', () => {
     fireEvent.click(screen.getByTestId('waitlist-complete-payment'))
     expect(screen.getByTestId('route-probe').textContent).toBe(
       'registration_id=r-9&tournament_id=t-1&waitlist=1&return_to=%2Fjoin%2Facme',
+    )
+  })
+
+  // "Back to event" and a retry both land here: without this the form stays up for
+  // 5 minutes (src/main.tsx) over a sign-up that already exists.
+  it.each(['onRegisterRejected', 'onRegistrationSettled', 'onTournamentFull'] as const)(
+    '%s re-reads the tournament',
+    (option) => {
+      const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+      renderPage()
+      const options = mockUseRegistration.mock.lastCall?.[2]
+      options?.[option]?.()
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tournament', 't-1'] })
+      invalidate.mockRestore()
+    },
+  )
+
+  it('a free sign-up on the list reads nothing to pay, not payment complete', () => {
+    mockUseTournament.mockReturnValue(tr({
+      is_full: true,
+      entry_fee: 0,
+      my_waitlist_entry: queuedEntry({
+        id: 'r-9', tournament_id: 't-1', player_1_id: 'p-1', status: 'registered', payment_status: 'completed',
+      }),
+    }))
+    renderPage()
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentFree'),
     )
   })
 

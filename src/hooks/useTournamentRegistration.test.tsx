@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useSearchParams, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
@@ -285,6 +285,99 @@ describe('useTournamentRegistration', () => {
     )
     await act(() => result.current.register(PARTNER as any))
     expect(lastPath).toBe('/tournaments/t-1?')
+  })
+
+  // React Query keeps serving what a page loaded for 5 minutes (src/main.tsx), so a
+  // player coming back saw the form they had just used, not their place in line.
+  describe('onRegistrationSettled', () => {
+    function setup(options: Record<string, unknown> = {}) {
+      const onRegistrationSettled = vi.fn()
+      const hook = renderHook(
+        () => useTournamentRegistration(T, gate(), { onRegistrationSettled, ...options }), { wrapper },
+      )
+      return { onRegistrationSettled, ...hook }
+    }
+
+    it('paid: fires once, as the payment page takes over', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150, waitlist_position: 1 } } as any)
+      const { result, onRegistrationSettled } = setup()
+      await act(() => result.current.register(PARTNER as any))
+      expect(onRegistrationSettled).toHaveBeenCalledTimes(1)
+      expect(lastPath).toMatch(/^\/payment-method\?/)
+    })
+
+    // Earlier, and the page would cache the row as it was before the confirmation.
+    it('free: waits for the free confirmation to finish', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 0 } } as any)
+      let finishZero: (value: unknown) => void = () => {}
+      mockZero.mockReturnValue(new Promise((resolve) => { finishZero = resolve }) as any)
+      const { result, onRegistrationSettled } = setup()
+      let registerPromise!: Promise<void>
+      act(() => { registerPromise = result.current.register(PARTNER as any) })
+      await waitFor(() => expect(mockZero).toHaveBeenCalledWith('r-1'))
+      expect(onRegistrationSettled).not.toHaveBeenCalled()
+      await act(async () => {
+        finishZero({ success: true, data: {} })
+        await registerPromise
+      })
+      expect(onRegistrationSettled).toHaveBeenCalledTimes(1)
+      expect(lastPath).toMatch(/^\/payments\/confirming\?/)
+    })
+
+    it('a coupon covering it all: fires after the confirmation', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 300 } } as any)
+      mockZero.mockResolvedValue({ success: true, data: {} } as any)
+      const { result, onRegistrationSettled } = setup()
+      await act(() => result.current.register(PARTNER as any, undefined, undefined, { id: 'c-1', code: 'X', coversAll: true }))
+      expect(mockZero).toHaveBeenCalledWith('r-1', 'c-1')
+      expect(onRegistrationSettled).toHaveBeenCalledTimes(1)
+    })
+
+    it('fires when the player stays on the page', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150 } } as any)
+      const { result, onRegistrationSettled } = setup({ onRegistered: () => 'stay' as const })
+      await act(() => result.current.register(PARTNER as any))
+      expect(onRegistrationSettled).toHaveBeenCalledTimes(1)
+      expect(lastPath).toBe('/tournaments/t-1?')
+    })
+
+    // The row exists either way: the form must not stay up inviting a second register.
+    it('fires when the free confirmation fails', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 0 } } as any)
+      mockZero.mockResolvedValue({ success: false, error: { code: 'X', message: 'no', details: null } } as any)
+      const { result, onRegistrationSettled } = setup()
+      await act(() => result.current.register(PARTNER as any))
+      expect(result.current.registerError).toBe('no')
+      expect(onRegistrationSettled).toHaveBeenCalledTimes(1)
+    })
+
+    it('fires when the owner unmounted mid-flight: the row exists and the cache still holds the old page', async () => {
+      mockRegister.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150 } } as any)
+      let finishUpload: () => void = () => {}
+      const onRegistered = () => new Promise<void>((resolve) => { finishUpload = resolve })
+      const { result, unmount, onRegistrationSettled } = setup({ onRegistered })
+      let registerPromise!: Promise<void>
+      act(() => { registerPromise = result.current.register(PARTNER as any) })
+      await waitFor(() => expect(mockRegister).toHaveBeenCalled())
+      await act(async () => { await Promise.resolve() })
+      unmount()
+      finishUpload()
+      await registerPromise
+      expect(navigateSpy).not.toHaveBeenCalled()
+      expect(onRegistrationSettled).toHaveBeenCalledTimes(1)
+    })
+
+    it('stays quiet when no row was created: a refusal, a success:false body, a network failure', async () => {
+      const { result, onRegistrationSettled } = setup()
+      mockRegister.mockRejectedValueOnce({ status: 409, code: 'CONFLICT', message: 'already on the waiting list' })
+      await act(() => result.current.register(PARTNER as any))
+      mockRegister.mockResolvedValueOnce({ success: false, error: { code: 'X', message: 'no', details: null } } as any)
+      await act(() => result.current.register(PARTNER as any))
+      mockRegister.mockRejectedValueOnce({ code: 'NETWORK_ERROR', message: 'offline' })
+      await act(() => result.current.register(PARTNER as any))
+      expect(mockRegister).toHaveBeenCalledTimes(3)
+      expect(onRegistrationSettled).not.toHaveBeenCalled()
+    })
   })
 
   // A coupon applied before registering (the /join page). Not part of the register
