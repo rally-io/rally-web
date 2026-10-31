@@ -97,6 +97,23 @@ export interface UseTournamentRegistrationOptions {
    *  refetches so the page flips to its full state). Omitted ⇒ the raw backend
    *  message is shown, as before. */
   onTournamentFull?: () => void
+  /** The server refused the registration (an error response, or a 2xx body
+   *  with success: false): what the caller loaded may be out of date — the
+   *  player or the partner is already in, registration closed, the draw
+   *  filled — so the caller refetches. Not fired for a network failure (the
+   *  refetch would fail too) or for the terms gate (it refetches its own
+   *  messages). Fired for every refusal rather than matched on its text:
+   *  rally-api translates its messages from Accept-Language, so a Hebrew site
+   *  never sees the English sentence. */
+  onRegisterRejected?: () => void
+  /** The hook is done with a registration it created: any free or coupon
+   *  confirmation has finished, and the payment hand-off (if any) is under way.
+   *  What the caller loaded still shows the player as not signed up, and React
+   *  Query keeps serving it for 5 minutes (src/main.tsx), so the caller refetches.
+   *  Not before the confirmation: that would cache the row without it. Fires
+   *  however this ended (a failed confirmation, 'stay', the caller gone mid-flight)
+   *  because the row exists in all of them. Never fires when no row was created. */
+  onRegistrationSettled?: () => void
   /** Keep a residual 422 PROFILE_FIELDS_REQUIRED inline instead of the global
    *  redirect to /profile/edit. */
   skipProfileRedirect?: boolean
@@ -137,7 +154,10 @@ export function useTournamentRegistration(
 ) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { returnTo, onTournamentFull, skipProfileRedirect, onRegistered, registrationSource } = options
+  const {
+    returnTo, onTournamentFull, onRegisterRejected, onRegistrationSettled, skipProfileRedirect, onRegistered,
+    registrationSource,
+  } = options
   const [isRegistering, setIsRegistering] = useState(false)
   const [registerError, setRegisterError] = useState<string | null>(null)
   // Separate from registerError on purpose: this is the ONE state a tick can
@@ -182,6 +202,7 @@ export function useTournamentRegistration(
       setIsRegistering(true)
       setRegisterError(null)
       setGateError(null)
+      let created = false
       try {
         const payload = buildRegisterPayload(
           tournament.format, partnerState, gate.payload, feeWaiver, requestedLevel, registrationSource, preferredDay,
@@ -189,13 +210,18 @@ export function useTournamentRegistration(
         const result = skipProfileRedirect
           ? await registerTournament(tournament.id, payload, { skipProfileRedirect: true })
           : await registerTournament(tournament.id, payload)
+        created = result.success
         if (!mounted.current) return
         if (!result.success) {
           setRegisterError(translateRegistrationError(result.error.message, t))
+          onRegisterRejected?.()
           return
         }
         const reg = result.data
-        trackFunnel('registration_created', { tournament_id: tournament.id })
+        trackFunnel('registration_created', {
+          tournament_id: tournament.id,
+          ...(reg.waitlist_position != null ? { step: 'waitlist' } : {}),
+        })
         // The registration row exists — the caller may now drop the state it
         // must never replay (the partner draft). Deliberately before the
         // payment hand-off: a failed payment is resumed from the row, not by
@@ -267,13 +293,15 @@ export function useTournamentRegistration(
         if (returnTo) sp.set('return_to', returnTo)
         // The payment page applies it on arrival, so it is never typed twice.
         if (coupon) sp.set('coupon', coupon.code)
+        // A queued registration's card is held, not charged: say so on the card page.
+        if (reg.waitlist_position != null) sp.set('waitlist', '1')
         navigate(`/payment-method?${sp.toString()}`)
       } catch (e) {
         // Validation failures (partner already registered, tournament closed,
         // etc.) are RallyException on rally-api — a non-2xx response, which the
         // axios client's interceptor turns into a rejected plain object
         // ({status, code, message, details}), not an Error instance.
-        const err = e as { code?: string; message?: string; details?: unknown } | null
+        const err = e as { status?: number; code?: string; message?: string; details?: unknown } | null
         if (!mounted.current) return
         trackFunnel('registration_error', { tournament_id: tournament.id })
         // The 409 safety net (SCREEN_MESSAGES_WEB_SPEC.md §6a): a message
@@ -289,6 +317,9 @@ export function useTournamentRegistration(
           )
           return
         }
+        // Only a rejection the server answered carries a status; the client's
+        // NETWORK_ERROR has none.
+        if (typeof err?.status === 'number') onRegisterRejected?.()
         if (err?.code === 'TOURNAMENT_FULL' && onTournamentFull) {
           setRegisterError(t('tournament.tournamentFullLine'))
           onTournamentFull()
@@ -312,9 +343,13 @@ export function useTournamentRegistration(
         )
       } finally {
         if (mounted.current) setIsRegistering(false)
+        if (created) onRegistrationSettled?.()
       }
     },
-    [tournament, t, navigate, returnTo, onTournamentFull, skipProfileRedirect, onRegistered, registrationSource],
+    [
+      tournament, t, navigate, returnTo, onTournamentFull, onRegisterRejected, onRegistrationSettled,
+      skipProfileRedirect, onRegistered, registrationSource,
+    ],
   )
 
   return { register, isRegistering, registerError, gateError, setRegisterError, setGateError }

@@ -537,6 +537,14 @@
     "partnerMobileNumberPlaceholder": "Mobile number",
     "partnerInviteButton": "Add Partner",
     "partnerRemove": "Remove partner",
+    "partnerSelfRow": "That's you",
+    "partnerOwnPhoneError": "That's your own number. Enter your partner's number.",
+    "partnerOwnNameWarning": "This matches your name. If your partner has the same name, go ahead.",
+    "partnerNoPartnerYet": "No partner yet?",
+    "partnerFindPartner": "Find a partner",
+    "partnerFindPartnerHint": "Players who fit this tournament, your community first",
+    "partnerLookingCount_one": "1 player looking for a partner",
+    "partnerLookingCount_other": "{{count}} players looking for a partner",
     "tournamentDetailRegistering": "Registering…",
     "tournamentSummaryTitle": "Registration Summary",
     "bookingSummaryClub": "Club",
@@ -591,8 +599,10 @@
       "waitlistNotOpen": "Registration for this tournament isn't open right now",
       "tournamentNotFull": "There are still spots available — try registering instead",
       "alreadyWaiting": "You're already on the waiting list for this tournament",
+      "partnerAlreadyWaiting": "Your partner is already on the waiting list with someone else",
       "notOnWaitlist": "You're not on the waiting list for this tournament",
       "ownPhone": "That's your own number — pick a different partner.",
+      "ownPartner": "You can't be your own partner. Choose a different partner.",
       "missingInviteDetails": "Partner details are missing (first name, phone or country code)",
       "feeWaiverUnavailable": "The residents' discount isn't available for this tournament. Choose \"Not residents\" and try again."
     },
@@ -646,7 +656,14 @@
     "tournamentLeaveWaitlistConfirmTitle": "Leave the waiting list?",
     "tournamentLeaveWaitlistConfirmBody": "You'll lose your spot at position #{{position}}.",
     "tournamentLeaveWaitlistCancelCta": "Cancel",
-    "tournamentWaitlistNoWaiverNote": "The fee waiver isn't available on the waiting list — if a spot opens up, registration is at the full price."
+    "tournamentLeaveWaitlistFailed": "We couldn't take you off the waiting list. Try again.",
+    "tournamentLeaveWaitlistConfirmBodyPaid": "You'll lose your spot at position #{{position}}. Anything you paid or put on hold will be returned.",
+    "tournamentWaitlistPaymentHeld": "Payment held",
+    "tournamentWaitlistPaymentAwaiting": "Awaiting payment",
+    "tournamentWaitlistPaymentSettled": "Payment complete",
+    "tournamentWaitlistPaymentFree": "Nothing to pay",
+    "tournamentWaitlistAwaitingNote": "You keep your place in line, but the organizer can only seat you once payment is in.",
+    "tournamentWaitlistCompletePayment": "Complete payment"
   },
   "profile": {
     "completeTitle": "Complete Your Profile",
@@ -662,6 +679,7 @@
     "countryCode": "Country code",
     "phone": "Phone number",
     "gender": "Gender",
+    "genderPlaceholder": "Select gender",
     "genderMale": "Male",
     "genderFemale": "Female",
     "genderPreferNot": "Prefer not to say",
@@ -1071,6 +1089,8 @@
     "paymentMethodWaitlistHoldNotice": "Your payment will be placed on hold on your card and only charged if a spot opens up and you're moved off the waiting list.",
     "waitlistHoldConfirmedTitle": "You're on the Waiting List",
     "waitlistHoldConfirmedSubtitle": "Your payment is on hold — you'll be charged automatically and confirmed if a spot opens up.",
+    "waitlistSignupSubtitle": "Your place in line is saved. If a spot opens up, the organizer seats you and your payment is settled then.",
+    "waitlistSignupFreeSubtitle": "Your place in line is saved. If a spot opens up, the organizer seats you. There is nothing to pay.",
     "backToEvent": "Back to the event"
   },
   "coupon": {
@@ -1172,6 +1192,7 @@
       "partnerRequiredHintInviteOnly": "Registration is in pairs — invite your partner by name and phone. If they are already on Rally we match them by number.",
       "priceLabel": "Entry fee per pair",
       "holdNote": "The amount is held on your card and charged only once the organisers approve your registration.",
+      "holdNoteWaitlist": "The amount is held on your card and charged only if a spot opens and the organisers seat your pair.",
       "waiverNoChargeNote": "No payment will be taken. Your registration is final once the club verifies residency.",
       "freeNote": "No payment is required for this registration.",
       "submitCta": "Register & pay",
@@ -1192,8 +1213,9 @@
       "terminalBody": "For questions about your registration, ask your tournament organiser.",
       "fullTitle": "All spots are taken",
       "fullBody": "The tournament is full. Ask your tournament organiser — a spot may free up.",
-      "waitlistTitle": "The tournament is full — you can join the waiting list",
-      "waitlistBody": "If a spot opens up, you move from the waiting list into the tournament. You join on the tournament's page on Rally: we place a temporary hold on your card and only charge it if a spot opens.",
+      "waitlistJoinLine": "The tournament is full. Registering here puts your pair on the waiting list; the organisers seat pairs from it if a spot opens.",
+      "submitCtaWaitlist": "Join the waiting list & pay",
+      "submitCtaWaitlistFree": "Join the waiting list",
       "profileSaveError": "We couldn't save your details. Try again in a moment.",
       "sessionError": "Something went wrong loading your profile.",
       "retry": "Try again",
@@ -1726,6 +1748,114 @@
     "ball": {
       "see": "See on the ball",
       "findYourself": "Find yourself on the ball"
+    }
+  },
+  "partners": {
+    "title": "Find a partner",
+    "looking": "Looking for a partner",
+    "lookingBadge": "Looking",
+    "likesYou": "Wants to partner with you",
+    "outsideNetwork": "Outside your network",
+    "you": "You",
+    "tile": {
+      "level": "Level",
+      "side": "Side",
+      "matches": "Matches",
+      "wins": "Wins"
+    },
+    "newToRally": "New to Rally",
+    "side": {
+      "left_side": "Left",
+      "right_side": "Right",
+      "both_sides": "Both"
+    },
+    "slot": {
+      "morning": "in the mornings",
+      "afternoon": "in the afternoons",
+      "evening": "in the evenings",
+      "all_day": "all day",
+      "specific_hours": "at set hours"
+    },
+    "whyYouTwo": "Why you two",
+    "since": "On Rally since {{year}}",
+    "pass": "Pass",
+    "like": "Like",
+    "undo": "Undo pass",
+    "matchesCount_one": "1 match",
+    "matchesCount_other": "{{count}} matches",
+    "search": "Search players",
+    "searchPlaceholder": "Search by name",
+    "searchMinChars": "Type at least {{min}} letters",
+    "searchEmpty": "No players found",
+    "status": {
+      "liked": "Liked",
+      "matched": "Matched",
+      "passed": "Passed"
+    },
+    "match": {
+      "title": "It's a match!",
+      "body": "You and {{name}} matched for {{tournament}}",
+      "register": "Register together",
+      "whatsapp": "Message on WhatsApp",
+      "keepSwiping": "Keep swiping",
+      "alreadyRegistered": "You're already registered with {{name}}",
+      "cannotRegister": "You can't register together anymore: one of you is already registered.",
+      "noPhone": "No phone number on their profile"
+    },
+    "whatsappText": "Hi! We matched on Rally for {{tournament}}. Register together?",
+    "whatsappTextShort": "Hi! We matched on Rally. Register together?",
+    "whatsappNote": {
+      "title": "Before you start",
+      "body": "If you match, your partner can message you on WhatsApp.",
+      "ok": "Got it"
+    },
+    "matches": {
+      "title": "Your matches",
+      "empty": "No matches yet. Keep swiping!",
+      "error": "We couldn't load your matches"
+    },
+    "empty": {
+      "title": "You've seen everyone",
+      "body": "Check back later, or search for a player by name.",
+      "refresh": "Check again",
+      "invite": "Invite a partner"
+    },
+    "inviteMessage": "I'm looking for a partner for {{name}} on Rally. Want to play together?",
+    "needsGender": {
+      "title": "Add your gender",
+      "body": "Mixed tournaments pair players by gender. Add yours to your profile to see partners.",
+      "action": "Edit profile"
+    },
+    "closed": {
+      "title": "Partner search is closed",
+      "body": "You're registered, on the waiting list, or registration has ended.",
+      "openMatches": "Your matches",
+      "backToTournament": "Back to tournament"
+    },
+    "unavailable": {
+      "title": "Not available",
+      "body": "Partner search isn't available for this tournament."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "generic": "Something went wrong. Try again.",
+      "retry": "Try again",
+      "rateLimited": "You're swiping fast! Take a short break and try again."
+    },
+    "back": "Back",
+    "close": "Close",
+    "reason": {
+      "playedWith_one": "Played together once",
+      "playedWith_other": "Played together {{count}} times",
+      "playedAgainst_one": "Played against each other once",
+      "playedAgainst_other": "Played against each other {{count}} times",
+      "mutualPartners_one": "1 partner in common",
+      "mutualPartners_other": "{{count}} partners in common",
+      "sharedTournaments_one": "1 tournament in common",
+      "sharedTournaments_other": "{{count}} tournaments in common",
+      "courtSideFit": "Sides fit: you {{mine}}, them {{theirs}}",
+      "availability": "Also free {{slot}}",
+      "similarLevel": "Similar level"
     }
   },
   "elections": {

@@ -50,10 +50,27 @@ describe('translateRegistrationError', () => {
     )
   })
 
+  it('translates the static "A partner is required for this tournament" message', () => {
+    expect(translateRegistrationError('A partner is required for this tournament', t)).toBe(
+      t('tournament.registrationErrors.partnerRequired'),
+    )
+  })
+
   it('translates the dynamic "Tournament registration is {status}" message', () => {
     expect(translateRegistrationError('Tournament registration is cancelled', t)).toBe(
       t('tournament.registrationErrors.registrationNotOpen'),
     )
+  })
+
+  it('translates the two waiting-list refusals Register can now return', () => {
+    expect(translateRegistrationError('You are already on the waiting list', t)).toBe(
+      t('tournament.registrationErrors.alreadyWaiting'),
+    )
+    expect(
+      translateRegistrationError('That partner is already on the waiting list with someone else', t),
+    ).toBe(t('tournament.registrationErrors.partnerAlreadyWaiting'))
+    // A missing key would make t() echo the key, so check the sentence is real.
+    expect(t('tournament.registrationErrors.partnerAlreadyWaiting')).not.toContain('registrationErrors')
   })
 
   it('falls back to the raw message for anything unrecognized', () => {
@@ -68,6 +85,10 @@ describe('translateRegistrationError — corporate page additions', () => {
   it('maps the own-phone partner refusal', () => {
     expect(translateRegistrationError('That is your own phone number. Choose a different partner.', t))
       .toBe(i18n.t('tournament.registrationErrors.ownPhone'))
+  })
+  it('maps the own-partner refusal (picking yourself)', () => {
+    expect(translateRegistrationError("You can't be your own partner. Choose a different partner.", t))
+      .toBe(i18n.t('tournament.registrationErrors.ownPartner'))
   })
   it('maps the missing-invite-details refusal', () => {
     expect(translateRegistrationError('Missing invite details (first name, phone, or country code)', t))

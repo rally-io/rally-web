@@ -27,16 +27,31 @@ export function translateRegistrationError(message: string, t: TFunction): strin
   if (message === 'That is your own phone number. Choose a different partner.') {
     return t('tournament.registrationErrors.ownPhone')
   }
+  if (message === "You can't be your own partner. Choose a different partner.") {
+    return t('tournament.registrationErrors.ownPartner')
+  }
   if (message === 'Missing invite details (first name, phone, or country code)') {
     return t('tournament.registrationErrors.missingInviteDetails')
   }
-  // e.g. "A partner is required for doubles tournaments"
+  // Static since rally-api's partner_rules.py; the regex below is the older
+  // API's dynamic text, e.g. "A partner is required for doubles tournaments".
+  if (message === 'A partner is required for this tournament') {
+    return t('tournament.registrationErrors.partnerRequired')
+  }
   if (/^A partner is required for \w+ tournaments$/.test(message)) {
     return t('tournament.registrationErrors.partnerRequired')
   }
   // e.g. "Tournament registration is cancelled" / "...is in_progress"
   if (/^Tournament registration is \w+$/.test(message)) {
     return t('tournament.registrationErrors.registrationNotOpen')
+  }
+  // register now queues a pair when the waiting list is the only way in, and
+  // refuses one whose registrant or named partner already waits (409).
+  if (message === 'You are already on the waiting list') {
+    return t('tournament.registrationErrors.alreadyWaiting')
+  }
+  if (message === 'That partner is already on the waiting list with someone else') {
+    return t('tournament.registrationErrors.partnerAlreadyWaiting')
   }
   return message
 }

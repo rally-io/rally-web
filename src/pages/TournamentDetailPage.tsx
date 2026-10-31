@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft, Calendar, Clock, ExternalLink, FileCheck, Trophy, TrendingUp, Users,
@@ -24,16 +24,15 @@ import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMess
 import { TournamentRulesSection } from '@/components/tournaments/TournamentRulesSection'
 import { ParticipantsSection } from '@/components/tournaments/ParticipantsSection'
 import { PartnerSection } from '@/components/tournaments/PartnerSection'
+import { partnerSelfFromProfile } from '@/lib/selfPartner'
+import { partnerDeckPath, showFindPartner } from '@/lib/findPartner'
 import { ResidencyWaiverSelector, formatWaiverTitle } from '@/components/tournaments/ResidencyWaiverSelector'
 import { WaitlistCard } from '@/components/tournaments/WaitlistCard'
 import { PriceBreakdown } from '@/components/coupons/PriceBreakdown'
 import { paymentReceiptRows } from '@/lib/paymentReceipt'
 import { SignInRequiredPanel } from '@/components/auth/SignInRequiredPanel'
-import {
-  joinTournamentWaitlist, leaveTournamentWaitlist,
-} from '@/services/api/tournaments'
-import { translateWaitlistError } from '@/lib/registrationErrors'
-import { useTournamentRegistration, buildRegisterPayload } from '@/hooks/useTournamentRegistration'
+import { useLeaveWaitlist } from '@/hooks/useLeaveWaitlist'
+import { useTournamentRegistration } from '@/hooks/useTournamentRegistration'
 import { uploadRegistrationEvidence } from '@/services/api/registrationEvidence'
 import { validateEvidenceFiles, waivedAmount } from '@/lib/evidenceRules'
 import { ctaFor } from '@/lib/tournamentCta'
@@ -74,9 +73,9 @@ function TournamentRegistrationPage() {
   const { locale } = useRtl()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { data: tr, isLoading, isError, refetch } = useTournament(id!)
+  const { data: tr, isLoading, refetch } = useTournament(id!)
   const { requireSignIn } = useAuthGate()
-  const { status: sessionStatus, refetchOnboarding, needsDetails } = useAppSession()
+  const { status: sessionStatus, playerProfile, refetchOnboarding, needsDetails } = useAppSession()
   const { user } = useAuth()
   const ladder = useSkillLadder()
   // Same query key as the ScreenMessageList mounted below (scope: 'tournament',
@@ -166,15 +165,26 @@ function TournamentRegistrationPage() {
   }
 
   const {
-    register, isRegistering, registerError, gateError, setRegisterError, setGateError,
+    register, isRegistering, registerError, gateError, setRegisterError,
   } = useTournamentRegistration(tr, gate, {
     onRegistered: async (reg) => {
+      // A new registration: a stale "left" override must not outlive it.
+      setWaitlistOverride(undefined)
       try {
         await pendingUploadRef.current?.(reg)
       } finally {
         setPartnerState({ phase: 'idle' })
       }
     },
+    // "Already registered" (the player, or the partner) means this page is out
+    // of date: refetch so it shows the registration instead of Register Now.
+    // The error text is the hook's state and stays.
+    onRegisterRejected: () => { void refetch() },
+    // The row exists: Back from the next screen must show it, not this form.
+    onRegistrationSettled: () => { void refetch() },
+    // The list was switched off between load and submit: Register answers
+    // TOURNAMENT_FULL again. Refetch so the page flips to its full state.
+    onTournamentFull: () => { void refetch() },
   })
 
   const [isCheckingProfile, setIsCheckingProfile] = useState(false)
@@ -187,12 +197,8 @@ function TournamentRegistrationPage() {
     return () => { mounted.current = false }
   }, [])
 
-  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false)
-  const [waitlistError, setWaitlistError] = useState<string | null>(null)
-  const [isLeavingWaitlist, setIsLeavingWaitlist] = useState(false)
-  // undefined = defer to `tr.my_waitlist_entry`; null = explicitly left;
-  // an entry = just joined. Lets join/leave update the UI immediately for a
-  // free tournament, without waiting on a refetch.
+  // undefined = defer to `tr.my_waitlist_entry`; null = explicitly left. Lets a
+  // leave hide the card immediately, without waiting on the refetch.
   const [waitlistOverride, setWaitlistOverride] = useState<TournamentWaitlistEntry | null | undefined>(
     undefined,
   )
@@ -260,12 +266,27 @@ function TournamentRegistrationPage() {
     scrolledForRef.current = first.id
   }, [gate.outstanding, gate.blocking])
 
+  // The partner deck sends the player back here with a partner picked, asking
+  // for { scrollTo: 'partner-section' }. That section renders only once the
+  // tournament and the session have loaded, so look again as each lands; the
+  // ref keeps it to one scroll per visit.
+  const location = useLocation()
+  const scrollTo = (location.state as { scrollTo?: string } | null)?.scrollTo
+  const scrolledToPartnerRef = useRef(false)
+  useEffect(() => {
+    if (scrollTo !== 'partner-section' || scrolledToPartnerRef.current) return
+    const el = document.getElementById('partner-section')
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    scrolledToPartnerRef.current = true
+  }, [scrollTo, tr, sessionStatus])
+
   // Register is one continuous flow: sign in, then prove the profile has what
   // rally-api requires, then partner, then the terms gate, then submit.
   // requireSignIn() resolves immediately if already authenticated, otherwise
   // opens the auth gate modal and resolves once sign-in/sign-up succeeds.
-  const handleRegisterNow = () => {
-    trackFunnel('registration_started', { tournament_id: id })
+  const handleRegisterNow = (step?: 'waitlist') => {
+    trackFunnel('registration_started', { tournament_id: id, ...(step ? { step } : {}) })
     void requireSignIn()
       .then(async () => {
         if (!tr || !mounted.current) return
@@ -338,103 +359,17 @@ function TournamentRegistrationPage() {
       })
   }
 
-  // Same gates as handleRegisterNow (sign-in, partner choice, screen-message
-  // acknowledgment) — join_waitlist replays the exact same payload shape
-  // through the registration pipeline at promotion time.
-  const handleJoinWaitlist = () => {
-    trackFunnel('registration_started', { tournament_id: id, step: 'waitlist' })
-    void requireSignIn()
-      .then(async () => {
-        if (!tr || !mounted.current) return
-        if (!(await checkRegistrationProfile())) return
-
-        if (!validateEvidence()) {
-          document
-            .getElementById('residency-waiver-section')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          return
-        }
-
-        const { partnerState: selectedPartner, gate: currentGate } = latestSelection.current
-        if (isPartneredFormat && selectedPartner.phase === 'idle') {
-          document
-            .getElementById('partner-section')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          return
-        }
-        if (!currentGate.isSatisfied) {
-          const first = currentGate.blocking[0]
-          if (first) {
-            document
-              .getElementById(`screen-message-${first.id}`)
-              ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-          return
-        }
-        setIsJoiningWaitlist(true)
-        setWaitlistError(null)
-        setGateError(null)
-        try {
-          const payload = buildRegisterPayload(tr.format, selectedPartner, currentGate.payload)
-          const result = await joinTournamentWaitlist(tr.id, payload)
-          if (!mounted.current) return
-          if (!result.success) {
-            setWaitlistError(translateWaitlistError(result.error.message, t))
-            return
-          }
-          const entry = result.data
-          setPartnerState({ phase: 'idle' })
-          trackFunnel('registration_created', { tournament_id: tr.id, step: 'waitlist' })
-          setWaitlistOverride(entry)
-          const amount = (entry.entry_fee ?? 0) + (entry.service_fee ?? 0)
-          // A paid tournament places a pre-auth hold via the same payment-method
-          // flow as registration; a free one is done the moment the entry lands
-          // — the WaitlistCard below now renders from `waitlistOverride`.
-          if (amount >= 0.01) {
-            const sp = new URLSearchParams({
-              type: 'tournament_waitlist_hold',
-              waitlist_entry_id: entry.id,
-              tournament_id: tr.id,
-              amount: String(amount),
-            })
-            navigate(`/payment-method?${sp.toString()}`)
-          }
-        } catch (e) {
-          const err = e as { code?: string; message?: string; details?: unknown } | null
-          if (!mounted.current) return
-          trackFunnel('registration_error', { tournament_id: tr.id, step: 'waitlist' })
-          if (gate.handleGateError(err)) {
-            setGateError(
-              t('screenMessages.registrationGateRequired', {
-                defaultValue: 'You must accept the tournament terms to continue',
-              }),
-            )
-            return
-          }
-          setWaitlistError(
-            err?.message
-              ? translateWaitlistError(err.message, t)
-              : t('tournament.registrationFailedTitle'),
-          )
-        } finally {
-          if (mounted.current) setIsJoiningWaitlist(false)
-        }
-      })
-      .catch(() => {
-        // USER_CANCELLED or SUPERSEDED — stay on the page as-is.
-      })
-  }
-
-  const handleLeaveWaitlist = async () => {
-    if (!tr) return
-    setIsLeavingWaitlist(true)
-    try {
-      const result = await leaveTournamentWaitlist(tr.id)
-      if (result.success) setWaitlistOverride(null)
-    } finally {
-      setIsLeavingWaitlist(false)
-    }
-  }
+  // Leave returns whatever the pair paid or put on hold. The rules for a refused
+  // leave (say why, refetch, drop the card only when the entry is gone) live in
+  // the hook, shared with the corporate page.
+  const {
+    leave: handleLeaveWaitlist, isLeaving: isLeavingWaitlist, leaveError: waitlistError,
+  } = useLeaveWaitlist(tr?.id, {
+    refetch,
+    // Either way a refusal that said "already on the list" is false from here on.
+    onLeft: () => { setWaitlistOverride(null); setRegisterError(null) },
+    onEntryGone: () => { setWaitlistOverride(undefined); setRegisterError(null) },
+  })
 
   if (isLoading) {
     return (
@@ -443,7 +378,9 @@ function TournamentRegistrationPage() {
       </main>
     )
   }
-  if (isError || !tr) {
+  // No tournament at all. Not `isError`: a failed background refetch flags it
+  // while keeping the data, and the page should keep showing what it has.
+  if (!tr) {
     return (
       <main className="pt-32 min-h-screen bg-rally-bg text-center text-rally-text-2">
         {t('tournament.tournamentDetailLoadErrorTitle')}
@@ -472,6 +409,20 @@ function TournamentRegistrationPage() {
     myWaitlistEntry,
     myRegistration: myReg,
   })
+  // The row opens the partner deck, on exactly the tournaments the app would show it on.
+  const findPartner = showFindPartner({
+    partnerSearchAvailable: tr.partner_search_available,
+    format: tr.format,
+    registrationOpen: open,
+    hasRegistration: myReg != null,
+    hasWaitlistEntry: myWaitlistEntry != null,
+    partnerPicked: partnerState.phase !== 'idle',
+  })
+    ? {
+        lookingCount: tr.partner_looking_count ?? 0,
+        onPress: () => navigate(partnerDeckPath(tr.id)),
+      }
+    : undefined
   const myRegResidents = (myReg?.fee_waiver_resident_count ?? 0) as 0 | 1 | 2
   const myRegAmountDue = myReg ? waivedAmount(tr.entry_fee, seats, myRegResidents) : tr.entry_fee
   const waiverZero =
@@ -746,26 +697,15 @@ function TournamentRegistrationPage() {
             position={myWaitlistEntry.position}
             onLeave={handleLeaveWaitlist}
             isLeaving={isLeavingWaitlist}
+            registration={myWaitlistEntry.registration}
+            tournament={tr}
+            onEvidenceChanged={async () => { await refetch() }}
           />
-        )}
-
-        {/* A fee waiver is not offered on the waiting list: rally-api refuses a
-            join that carries one (FEE_WAIVER_NOT_AVAILABLE) and ignores one at
-            promotion, and no evidence can be attached before a registration row
-            exists. The selector would collect proof the join then drops and quote a
-            waived price the pair is never charged, so the queue says so instead. */}
-        {!myReg && hasFeeWaiver && cta === 'join_waitlist' && (
-          <p
-            data-testid="waitlist-no-waiver-note"
-            className="rounded-2xl bg-rally-surface border border-rally-border p-4 text-sm text-rally-text-2"
-          >
-            {t('tournament.tournamentWaitlistNoWaiverNote')}
-          </p>
         )}
 
         {!myReg &&
           showRequirementsSection &&
-          (cta === 'register' || (cta === 'join_waitlist' && !hasFeeWaiver)) && (
+          (cta === 'register' || cta === 'join_waitlist') && (
             <ResidencyWaiverSelector
               seats={seats}
               format={tr.format}
@@ -820,7 +760,17 @@ function TournamentRegistrationPage() {
                     {t('tournament.tournamentPartnerRequiredHint')}
                   </p>
                 )}
-                <PartnerSection selectionState={partnerState} onPartnerChange={setPartnerState} />
+                <PartnerSection
+                  selectionState={partnerState}
+                  // A register error can be about the partner just replaced
+                  // ("already registered"); it must not outlive that choice.
+                  onPartnerChange={(next) => {
+                    setRegisterError(null)
+                    setPartnerState(next)
+                  }}
+                  self={partnerSelfFromProfile(playerProfile)}
+                  findPartner={findPartner}
+                />
               </>
             ) : sessionStatus === 'profile_error' ? (
               <div role="alert" className="space-y-2 text-sm text-rally-text-2">
@@ -961,11 +911,12 @@ function TournamentRegistrationPage() {
             ) : cta === 'join_waitlist' ? (
               <button
                 data-testid="tournament-join-waitlist-button"
-                onClick={handleJoinWaitlist}
-                disabled={isJoiningWaitlist || isCheckingProfile}
+                aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
+                onClick={() => handleRegisterNow('waitlist')}
+                disabled={isRegistering || isCheckingProfile}
                 className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full border-2 border-rally-accent text-rally-accent font-bold enabled:hover:bg-rally-accent/10 transition-all disabled:opacity-60"
               >
-                {isCheckingProfile ? t('common.loading') : isJoiningWaitlist
+                {isCheckingProfile ? t('common.loading') : isRegistering
                   ? t('tournament.tournamentDetailRegistering')
                   : sessionStatus === 'signed_out'
                   ? t('tournament.continueRegistration')
@@ -973,6 +924,8 @@ function TournamentRegistrationPage() {
                   ? t('tournament.completeDetails')
                   : partnerRequired
                   ? t('tournament.ctaMissingPartner')
+                  : (hasWaiverActive ? residentCount > 0 : isDocRequired) && myFiles.length === 0
+                  ? t('tournament.ctaMissingDocument', { defaultValue: 'Upload required document' })
                   : t('tournament.tournamentJoinWaitlist')}
               </button>
             ) : cta === 'none' ? (
@@ -984,7 +937,7 @@ function TournamentRegistrationPage() {
               </button>
             ) : (
               <button
-                onClick={handleRegisterNow}
+                onClick={() => handleRegisterNow()}
                 disabled={isRegistering || isCheckingProfile}
                 aria-describedby={gateMessage ? 'registration-gate-reason' : undefined}
                 className="min-w-[160px] md:min-w-[200px] px-6 h-12 md:h-14 rounded-full bg-rally-accent text-rally-accent-text font-bold enabled:hover:bg-rally-accent-hover enabled:shadow-glow-electric transition-all disabled:opacity-60"

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import i18n from '@/i18n'
 
 // Mock useEntityPolling so the component doesn't actually poll and immediately
 // transitions to the 'confirmed' state.
@@ -142,6 +143,40 @@ describe('PaymentConfirmingPage — tournament pending vs confirmed (G3)', () =>
     renderConfirming('?type=booking&id=b-1')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/payment confirmed/i)
   })
+
+  it('a queued sign-up with the hold in place says it is on the waiting list', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'payment_held', waitlist_position: 3 },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.t('payment.waitlistHoldConfirmedTitle'))
+    expect(screen.getByText(i18n.t('payment.waitlistSignupSubtitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('payment.registrationSubmittedSubtitle'))).not.toBeInTheDocument()
+  })
+
+  it('a free queued sign-up (registered + completed) is never "Registration Confirmed"', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'completed', waitlist_position: 2 },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.t('payment.waitlistHoldConfirmedTitle'))
+    expect(screen.getByRole('heading', { level: 1 })).not.toHaveTextContent(/registration confirmed/i)
+  })
+
+  it('a free queued sign-up is not told its payment is settled later', () => {
+    mockUseEntityPolling.mockReturnValue({
+      status: 'confirmed',
+      attempts: 1,
+      entity: { status: 'registered', payment_status: 'completed', waitlist_position: 2 },
+    })
+    renderConfirming('?type=tournament_registration&id=r-1&tournament_id=t-1')
+    expect(screen.getByText(i18n.t('payment.waitlistSignupFreeSubtitle'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('payment.waitlistSignupSubtitle'))).not.toBeInTheDocument()
+  })
 })
 
 describe('PaymentConfirmingPage — return_to', () => {
@@ -161,5 +196,29 @@ describe('PaymentConfirmingPage — return_to', () => {
     renderConfirming('?type=booking&id=b-1&return_to=https%3A%2F%2Fevil.example')
     expect(screen.queryByRole('button', { name: /back to the event/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /activity/i })).toBeInTheDocument()
+  })
+})
+
+// A coupon confirmed on the payment page lands here without a page load, so the
+// tournament in memory still says "awaiting payment" (staleTime, src/main.tsx).
+describe('PaymentConfirmingPage — the tournament behind it', () => {
+  const SEARCH = '?type=tournament_registration&id=r-1&tournament_id=t-1'
+
+  it.each(['confirmed', 'timeout'] as const)('%s: marks it out of date', (status) => {
+    const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+    mockUseEntityPolling.mockReturnValue({ status, attempts: 1, entity: null })
+    renderConfirming(SEARCH)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tournament', 't-1'] })
+    invalidate.mockRestore()
+  })
+
+  it('leaves it while still polling, and when there is no tournament', () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+    mockUseEntityPolling.mockReturnValue({ status: 'polling', attempts: 1, entity: null })
+    renderConfirming(SEARCH)
+    mockUseEntityPolling.mockReturnValue({ status: 'confirmed', attempts: 1, entity: null })
+    renderConfirming('?type=booking&id=b-1')
+    expect(invalidate).not.toHaveBeenCalled()
+    invalidate.mockRestore()
   })
 })

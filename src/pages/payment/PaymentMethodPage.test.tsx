@@ -80,6 +80,17 @@ describe('PaymentMethodPage', () => {
     expect(screen.getByText(/150/)).toBeInTheDocument()
   })
 
+  it('a queued registration (waitlist=1) is told the card is held, not that it secures a spot', () => {
+    renderAt('?registration_id=r-1&tournament_id=t-1&amount=150&waitlist=1')
+    expect(screen.getByText(i18n.t('payment.paymentMethodWaitlistHoldNotice'))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('payment.paymentMethodHoldNotice'))).not.toBeInTheDocument()
+  })
+
+  it('without waitlist=1 a registration keeps the normal hold notice', () => {
+    renderAt('?registration_id=r-1&tournament_id=t-1&amount=150')
+    expect(screen.queryByText(i18n.t('payment.paymentMethodWaitlistHoldNotice'))).not.toBeInTheDocument()
+  })
+
   it('persists pending-payment context and redirects to the hosted checkout on success', async () => {
     mockInitiate.mockResolvedValue({
       success: true,

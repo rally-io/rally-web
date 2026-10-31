@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
-import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useSearchParams, type MemoryRouterProps } from 'react-router-dom'
 import i18n from '@/i18n'
 
 vi.mock('@/hooks/useTournament', () => ({ useTournament: vi.fn() }))
@@ -23,7 +23,10 @@ vi.mock('@/hooks/useAuthGate', () => ({ useAuthGate: vi.fn() }))
 vi.mock('@/hooks/usePlayerSearch', () => ({
   usePlayerSearch: vi.fn(() => ({ results: [], isLoading: false, isActive: false })),
 }))
-vi.mock('@/services/api/tournaments', () => ({ registerTournament: vi.fn() }))
+vi.mock('@/services/api/tournaments', () => ({
+  registerTournament: vi.fn(),
+  leaveTournamentWaitlist: vi.fn(),
+}))
 vi.mock('@/services/api/profile', () => ({ getOnboardingStatus: vi.fn() }))
 vi.mock('@/services/api/payments', () => ({ confirmTournamentZeroPayment: vi.fn() }))
 vi.mock('@/services/api/registrationEvidence', () => ({
@@ -59,7 +62,7 @@ import { useAuthGate } from '@/hooks/useAuthGate'
 import { useAuth } from '@/hooks/useAuth'
 import { useAppSession } from '@/hooks/useAppSession'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
-import { registerTournament } from '@/services/api/tournaments'
+import { registerTournament, leaveTournamentWaitlist } from '@/services/api/tournaments'
 import { getOnboardingStatus } from '@/services/api/profile'
 import { confirmTournamentZeroPayment } from '@/services/api/payments'
 import { useScreenMessages } from '@/features/screenMessages/hooks/useScreenMessages'
@@ -72,6 +75,7 @@ const mockUseAuthGate = vi.mocked(useAuthGate)
 const mockUseAppSession = vi.mocked(useAppSession)
 const mockUsePlayerSearch = vi.mocked(usePlayerSearch)
 const mockRegisterTournament = vi.mocked(registerTournament)
+const mockLeaveWaitlist = vi.mocked(leaveTournamentWaitlist)
 const mockConfirmZeroPayment = vi.mocked(confirmTournamentZeroPayment)
 const mockUseScreenMessages = vi.mocked(useScreenMessages)
 const mockUseRegistrationGate = vi.mocked(useRegistrationGate)
@@ -135,14 +139,16 @@ function RouteProbe() {
 // Extracted so a test that needs to force a re-render after changing a mock's
 // return value (rerender(pageTree())) reconstructs the exact same tree —
 // same reason renderPage() itself uses it.
-function pageTree() {
+// `entry` is where the visit starts: the partner deck returns with router state.
+function pageTree(entry: NonNullable<MemoryRouterProps['initialEntries']>[number] = '/tournaments/t-1') {
   return (
-    <MemoryRouter initialEntries={['/tournaments/t-1']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
         <Route path="/payment-method" element={<RouteProbe />} />
         <Route path="/payments/confirming" element={<RouteProbe />} />
         <Route path="/profile/edit" element={<RouteProbe />} />
+        <Route path="/tournaments/:id/partners" element={<div data-testid="partner-deck-probe" />} />
       </Routes>
     </MemoryRouter>
   )
@@ -448,6 +454,33 @@ describe('TournamentDetailPage CTA', () => {
     ).toBeInTheDocument()
   })
 
+  // Seen in the browser E2E: the error named the partner the player had just
+  // removed, and stayed under the button until the next press.
+  it('clears a register error about the partner once the partner changes', async () => {
+    mockUsePlayerSearch.mockReturnValue({
+      results: [{ id: 'p-2', first_name: 'Dana', last_name: 'Levi', avatar_url: null }],
+      isLoading: false,
+      isActive: true,
+    })
+    mockUseTournament.mockReturnValue(tr({ format: 'doubles' }))
+    mockRegisterTournament.mockRejectedValue({
+      status: 400,
+      code: 'BAD_REQUEST',
+      message: 'Selected partner is already registered for this tournament',
+      details: null,
+    })
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /Dana Levi/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    const error = i18n.t('tournament.registrationErrors.partnerAlreadyRegistered')
+    expect(await screen.findByText(error)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('tournament.partnerRemove') }))
+    expect(screen.queryByText(error)).not.toBeInTheDocument()
+  })
+
   it('falls back to the raw backend message when it is not a recognized registration error', async () => {
     mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
     mockRegisterTournament.mockRejectedValue({
@@ -461,6 +494,198 @@ describe('TournamentDetailPage CTA', () => {
       screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
     )
     expect(await screen.findByText('Something unexpected broke')).toBeInTheDocument()
+  })
+})
+
+// Both seen in the browser E2E (2026-10-17): the page kept showing what it
+// loaded although the server had just said otherwise, until a reload.
+describe('TournamentDetailPage refetches when its registration state goes stale', () => {
+  it('refetches the tournament after leaving the waiting list, so the waiting count is current', async () => {
+    const q = tr({
+      format: 'singles', is_full: true, waitlist_count: 3,
+      my_waitlist_entry: { id: 'w-1', position: 2 },
+    })
+    mockUseTournament.mockReturnValue(q)
+    mockLeaveWaitlist.mockResolvedValue({ success: true, data: { left: true } } as any)
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-leave-waitlist-button'))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: i18n.t('tournament.tournamentLeaveWaitlist'),
+      }),
+    )
+    await waitFor(() => expect(mockLeaveWaitlist).toHaveBeenCalledWith('t-1'))
+    await waitFor(() => expect(q.refetch).toHaveBeenCalledTimes(1))
+    expect(screen.queryByTestId('tournament-waitlist-card')).not.toBeInTheDocument()
+  })
+
+  it('leaving drops the refusal that said the viewer was already on the list', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockRejectedValue({ status: 409, code: 'CONFLICT', message: 'You are already on the waiting list' })
+    const { rerender } = renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    const refusal = i18n.t('tournament.registrationErrors.alreadyWaiting')
+    expect(await screen.findByText(refusal)).toBeInTheDocument()
+    // The re-read after the refusal found the entry.
+    mockUseTournament.mockReturnValue(tr({
+      format: 'singles', is_full: true, waitlist_count: 1,
+      my_waitlist_entry: { id: 'w-1', position: 1 },
+    }))
+    rerender(pageTree())
+    mockLeaveWaitlist.mockResolvedValue({ success: true, data: { left: true } } as any)
+    fireEvent.click(screen.getByTestId('tournament-leave-waitlist-button'))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: i18n.t('tournament.tournamentLeaveWaitlist'),
+      }),
+    )
+    await waitFor(() => expect(mockLeaveWaitlist).toHaveBeenCalledWith('t-1'))
+    await waitFor(() => expect(screen.queryByText(refusal)).not.toBeInTheDocument())
+  })
+
+  it('refetches the tournament after a sign-up, so Back shows it instead of the form', async () => {
+    const q = tr({ format: 'singles' })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockResolvedValue({ success: true, data: { id: 'r-1', amount_to_pay: 150, waitlist_position: 1 } } as any)
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    await waitFor(() => expect(mockRegisterTournament).toHaveBeenCalled())
+    await waitFor(() => expect(q.refetch).toHaveBeenCalledTimes(1))
+  })
+
+  it('refetches the tournament when the server says the viewer is already registered, and keeps the error', async () => {
+    const q = tr({ format: 'singles' })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValue({
+      status: 400,
+      code: 'BAD_REQUEST',
+      message: 'You are already registered for this tournament',
+      details: null,
+    })
+    const page = renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    const error = i18n.t('tournament.registrationErrors.alreadyRegistered')
+    expect(await screen.findByText(error)).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalledTimes(1)
+
+    // The refetch lands with the viewer's registration: Register Now is gone,
+    // and the sentence that explains why stays.
+    mockUseTournament.mockReturnValue(
+      tr({ format: 'singles', my_registration: { id: 'r-1', status: 'registered', payment_status: 'completed' } }),
+    )
+    page.rerender(pageTree())
+    expect(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailAlreadyRegistered') }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(error)).toBeInTheDocument()
+  })
+
+  // The site defaults to Hebrew and sends it as Accept-Language, so rally-api
+  // answers in Hebrew (app/utils/error_translations.py): the refetch must not
+  // depend on recognising the English sentence.
+  it('refetches after a partner-already-registered refusal sent in Hebrew', async () => {
+    const hebrewPartnerAlreadyRegistered = 'הפרטנר שנבחר כבר רשום לטורניר זה'
+    mockUsePlayerSearch.mockReturnValue({
+      results: [{ id: 'p-2', first_name: 'Dana', last_name: 'Levi', avatar_url: null }],
+      isLoading: false,
+      isActive: true,
+    })
+    const q = tr({ format: 'doubles' })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValue({
+      status: 400,
+      code: 'BAD_REQUEST',
+      message: hebrewPartnerAlreadyRegistered,
+      details: null,
+    })
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /Dana Levi/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(await screen.findByText(hebrewPartnerAlreadyRegistered)).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not refetch when the register call never reached the server', async () => {
+    const q = tr({ format: 'singles' })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValue({ code: 'NETWORK_ERROR', message: 'Network error' })
+    renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    expect(await screen.findByText('Network error')).toBeInTheDocument()
+    expect(q.refetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('TournamentDetailPage survives a failed refetch or a failed leave', () => {
+  // A full singles tournament the viewer is waiting on.
+  const waitingTr = () => tr({
+    format: 'singles', is_full: true, waitlist_count: 3,
+    my_waitlist_entry: { id: 'w-1', position: 2 },
+  })
+  const leave = () => {
+    fireEvent.click(screen.getByTestId('tournament-leave-waitlist-button'))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: i18n.t('tournament.tournamentLeaveWaitlist'),
+      }),
+    )
+  }
+
+  // react-query keeps the data when a background refetch fails, but flags isError.
+  it('keeps showing the tournament it has when a refetch fails', () => {
+    mockUseTournament.mockReturnValue({ ...tr(), isError: true })
+    renderPage()
+    expect(screen.getByRole('heading', { level: 1, name: 'Rally Open' })).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t('tournament.tournamentDetailLoadErrorTitle'))).not.toBeInTheDocument()
+  })
+
+  it('still shows the load error when there is no tournament at all', () => {
+    mockUseTournament.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch: vi.fn() } as any)
+    renderPage()
+    expect(screen.getByText(i18n.t('tournament.tournamentDetailLoadErrorTitle'))).toBeInTheDocument()
+  })
+
+  it.each([
+    ['an error response', () => mockLeaveWaitlist.mockRejectedValue({
+      status: 404, code: 'WAITLIST_ENTRY_NOT_FOUND', message: 'You are not on the waiting list',
+    })],
+    ['a success: false body', () => mockLeaveWaitlist.mockResolvedValue({
+      success: false, error: { code: 'WAITLIST_ENTRY_NOT_FOUND', message: 'You are not on the waiting list', details: null },
+    } as any)],
+  ])('a refused leave (%s) says why and refetches', async (_shape, refuse) => {
+    const q = waitingTr()
+    mockUseTournament.mockReturnValue(q)
+    refuse()
+    renderPage()
+    leave()
+    expect(await screen.findByText(i18n.t('tournament.registrationErrors.notOnWaitlist'))).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('tournament-leave-waitlist-button')).toBeEnabled()
+  })
+
+  it('a leave that never reached the server says so in the site language and does not refetch', async () => {
+    const q = waitingTr()
+    mockUseTournament.mockReturnValue(q)
+    mockLeaveWaitlist.mockRejectedValue({ code: 'NETWORK_ERROR', message: 'Network error' })
+    renderPage()
+    leave()
+    expect(await screen.findByText(i18n.t('tournament.tournamentLeaveWaitlistFailed'))).toBeInTheDocument()
+    expect(q.refetch).not.toHaveBeenCalled()
+    expect(screen.getByTestId('tournament-waitlist-card')).toBeInTheDocument()
+    expect(screen.getByTestId('tournament-leave-waitlist-button')).toBeEnabled()
   })
 })
 
@@ -1093,17 +1318,13 @@ describe('TournamentDetailPage — residency fee waiver & document upload', () =
     expect(screen.getByText('₪150')).toBeInTheDocument()
   })
 
-  // rally-api refuses a waiting-list join that carries a waiver and ignores one at
-  // promotion, so the waiting list must not collect proof or quote a waived price.
-  it('a full waiver tournament on the waiting list shows no waiver selector, only the note', () => {
+  it('a full waiver tournament offers the waiver selector on the waiting list, and no note', () => {
     mockUseTournament.mockReturnValue(
       tr({ is_full: true, waitlist_enabled: true, is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150 }),
     )
     renderPage()
-    expect(screen.queryByTestId('residency-waiver-section')).not.toBeInTheDocument()
-    expect(screen.getByTestId('waitlist-no-waiver-note'))
-      .toHaveTextContent(i18n.t('tournament.tournamentWaitlistNoWaiverNote'))
-    // The way in is still there — only the waiver part of it is gone.
+    expect(screen.getByTestId('residency-waiver-section')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-no-waiver-note')).not.toBeInTheDocument()
     expect(screen.getByTestId('tournament-join-waitlist-button')).toBeInTheDocument()
   })
 
@@ -1466,3 +1687,181 @@ describe('TournamentDetailPage settled payment breakdown', () => {
   })
 })
 
+describe('TournamentDetailPage — find a partner', () => {
+  const finderRow = () => screen.queryByTestId('tournament-find-partner')
+
+  it('offers the finder with the looking count when the API says it is available', () => {
+    mockUseTournament.mockReturnValue(tr({ partner_search_available: true, partner_looking_count: 4 }))
+    renderPage()
+    expect(finderRow()).toHaveTextContent('4 players looking for a partner')
+  })
+
+  it('offers nothing against an API without the finder', () => {
+    mockUseTournament.mockReturnValue(tr())
+    renderPage()
+    expect(finderRow()).toBeNull()
+  })
+
+  it('offers nothing on a singles tournament', () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles', partner_search_available: true }))
+    renderPage()
+    expect(finderRow()).toBeNull()
+  })
+
+  it('opens the web partner deck', () => {
+    mockUseTournament.mockReturnValue(tr({ partner_search_available: true, partner_looking_count: 0 }))
+    renderPage()
+    fireEvent.click(finderRow()!)
+    expect(screen.getByTestId('partner-deck-probe')).toBeInTheDocument()
+  })
+
+  it('back from the deck with a partner picked: shows them and scrolls to the partner section', () => {
+    vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, session: null } as never)
+    sessionStorage.setItem(
+      'rally:tournament-partner',
+      JSON.stringify({
+        owner: 'u1',
+        tournament: 't-1',
+        expires: Date.now() + 60_000,
+        partner: { type: 'existing', id: 'p-9', displayName: 'Noa Levi', avatarUrl: null },
+      }),
+    )
+    mockUseTournament.mockReturnValue(tr({ partner_search_available: true }))
+    render(pageTree({ pathname: '/tournaments/t-1', state: { scrollTo: 'partner-section' } }))
+    const section = document.getElementById('partner-section')!
+    expect(within(section).getByText('Noa Levi')).toBeInTheDocument()
+    expect(finderRow()).toBeNull()
+    const scroll = vi.mocked(Element.prototype.scrollIntoView)
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(scroll.mock.contexts[0]).toBe(section)
+  })
+
+  it('a plain visit does not scroll', () => {
+    mockUseTournament.mockReturnValue(tr({ partner_search_available: true }))
+    renderPage()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+})
+
+describe('TournamentDetailPage — joining the waiting list runs Register', () => {
+  const fullWaiverTr = (over: Record<string, unknown> = {}) => tr({
+    format: 'singles', is_full: true, waitlist_enabled: true, waitlist_count: 2,
+    is_document_required: true, fee_waiver_type: 'holon_resident', entry_fee: 150, ...over,
+  })
+  const queued = {
+    success: true,
+    data: {
+      id: 'reg-w-1', tournament_id: 't-1', status: 'payment_pending', amount_to_pay: 75,
+      waitlist_position: 3, waitlist_entry_id: 'w-1',
+    },
+  } as any
+
+  it('sends the residency claim, uploads the proof, and goes to the card hold', async () => {
+    const file = new File(['proof'], 'id.pdf', { type: 'application/pdf' })
+    mockUseTournament.mockReturnValue(fullWaiverTr())
+    mockRegisterTournament.mockResolvedValueOnce(queued)
+    renderPage()
+    fireEvent.click(screen.getByTestId('waiver-option-1'))
+    fireEvent.change(document.getElementById('tournament-evidence-1') as HTMLInputElement, {
+      target: { files: [file] },
+    })
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.objectContaining({ fee_waiver: { type: 'holon_resident', resident_count: 1 } }),
+      ),
+    )
+    await waitFor(() => expect(mockUploadEvidence).toHaveBeenCalledWith('reg-w-1', 1, [file]))
+    const probe = await screen.findByTestId('route-probe')
+    expect(probe.textContent).toContain('registration_id=reg-w-1')
+  })
+
+  it('a join without a residency claim sends no fee_waiver', async () => {
+    mockUseTournament.mockReturnValue(fullWaiverTr({ is_document_required: false }))
+    mockRegisterTournament.mockResolvedValueOnce(queued)
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    await waitFor(() =>
+      expect(mockRegisterTournament).toHaveBeenCalledWith(
+        't-1',
+        expect.not.objectContaining({ fee_waiver: expect.anything() }),
+      ),
+    )
+  })
+
+  it('"already on the waiting list" is shown in the site language and the page refetches', async () => {
+    const q = fullWaiverTr({ is_document_required: false })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValueOnce({
+      status: 409, code: 'ALREADY_WAITING', message: 'You are already on the waiting list',
+    })
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    expect(
+      await screen.findByText(i18n.t('tournament.registrationErrors.alreadyWaiting')),
+    ).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalled()
+  })
+
+  it('a partner already queued with someone else is shown in the site language', async () => {
+    mockUseTournament.mockReturnValue(fullWaiverTr({ is_document_required: false }))
+    mockRegisterTournament.mockRejectedValueOnce({
+      status: 409, message: 'That partner is already on the waiting list with someone else',
+    })
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    expect(
+      await screen.findByText(i18n.t('tournament.registrationErrors.partnerAlreadyWaiting')),
+    ).toBeInTheDocument()
+  })
+
+  it('a list switched off between load and submit shows the full line and refetches', async () => {
+    const q = fullWaiverTr({ is_document_required: false })
+    mockUseTournament.mockReturnValue(q)
+    mockRegisterTournament.mockRejectedValueOnce({
+      status: 409, code: 'TOURNAMENT_FULL', message: 'This tournament is full',
+    })
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-join-waitlist-button'))
+    expect(await screen.findByText(i18n.t('tournament.tournamentFullLine'))).toBeInTheDocument()
+    expect(q.refetch).toHaveBeenCalled()
+  })
+})
+
+describe('TournamentDetailPage — the waiting card shows the sign-up behind it', () => {
+  const waitingWith = (registration: Record<string, unknown> | null) => tr({
+    format: 'singles', is_full: true, waitlist_count: 3,
+    my_waitlist_entry: { id: 'w-1', position: 2, registration },
+  })
+
+  it('unpaid: says awaiting payment and Complete payment goes to the payment page', () => {
+    mockUseTournament.mockReturnValue(waitingWith({
+      id: 'r-7', tournament_id: 't-1', player_1_id: 'p-1', status: 'payment_pending', payment_status: null,
+    }))
+    renderPage()
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentAwaiting'),
+    )
+    fireEvent.click(screen.getByTestId('waitlist-complete-payment'))
+    expect(screen.getByTestId('route-probe').textContent).toBe('registration_id=r-7&tournament_id=t-1&waitlist=1')
+  })
+
+  it('held: says payment held and offers no payment button', () => {
+    mockUseTournament.mockReturnValue(waitingWith({
+      id: 'r-7', tournament_id: 't-1', player_1_id: 'p-1', status: 'registered', payment_status: 'payment_held',
+    }))
+    renderPage()
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentHeld'),
+    )
+    expect(screen.queryByTestId('waitlist-complete-payment')).not.toBeInTheDocument()
+  })
+
+  it('an old card-only entry (registration null) shows no payment line', () => {
+    mockUseTournament.mockReturnValue(waitingWith(null))
+    renderPage()
+    expect(screen.getByTestId('tournament-waitlist-card')).toBeInTheDocument()
+    expect(screen.queryByTestId('waitlist-payment-state')).not.toBeInTheDocument()
+  })
+})

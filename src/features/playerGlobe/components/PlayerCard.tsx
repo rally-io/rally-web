@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { Avatar } from '@/components/tournaments/Avatar'
@@ -20,6 +20,8 @@ export interface PlayerCardProps {
   viewerId: string | null
   onFocus: (id: string) => void
   onClose: () => void
+  /** Pinned under the scrolling body: the partner deck puts its pass / like row here. */
+  footer?: ReactNode
 }
 
 function PeerList({
@@ -91,7 +93,7 @@ function PlayerCardFollow({ playerId, viewerId }: { playerId: string; viewerId: 
 /** The pinned player. Floats over the stage from `md` up; below that it is a bottom sheet.
     Opens on the Stats tab (career block, level chart, top partners/clubs); Connections holds
     the partner/rival lists, with a phone-only switch between the two lists at narrow widths. */
-export function PlayerCard({ node, index, viewerId, onFocus, onClose }: PlayerCardProps) {
+export function PlayerCard({ node, index, viewerId, onFocus, onClose, footer }: PlayerCardProps) {
   const { t } = useTranslation()
   const [view, setView] = useState<'stats' | 'connections'>('stats')
   const [tab, setTab] = useState<'partners' | 'rivals'>('partners')
@@ -227,6 +229,7 @@ export function PlayerCard({ node, index, viewerId, onFocus, onClose }: PlayerCa
           </div>
         )}
       </div>
+      {footer}
     </aside>
   )
 }

@@ -265,6 +265,7 @@ export interface MyRegistration {
   team_name?: string | null
   status: string
   payment_status?: string | null
+  service_fee?: number | null
   fee_waiver_type?: string | null
   fee_waiver_status?: 'pending' | 'approved' | 'rejected' | null
   /** The level category the pair chose at registration, or null. */
@@ -319,11 +320,18 @@ export interface TournamentDetail extends Tournament {
   fee_waiver_type?: string | null
   is_document_required?: boolean
   document_instructions?: string | null
+  /**
+   * Whether this viewer can look for a partner here (the app's partner finder).
+   * Absent on an API before the finder, which means no; false for a signed-out viewer.
+   */
+  partner_search_available?: boolean
+  /** Players looking for a partner who would be in this viewer's deck. 0 whenever search is unavailable. */
+  partner_looking_count?: number
 }
 
 /**
  * A queued entry on a tournament's waiting list. `entry_fee`/`service_fee`
- * are populated only on the join response — there is no registration row yet
+ * are populated only on the old card-only join response — there is no registration row yet
  * to read them off, and the payment-method page needs an amount to display
  * before initiating the hold.
  */
@@ -333,6 +341,12 @@ export interface TournamentWaitlistEntry {
   joined_at: string | null
   entry_fee: number
   service_fee: number
+  /**
+   * The registration behind the entry: a sign-up made through Register, or a
+   * pair bumped to the list by the last seat. Absent/null for an old card-only
+   * join. Same shape as `my_registration` (which stays null while queued).
+   */
+  registration?: MyRegistration | null
 }
 
 export interface RegistrationDetail {
@@ -365,6 +379,9 @@ export interface RegistrationDetail {
   fee_waiver_resident_count?: number | null
   /** The viewer's own payment breakdown, including any coupon discount. */
   my_payment?: MyPayment | null
+  /** Set while the registration is queued on the waiting list (the confirming page polls this shape). */
+  waitlist_position?: number | null
+  waitlist_entry_id?: string | null
 }
 
 // --- Tournament registration request ---
@@ -429,6 +446,9 @@ export interface TournamentRegistrationResult {
   /** Keyed by player slot ('1' | '2'). A slot with no uploads yet is simply
    *  absent from the object — never assume both keys are present. */
   evidence_counts?: Partial<Record<'1' | '2', number>>
+  /** Set when rally-api put the pair on the waiting list instead of seating it; null/absent otherwise. */
+  waitlist_position?: number | null
+  waitlist_entry_id?: string | null
 }
 
 /** One uploaded proof-of-residency file — GET/POST
@@ -465,6 +485,7 @@ export interface ProfileUpdateRequest {
   /** Contract §7: the level this page loaded (null if none). Without it rally-api ignores a change
       to an already-chosen level; with a stale one it refuses the save. See lib/levelWrite.ts. */
   skill_level_base?: number | null
+  gender?: Gender
 }
 
 // PROFILE_FIELDS_REQUIRED error
@@ -523,9 +544,16 @@ export interface PlayerMe {
   first_name: string | null
   last_name: string | null
   contact_number: string | null
+  /** Dialling code of `contact_number`, e.g. '+972' (rally-api normalizes both). Null without a phone. */
+  country_code?: string | null
   email?: string | null
   skill_level: number | null
   skill_tier?: 'bronze' | 'silver' | 'gold' | null
+  /** The band the player is SHOWN in, as rally-api labels it: "4.0 - 4.5 (B1)". Since rally-api's
+      display hysteresis (2026-10-22) this is a STORED band that moves only once the level is 0.05
+      inside another band, so it can lag `skill_level`: a 4.03 may still read "(B2)". Read with
+      `bandFromLabel`; never re-derived from the number. Absent on older backends. */
+  mapped_skill_level?: string | null
   /** rally-api step 0: the scale `skill_level` is on (7, then 5 after the flip). Absent on older
       builds. Read by SkillLadderProvider (contract §3) and never written back. */
   level_scale?: number | null
@@ -535,6 +563,12 @@ export interface PlayerMe {
       can never earn a rating) → describeLevel → `unknown`. */
   level_verified?: boolean | null
   level_reliability?: number | null
+  /** The avatar without its frame: the partner deck draws it on the court beside each card. */
+  avatar_clean_url?: string | null
+  /** Only the side is read, by the partner deck's court. */
+  player_preferences?: { court_side?: string | null } | null
+  /** Null until set. A mixed pool needs male or female; anything else gets the deck's needs-gender prompt. */
+  gender?: Gender | null
 }
 
 export interface SupabaseUserSummary {

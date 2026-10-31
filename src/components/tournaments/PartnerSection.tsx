@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, X } from 'lucide-react'
+import { Search, Users, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { describeLevel, LevelChip } from '@/components/players/level'
 import { usePlayerSearch } from '@/hooks/usePlayerSearch'
 import { COUNTRY_CODES, DEFAULT_COUNTRY } from '@/constants/countryCodes'
+import { isOwnName, isOwnPhone, type PartnerSelf } from '@/lib/selfPartner'
 import type { PartnerSelectionState } from '@/types/partner'
 import type { PlayerSearchResult } from '@/types/api'
 
@@ -57,9 +58,21 @@ interface Props {
    * server-side by phone. Defaults to `true` (today's behaviour).
    */
   searchEnabled?: boolean
+  /**
+   * The registering player, so they cannot pick or invite themselves: their own
+   * search row (`/players/search` returns the viewer too) is shown but disabled,
+   * and their own phone number blocks the invite. Their own name only warns —
+   * a partner can share it. rally-api refuses both self cases too.
+   */
+  self?: PartnerSelf
+  /**
+   * The app's partner finder, offered last to a player with no partner yet. The
+   * deck lives only in the app, so `onPress` hands off there. Omit to hide the row.
+   */
+  findPartner?: { lookingCount: number; onPress: () => void }
 }
 
-export function PartnerSection({ selectionState, onPartnerChange, searchEnabled = true }: Props) {
+export function PartnerSection({ selectionState, onPartnerChange, searchEnabled = true, self, findPartner }: Props) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [inviteForm, setInviteForm] = useState<InviteFormState>(INITIAL_INVITE)
@@ -67,6 +80,11 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
   // call when search is disabled — usePlayerSearch is already a no-op below
   // one character (`enabled: debounced.length > 0`), so this issues no request.
   const { results, isLoading, isActive } = usePlayerSearch(searchEnabled ? query : '')
+  // The phone is who the invite goes to, so their own number blocks it. A name
+  // only warns: two people can share one.
+  const ownPhone = isOwnPhone(self, inviteForm.countryCode, inviteForm.phone)
+  const ownName = isOwnName(self, inviteForm.firstName, inviteForm.lastName)
+  const inviteValid = isInviteValid(inviteForm) && !ownPhone
 
   const handleSelectExisting = (player: PlayerSearchResult) => {
     const displayName = buildDisplayName(player.first_name, player.last_name)
@@ -82,7 +100,7 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
   }
 
   const handleInvite = () => {
-    if (!isInviteValid(inviteForm)) return
+    if (!inviteValid) return
     onPartnerChange({
       phase: 'selected',
       partner: {
@@ -159,12 +177,19 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
             <div className="space-y-1 max-h-56 overflow-y-auto">
               {results.map((player) => {
                 const displayName = buildDisplayName(player.first_name, player.last_name)
+                // Shown, so they see why it does nothing, but not selectable.
+                const isSelf = self !== undefined && player.id === self.id
                 return (
                   <button
                     type="button"
                     key={player.id}
                     onClick={() => handleSelectExisting(player)}
-                    className="w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-rally-surface-2 text-start transition-colors"
+                    disabled={isSelf}
+                    aria-disabled={isSelf || undefined}
+                    data-testid={isSelf ? 'partner-result-self' : undefined}
+                    className={`w-full flex items-center gap-3 rounded-lg px-2 py-2 text-start transition-colors ${
+                      isSelf ? 'opacity-50 cursor-not-allowed' : 'hover:bg-rally-surface-2'
+                    }`}
                   >
                     <div className="w-9 h-9 rounded-full bg-rally-accent/15 border border-rally-accent/30 flex items-center justify-center shrink-0">
                       <span className="text-xs font-extrabold text-rally-accent">
@@ -176,7 +201,7 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
                         {displayName}
                       </p>
                       <p className="text-xs text-rally-text-muted">
-                        {t('tournament.partnerBadgeRally')}
+                        {isSelf ? t('tournament.partnerSelfRow') : t('tournament.partnerBadgeRally')}
                       </p>
                     </div>
                     {player.skill_level != null && (
@@ -216,6 +241,11 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
             placeholder={t('tournament.partnerLastNamePlaceholder')}
           />
         </div>
+        {ownName && (
+          <p className="text-xs text-rally-warning" data-testid="partner-invite-own-name">
+            {t('tournament.partnerOwnNameWarning')}
+          </p>
+        )}
         <div className="grid grid-cols-[5.5rem_1fr] gap-2">
           <select
             value={inviteForm.countryCode}
@@ -235,19 +265,49 @@ export function PartnerSection({ selectionState, onPartnerChange, searchEnabled 
             value={inviteForm.phone}
             onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value }))}
             placeholder={t('tournament.partnerMobileNumberPlaceholder')}
+            aria-invalid={ownPhone || undefined}
+            aria-describedby={ownPhone ? 'partner-invite-own-phone' : undefined}
           />
         </div>
+        {ownPhone && (
+          <p id="partner-invite-own-phone" role="alert" className="text-xs text-rally-error">
+            {t('tournament.partnerOwnPhoneError')}
+          </p>
+        )}
         <Button
           type="button"
           variant="accent"
           size="sm"
-          disabled={!isInviteValid(inviteForm)}
+          disabled={!inviteValid}
           onClick={handleInvite}
           className="w-full"
         >
           {t('tournament.partnerInviteButton')}
         </Button>
       </div>
+
+      {findPartner && (
+        <button
+          type="button"
+          onClick={findPartner.onPress}
+          data-testid="tournament-find-partner"
+          className="w-full flex items-center gap-3 rounded-xl border border-rally-accent/30 bg-rally-accent/5 px-3 py-3 text-start transition-colors hover:bg-rally-accent/10"
+        >
+          <Users className="w-5 h-5 text-rally-accent shrink-0" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-rally-text">{t('tournament.partnerNoPartnerYet')}</p>
+            <p className="text-xs text-rally-text-muted">
+              {/* How many are looking, once anyone is; the pitch until then. */}
+              {findPartner.lookingCount > 0
+                ? t('tournament.partnerLookingCount', { count: findPartner.lookingCount })
+                : t('tournament.partnerFindPartnerHint')}
+            </p>
+          </div>
+          <span className="shrink-0 whitespace-nowrap rounded-full bg-rally-accent px-3 py-1 text-xs font-bold text-rally-accent-text">
+            {t('tournament.partnerFindPartner')}
+          </span>
+        </button>
+      )}
     </div>
   )
 }

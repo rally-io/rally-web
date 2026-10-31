@@ -51,3 +51,26 @@ describe('readProfileDetails', () => {
     expect(fresh).toEqual({ complete: true, name: 'Dana Cohen', phone: '+972 0509999999', level: '3.5 (B2)' })
   })
 })
+
+describe('readProfileDetails: the band rally-api shows the player in', () => {
+  // A sticky row: the level crossed 4.0 but is not yet 0.05 inside B1, so rally-api still
+  // labels it B2 (display hysteresis). The number must not re-derive the band.
+  const sticky = () => profile({ skill_level: 4.03, mapped_skill_level: '3.5 - 4.0 (B2)' })
+
+  it('prints the served band, which can lag the number', () => {
+    expect(readProfileDetails(sticky(), L5).level).toBe('4.0 (B2)')
+  })
+
+  it('derives from the number when the backend sends no label', () => {
+    expect(readProfileDetails(profile({ skill_level: 4.03 }), L5).level).toBe('4.0 (B1)')
+    expect(readProfileDetails(profile({ skill_level: 4.03, mapped_skill_level: null }), L5).level).toBe('4.0 (B1)')
+  })
+
+  it('a just-saved NEW level is a declaration: the stale served band is not used', () => {
+    expect(readProfileDetails(sticky(), L5, { skill_level: 4.2 }).level).toBe('4.2 (B1)')
+  })
+
+  it('a just-saved unchanged level keeps the served band', () => {
+    expect(readProfileDetails(sticky(), L5, { contact_number: '0509999999', skill_level: 4.03 }).level).toBe('4.0 (B2)')
+  })
+})
