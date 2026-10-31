@@ -519,6 +519,32 @@ describe('TournamentDetailPage refetches when its registration state goes stale'
     expect(screen.queryByTestId('tournament-waitlist-card')).not.toBeInTheDocument()
   })
 
+  it('leaving drops the refusal that said the viewer was already on the list', async () => {
+    mockUseTournament.mockReturnValue(tr({ format: 'singles' }))
+    mockRegisterTournament.mockRejectedValue({ status: 409, code: 'CONFLICT', message: 'You are already on the waiting list' })
+    const { rerender } = renderPage()
+    fireEvent.click(
+      screen.getByRole('button', { name: i18n.t('tournament.tournamentDetailRegisterNow') }),
+    )
+    const refusal = i18n.t('tournament.registrationErrors.alreadyWaiting')
+    expect(await screen.findByText(refusal)).toBeInTheDocument()
+    // The re-read after the refusal found the entry.
+    mockUseTournament.mockReturnValue(tr({
+      format: 'singles', is_full: true, waitlist_count: 1,
+      my_waitlist_entry: { id: 'w-1', position: 1 },
+    }))
+    rerender(pageTree())
+    mockLeaveWaitlist.mockResolvedValue({ success: true, data: { left: true } } as any)
+    fireEvent.click(screen.getByTestId('tournament-leave-waitlist-button'))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: i18n.t('tournament.tournamentLeaveWaitlist'),
+      }),
+    )
+    await waitFor(() => expect(mockLeaveWaitlist).toHaveBeenCalledWith('t-1'))
+    await waitFor(() => expect(screen.queryByText(refusal)).not.toBeInTheDocument())
+  })
+
   it('refetches the tournament after a sign-up, so Back shows it instead of the form', async () => {
     const q = tr({ format: 'singles' })
     mockUseTournament.mockReturnValue(q)

@@ -208,6 +208,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         refetchTournament={refetch}
         evidenceError={evidenceError}
         showTournamentLink={!event.redirectFromTournamentPage}
+        onOffTheList={() => registration.setRegisterError(null)}
       />
     )
   } else if (!open) {
@@ -396,7 +397,7 @@ const NON_CONFIRMED_STATUSES: string[] = [
  * Complete payment, documents, Leave) plus this page's way back to the site.
  */
 function WaitingCard({
-  tr, entry, returnTo, refetchTournament, evidenceError, showTournamentLink,
+  tr, entry, returnTo, refetchTournament, evidenceError, showTournamentLink, onOffTheList,
 }: {
   tr: TournamentDetail
   entry: TournamentWaitlistEntry
@@ -404,6 +405,8 @@ function WaitingCard({
   refetchTournament: () => Promise<unknown>
   evidenceError: string | null
   showTournamentLink: boolean
+  /** A refusal that brought this card up ("already on the list") is false from here on. */
+  onOffTheList: () => void
 }) {
   const { t } = useTranslation()
   // A successful leave refetches; the tournament then has no entry and the page
@@ -413,8 +416,8 @@ function WaitingCard({
   const [left, setLeft] = useState(false)
   const { leave, isLeaving, leaveError } = useLeaveWaitlist(tr.id, {
     refetch: refetchTournament,
-    onLeft: () => setLeft(true),
-    onEntryGone: () => setLeft(false),
+    onLeft: () => { setLeft(true); onOffTheList() },
+    onEntryGone: () => { setLeft(false); onOffTheList() },
   })
   return (
     <div>

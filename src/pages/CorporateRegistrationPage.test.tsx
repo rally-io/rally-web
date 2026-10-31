@@ -292,6 +292,42 @@ describe('CorporateRegistrationPage — states', () => {
     expect(refetchTournament).toHaveBeenCalled()
   })
 
+  // The refusal that brought the card up ("already on the list") is false once the pair is
+  // off the list, and the form that comes back would show it.
+  it.each([
+    ['left', true, () => mockLeave.mockResolvedValue({ success: true, data: { left: true } } as any)],
+    ['was already off the list', true, () => mockLeave.mockRejectedValue({
+      status: 404, code: 'WAITLIST_ENTRY_NOT_FOUND', message: 'You are not on the waiting list',
+    })],
+    ['never reached the server', false, () => mockLeave.mockRejectedValue({ code: 'NETWORK_ERROR', message: 'Network error' })],
+  ])('the old refusal after a leave that %s', async (_how, cleared, answer) => {
+    mockUseTournament.mockReturnValue(tr({
+      is_full: true,
+      my_waitlist_entry: queuedEntry({
+        id: 'r-9', tournament_id: 't-1', player_1_id: 'p-1', status: 'registered', payment_status: 'completed',
+      }),
+    }))
+    const setRegisterError = vi.fn()
+    mockUseRegistration.mockReturnValue({
+      register, isRegistering: false,
+      registerError: i18n.t('tournament.registrationErrors.alreadyWaiting'),
+      gateError: null, setRegisterError, setGateError: vi.fn(),
+    } as any)
+    answer()
+    renderPage()
+    fireEvent.click(screen.getByTestId('tournament-leave-waitlist-button'))
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: i18n.t('tournament.tournamentLeaveWaitlist') }),
+    )
+    await waitFor(() => expect(mockLeave).toHaveBeenCalledWith('t-1'))
+    if (cleared) {
+      await waitFor(() => expect(setRegisterError).toHaveBeenCalledWith(null))
+    } else {
+      expect(await screen.findByText(i18n.t('tournament.tournamentLeaveWaitlistFailed'))).toBeInTheDocument()
+      expect(setRegisterError).not.toHaveBeenCalled()
+    }
+  })
+
   it('a register error after the form was swapped for the waiting card still reaches the screen', () => {
     mockUseTournament.mockReturnValue(tr({
       is_full: true,

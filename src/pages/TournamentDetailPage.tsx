@@ -366,8 +366,9 @@ function TournamentRegistrationPage() {
     leave: handleLeaveWaitlist, isLeaving: isLeavingWaitlist, leaveError: waitlistError,
   } = useLeaveWaitlist(tr?.id, {
     refetch,
-    onLeft: () => setWaitlistOverride(null),
-    onEntryGone: () => setWaitlistOverride(undefined),
+    // Either way a refusal that said "already on the list" is false from here on.
+    onLeft: () => { setWaitlistOverride(null); setRegisterError(null) },
+    onEntryGone: () => { setWaitlistOverride(undefined); setRegisterError(null) },
   })
 
   if (isLoading) {
