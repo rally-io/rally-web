@@ -180,6 +180,8 @@ function TournamentRegistrationPage() {
     // of date: refetch so it shows the registration instead of Register Now.
     // The error text is the hook's state and stays.
     onRegisterRejected: () => { void refetch() },
+    // The row exists: Back from the next screen must show it, not this form.
+    onRegistrationSettled: () => { void refetch() },
     // The list was switched off between load and submit: Register answers
     // TOURNAMENT_FULL again. Refetch so the page flips to its full state.
     onTournamentFull: () => { void refetch() },
@@ -364,8 +366,9 @@ function TournamentRegistrationPage() {
     leave: handleLeaveWaitlist, isLeaving: isLeavingWaitlist, leaveError: waitlistError,
   } = useLeaveWaitlist(tr?.id, {
     refetch,
-    onLeft: () => setWaitlistOverride(null),
-    onEntryGone: () => setWaitlistOverride(undefined),
+    // Either way a refusal that said "already on the list" is false from here on.
+    onLeft: () => { setWaitlistOverride(null); setRegisterError(null) },
+    onEntryGone: () => { setWaitlistOverride(undefined); setRegisterError(null) },
   })
 
   if (isLoading) {

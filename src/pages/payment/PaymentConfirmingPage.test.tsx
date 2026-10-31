@@ -198,3 +198,27 @@ describe('PaymentConfirmingPage — return_to', () => {
     expect(screen.getByRole('button', { name: /activity/i })).toBeInTheDocument()
   })
 })
+
+// A coupon confirmed on the payment page lands here without a page load, so the
+// tournament in memory still says "awaiting payment" (staleTime, src/main.tsx).
+describe('PaymentConfirmingPage — the tournament behind it', () => {
+  const SEARCH = '?type=tournament_registration&id=r-1&tournament_id=t-1'
+
+  it.each(['confirmed', 'timeout'] as const)('%s: marks it out of date', (status) => {
+    const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+    mockUseEntityPolling.mockReturnValue({ status, attempts: 1, entity: null })
+    renderConfirming(SEARCH)
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tournament', 't-1'] })
+    invalidate.mockRestore()
+  })
+
+  it('leaves it while still polling, and when there is no tournament', () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+    mockUseEntityPolling.mockReturnValue({ status: 'polling', attempts: 1, entity: null })
+    renderConfirming(SEARCH)
+    mockUseEntityPolling.mockReturnValue({ status: 'confirmed', attempts: 1, entity: null })
+    renderConfirming('?type=booking&id=b-1')
+    expect(invalidate).not.toHaveBeenCalled()
+    invalidate.mockRestore()
+  })
+})

@@ -1,6 +1,7 @@
 // src/pages/payment/PaymentConfirmingPage.tsx
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { useEntityPolling } from '@/hooks/useEntityPolling'
@@ -28,11 +29,15 @@ export default function PaymentConfirmingPage() {
     eventId,
   })
 
+  const queryClient = useQueryClient()
   useEffect(() => {
     if (status === 'confirmed' || status === 'timeout') {
       pendingPayment.clear()
+      // A coupon confirmed on the payment page lands here with no page load, so the
+      // event page behind this screen still holds the tournament from before it.
+      if (tournamentId) void queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] })
     }
-  }, [status])
+  }, [status, tournamentId, queryClient])
 
   if (!type || !id) {
     return (

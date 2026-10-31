@@ -25,7 +25,7 @@ function reg(over: Partial<MyRegistration> = {}): MyRegistration {
   }
 }
 
-function renderPanel(registration: MyRegistration, returnTo?: string) {
+function renderPanel(registration: MyRegistration, returnTo?: string, tournament = TOURNAMENT) {
   return render(
     <MemoryRouter initialEntries={['/x']}>
       <Routes>
@@ -34,7 +34,7 @@ function renderPanel(registration: MyRegistration, returnTo?: string) {
           element={
             <WaitlistRegistrationPanel
               registration={registration}
-              tournament={TOURNAMENT}
+              tournament={tournament}
               returnTo={returnTo}
               onEvidenceChanged={async () => {}}
             />
@@ -83,6 +83,14 @@ describe('WaitlistRegistrationPanel', () => {
     )
     expect(screen.queryByTestId('waitlist-complete-payment')).not.toBeInTheDocument()
     expect(screen.getByTestId('waitlist-waiver-line')).toBeInTheDocument()
+  })
+
+  it('a free event: nothing to pay, not "payment complete", and no payment button', () => {
+    renderPanel(reg({ status: 'registered', payment_status: 'completed' }), undefined, { ...TOURNAMENT, entry_fee: 0 })
+    expect(screen.getByTestId('waitlist-payment-state')).toHaveTextContent(
+      i18n.t('tournament.tournamentWaitlistPaymentFree'),
+    )
+    expect(screen.queryByTestId('waitlist-complete-payment')).not.toBeInTheDocument()
   })
 
   it('a pending claim with an empty document slot warns and offers the picker', () => {

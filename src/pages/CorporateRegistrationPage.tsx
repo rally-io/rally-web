@@ -86,6 +86,11 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
    * registered card, which is where the player reads why and retries.
    */
   const [evidenceError, setEvidenceError] = useState<string | null>(null)
+  // What this page loaded is out of date after any of the three outcomes below. A
+  // refusal may be "already on the waiting list", so the form has to give way there too.
+  const rereadTournament = () => {
+    void queryClient.invalidateQueries({ queryKey: ['tournament', event.tournamentId] })
+  }
   const registration = useTournamentRegistration(tr, gate, {
     returnTo,
     skipProfileRedirect: true,
@@ -93,9 +98,9 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
     // registration_channel.py) refuses any registration without this marker.
     registrationSource: 'event_page',
     onRegistered: (reg) => pendingUploadRef.current?.(reg),
-    onTournamentFull: () => {
-      void queryClient.invalidateQueries({ queryKey: ['tournament', event.tournamentId] })
-    },
+    onTournamentFull: rereadTournament,
+    onRegisterRejected: rereadTournament,
+    onRegistrationSettled: rereadTournament,
   })
   /**
    * Once the form has been shown, it stays: the readiness skeleton below is a
@@ -203,6 +208,7 @@ export default function CorporateRegistrationPage({ event }: { event: CorporateT
         refetchTournament={refetch}
         evidenceError={evidenceError}
         showTournamentLink={!event.redirectFromTournamentPage}
+        onOffTheList={() => registration.setRegisterError(null)}
       />
     )
   } else if (!open) {
@@ -391,7 +397,7 @@ const NON_CONFIRMED_STATUSES: string[] = [
  * Complete payment, documents, Leave) plus this page's way back to the site.
  */
 function WaitingCard({
-  tr, entry, returnTo, refetchTournament, evidenceError, showTournamentLink,
+  tr, entry, returnTo, refetchTournament, evidenceError, showTournamentLink, onOffTheList,
 }: {
   tr: TournamentDetail
   entry: TournamentWaitlistEntry
@@ -399,6 +405,8 @@ function WaitingCard({
   refetchTournament: () => Promise<unknown>
   evidenceError: string | null
   showTournamentLink: boolean
+  /** A refusal that brought this card up ("already on the list") is false from here on. */
+  onOffTheList: () => void
 }) {
   const { t } = useTranslation()
   // A successful leave refetches; the tournament then has no entry and the page
@@ -408,8 +416,8 @@ function WaitingCard({
   const [left, setLeft] = useState(false)
   const { leave, isLeaving, leaveError } = useLeaveWaitlist(tr.id, {
     refetch: refetchTournament,
-    onLeft: () => setLeft(true),
-    onEntryGone: () => setLeft(false),
+    onLeft: () => { setLeft(true); onOffTheList() },
+    onEntryGone: () => { setLeft(false); onOffTheList() },
   })
   return (
     <div>
