@@ -18,7 +18,12 @@ import { cn } from '@/lib/utils'
  * UI showing this document still has to lay it out right-to-left, or the
  * clause numbers and punctuation land on the wrong side.
  */
-export function EventTerms({ sections, className }: { sections: TermsSection[]; className?: string }) {
+export function EventTerms({ sections, className, dir = 'rtl' }: {
+  sections: TermsSection[]
+  className?: string
+  /** The document's own direction; Hebrew unless a dynamic event says otherwise. */
+  dir?: 'rtl' | 'ltr'
+}) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const panelId = useId()
@@ -51,7 +56,7 @@ export function EventTerms({ sections, className }: { sections: TermsSection[]; 
           tree would put every clause in the tab order and in the reading order
           of a screen reader that ignores `hidden` on an expanded ancestor. */}
       {open && (
-        <div id={panelId} dir="rtl" className="px-5 pb-5 pt-1 border-t border-rally-border-subtle">
+        <div id={panelId} dir={dir} className="px-5 pb-5 pt-1 border-t border-rally-border-subtle">
           {sections.map((section) => (
             <div key={section.heading} className="mt-5 first:mt-4">
               <h3 className="font-display font-bold text-sm text-rally-accent">{section.heading}</h3>

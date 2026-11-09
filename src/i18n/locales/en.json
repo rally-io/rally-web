@@ -1268,6 +1268,133 @@
     },
     "terms": {
       "title": "Tournament rules"
+    },
+    "dyn": {
+      "participantSingle": "Participant",
+      "participantN": "Player {{n}}",
+      "countryCode": "Country code",
+      "skillLevel": "Your level (optional)",
+      "skillLevelHint": "Self-declared. It helps the organisers set up the draw.",
+      "skillLevelSkip": "Not sure / skip",
+      "optional": "optional",
+      "choose": "Choose…",
+      "categoryTitle": "Category",
+      "categoryFull": "Full — waiting list",
+      "categoryFullHint": "This category is full. You can still register: you'll join the waiting list and the organisers will let you know if a spot opens.",
+      "formatPairs": "Pairs",
+      "formatSingles": "Individual",
+      "registersOne": "One player per registration",
+      "registersTwo": "Register a pair — both players' details",
+      "requestedLevel": "Level category",
+      "requestedLevelHint": "The organisers place you using this choice.",
+      "preferredDay": "Preferred day (optional)",
+      "preferredDayHint": "A preference, not a booking.",
+      "preferredDayAny": "No preference",
+      "evidenceTitle": "Required documents",
+      "evidenceTitleOptional": "Documents (optional)",
+      "evidenceDocument": "Your document",
+      "evidenceFor": "Document for {{name}}",
+      "evidenceTooMany": "Up to {{count}} files",
+      "evidenceUpload": "Upload",
+      "evidenceUploadFor": "Upload for {{name}}",
+      "evidenceRemainingTitle": "Add your documents",
+      "consentDefault": "I have read and agree to the terms.",
+      "submit": "Register",
+      "submitWaitlist": "Join the waiting list",
+      "registerAnother": "Register another pair",
+      "statusError": "We couldn't load your registration. Check your connection and try again.",
+      "loadError": "We couldn't load this page. Check your connection and try again.",
+      "err": {
+        "required": "Required",
+        "category": "Choose a category",
+        "phone": "That phone number doesn't look right",
+        "email": "That email doesn't look right",
+        "samePhone": "Both players need different phone numbers",
+        "sameEmail": "Both players need different emails",
+        "termsRequired": "You need to accept the terms to register",
+        "evidenceRequired": "Attach the required document",
+        "duplicatePhone": "This phone number is already registered for this event",
+        "duplicateEmail": "This email is already registered for this event",
+        "emailDomain": "At least one of the two emails must be a company email address",
+        "closed": "Registration for this event has closed.",
+        "rateLimited": "Too many attempts. Wait a minute and try again.",
+        "network": "Connection problem. Check your internet and try again.",
+        "generic": "Something went wrong. Please try again.",
+        "emailDomainSingle": "Please use your company email address"
+      },
+      "day": {
+        "sunday": "Sunday",
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday"
+      },
+      "status": {
+        "confirmed": {
+          "title": "You're in — see you on court",
+          "body": "Your registration is confirmed. The organisers will be in touch on the number you left."
+        },
+        "waitlisted": {
+          "title": "You're on the waiting list",
+          "body": "The category is full. If a spot opens up, the organisers will contact you.",
+          "position": "The category is full. You're number {{n}} on the waiting list; the organisers will contact you if a spot opens."
+        },
+        "removed": {
+          "title": "This registration was removed",
+          "body": "The organisers removed this registration. Contact them if you think this is a mistake."
+        },
+        "cancelled": {
+          "title": "This registration was cancelled",
+          "body": "This registration is no longer active."
+        }
+      },
+      "state": {
+        "not_open": {
+          "title": "Registration hasn't opened yet",
+          "body": "Check back soon, or ask your organiser when it opens."
+        },
+        "paused": {
+          "title": "Registration is paused",
+          "body": "Registration is temporarily paused. Check with your organiser."
+        },
+        "closed": {
+          "title": "Registration is closed",
+          "body": "This event is no longer taking registrations. Check with your organiser."
+        },
+        "cancelled": {
+          "title": "This event was cancelled",
+          "body": "This event isn't taking place. Check with your organiser."
+        }
+      },
+      "roster": {
+        "title": "Event roster",
+        "notFoundTitle": "Link not found",
+        "notFoundBody": "This roster link may be wrong or may have been replaced. Ask the organiser for the current link.",
+        "empty": "Nobody has registered yet.",
+        "count": "Registered players: {{n}}",
+        "download": "Download CSV",
+        "category": "Category",
+        "statusCol": "Status",
+        "status": {
+          "confirmed": "Confirmed",
+          "waitlisted": "Waiting list"
+        },
+        "name": "Name",
+        "phone": "Phone",
+        "level": "Level",
+        "partner": "Partner",
+        "documents": "Documents",
+        "registeredAt": "Registered at",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "fixErrors": "Please fix the errors",
+      "emailRulePair": "At least one of the two emails must be a company email address. The other can be any email.",
+      "emailRuleSingle": "Your email must be a company email address.",
+      "personalEmailPair": "These don't look like company emails — at least one of the two must be.",
+      "personalEmailSingle": "This looks like a personal email — a company email address is required."
     }
   },
   "notFound": {
