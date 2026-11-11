@@ -5,8 +5,12 @@ const ALLOWED = new Set(EVIDENCE_ACCEPT.split(','))
 
 export type EvidenceError = 'evidenceTooMany' | 'evidenceBadFile'
 
-export function validateEvidenceFiles(existing: File[], incoming: File[]): EvidenceError | null {
-  if (existing.length + incoming.length > EVIDENCE_MAX_FILES) return 'evidenceTooMany'
+export function validateEvidenceFiles(
+  existing: File[],
+  incoming: File[],
+  maxFiles: number = EVIDENCE_MAX_FILES,
+): EvidenceError | null {
+  if (existing.length + incoming.length > maxFiles) return 'evidenceTooMany'
   for (const f of incoming) if (!ALLOWED.has(f.type) || f.size > EVIDENCE_MAX_BYTES) return 'evidenceBadFile'
   return null
 }
