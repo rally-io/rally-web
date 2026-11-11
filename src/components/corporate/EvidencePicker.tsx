@@ -24,6 +24,7 @@ export function EvidencePicker({
   onError,
   error,
   disabled,
+  maxFiles,
 }: {
   id: string
   label: string
@@ -32,6 +33,8 @@ export function EvidencePicker({
   onError: (key: EvidenceError) => void
   error?: string | null
   disabled?: boolean
+  /** Defaults to the residency flow's 2; a dynamic corporate event sets its own. */
+  maxFiles?: number
 }) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -42,7 +45,7 @@ export function EvidencePicker({
     e.target.value = ''
     if (picked.length === 0) return
 
-    const err = validateEvidenceFiles(files, picked)
+    const err = validateEvidenceFiles(files, picked, maxFiles)
     if (err) {
       onError(err)
       return
@@ -66,6 +69,7 @@ export function EvidencePicker({
         onChange={handleChange}
         className="sr-only"
         tabIndex={-1}
+        aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
       />
       <button

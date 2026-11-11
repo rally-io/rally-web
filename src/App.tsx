@@ -42,6 +42,7 @@ import PaymentReturnPage from './pages/payment/PaymentReturnPage'
 import PaymentConfirmingPage from './pages/payment/PaymentConfirmingPage'
 import PaymentFailedPage from './pages/payment/PaymentFailedPage'
 import CorporateEventPage from './pages/CorporateEventPage'
+import CorporateRosterPage from './pages/CorporateRosterPage'
 import ElectionsPage from './pages/ElectionsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -77,6 +78,8 @@ export default function App() {
 
         {/* Unlisted corporate event pages (lead signup or real registration — see CorporateEventPage). Bare on purpose: no nav, no app prompt. */}
         <Route path="/join/:slug" element={<CorporateEventPage />} />
+        {/* HR's read-only roster for a CRM-built event: bare, noindex, opened only by its token. */}
+        <Route path="/join/:slug/roster/:token" element={<CorporateRosterPage />} />
 
         {/* "בחירות 2026" club/chain vote. Bare on purpose: a one-screen campaign
             landing page for paid + social traffic, no nav to leak clicks. */}

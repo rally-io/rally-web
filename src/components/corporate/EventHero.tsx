@@ -3,6 +3,7 @@ import { CalendarDays, Clock, MapPin, Lock } from 'lucide-react'
 import type { CorporateEventBase } from '@/constants/corporateEvents'
 import { DetailChip } from './DetailChip'
 import { RallyWordmark } from './RallyWordmark'
+import { cn } from '@/lib/utils'
 
 /**
  * The client's hero: blurred backdrop + image, the "closed event" pill, company,
@@ -99,11 +100,18 @@ export function EventHero({ event, fallbackImage }: {
     </>
   )
 
-  const detailChips = (
-    <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <DetailChip icon={<CalendarDays className="w-4 h-4" />} label={t('corporate.detailsDate')} value={event.dateLabel} />
-      <DetailChip icon={<Clock className="w-4 h-4" />} label={t('corporate.detailsTime')} value={event.timeLabel} isolateLtr />
-      <DetailChip icon={<MapPin className="w-4 h-4" />} label={t('corporate.detailsLocation')} value={event.clubAddress} />
+  // Dynamic (CRM-built) events can switch the details block off, which arrives as empty labels.
+  const chips = [
+    { key: 'date', icon: <CalendarDays className="w-4 h-4" />, label: t('corporate.detailsDate'), value: event.dateLabel, isolateLtr: false },
+    { key: 'time', icon: <Clock className="w-4 h-4" />, label: t('corporate.detailsTime'), value: event.timeLabel, isolateLtr: true },
+    { key: 'location', icon: <MapPin className="w-4 h-4" />, label: t('corporate.detailsLocation'), value: event.clubAddress, isolateLtr: false },
+  ].filter((chip) => chip.value.trim() !== '')
+
+  const detailChips = chips.length === 0 ? null : (
+    <dl className={cn('grid grid-cols-1 gap-3', chips.length >= 3 ? 'sm:grid-cols-3' : chips.length === 2 ? 'sm:grid-cols-2' : '')}>
+      {chips.map((chip) => (
+        <DetailChip key={chip.key} icon={chip.icon} label={chip.label} value={chip.value} isolateLtr={chip.isolateLtr} />
+      ))}
     </dl>
   )
 
@@ -113,7 +121,7 @@ export function EventHero({ event, fallbackImage }: {
     return (
       <header className="relative">
         <div className="container mx-auto px-4 max-w-xl pt-6 sm:pt-8">{titleBlock}</div>
-        <div className="container mx-auto px-4 max-w-xl mt-6">{detailChips}</div>
+        {detailChips && <div className="container mx-auto px-4 max-w-xl mt-6">{detailChips}</div>}
       </header>
     )
   }
@@ -127,7 +135,7 @@ export function EventHero({ event, fallbackImage }: {
           {!wordmarkInFlow && <RallyWordmark className="absolute top-4 start-4 sm:top-6 sm:start-6 z-10" />}
         </div>
         <div className="container mx-auto px-4 max-w-xl pt-6 sm:pt-8">{titleBlock}</div>
-        <div className="container mx-auto px-4 max-w-xl mt-6">{detailChips}</div>
+        {detailChips && <div className="container mx-auto px-4 max-w-xl mt-6">{detailChips}</div>}
       </header>
     )
   }
@@ -144,7 +152,7 @@ export function EventHero({ event, fallbackImage }: {
           <div className="mt-auto pb-8 sm:pb-24">{titleBlock}</div>
         </div>
       </div>
-      <div className="container mx-auto px-4 max-w-xl mt-4 sm:-mt-12 relative">{detailChips}</div>
+      {detailChips && <div className="container mx-auto px-4 max-w-xl mt-4 sm:-mt-12 relative">{detailChips}</div>}
     </header>
   )
 }

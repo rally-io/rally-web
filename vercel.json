@@ -21,6 +21,10 @@
       "destination": "/api/tournament-og?id=:id"
     },
     {
+      "source": "/join/:slug/roster/:token",
+      "destination": "/index.html"
+    },
+    {
       "source": "/join/:slug",
       "destination": "/api/join-og?slug=:slug"
     },
