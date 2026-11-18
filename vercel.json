@@ -9,6 +9,11 @@
       "source": "/holon",
       "destination": "/join/holon-israel-open-2026",
       "permanent": false
+    },
+    {
+      "source": "/elections",
+      "destination": "/",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -35,10 +40,6 @@
     {
       "source": "/ranking/player/:id",
       "destination": "/api/player-season-og?id=:id"
-    },
-    {
-      "source": "/elections",
-      "destination": "/api/elections-og"
     },
     {
       "source": "/(.*)",

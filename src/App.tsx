@@ -43,7 +43,6 @@ import PaymentConfirmingPage from './pages/payment/PaymentConfirmingPage'
 import PaymentFailedPage from './pages/payment/PaymentFailedPage'
 import CorporateEventPage from './pages/CorporateEventPage'
 import CorporateRosterPage from './pages/CorporateRosterPage'
-import ElectionsPage from './pages/ElectionsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 import LoginPage from './pages/auth/LoginPage'
@@ -80,10 +79,6 @@ export default function App() {
         <Route path="/join/:slug" element={<CorporateEventPage />} />
         {/* HR's read-only roster for a CRM-built event: bare, noindex, opened only by its token. */}
         <Route path="/join/:slug/roster/:token" element={<CorporateRosterPage />} />
-
-        {/* "בחירות 2026" club/chain vote. Bare on purpose: a one-screen campaign
-            landing page for paid + social traffic, no nav to leak clicks. */}
-        <Route path="/elections" element={<ElectionsPage />} />
 
         {/* Public live tournament results. Bare on purpose: this is a spectator screen
             shown on club TVs and phones — Navbar/Footer would eat the vertical space the

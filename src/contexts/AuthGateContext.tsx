@@ -20,7 +20,7 @@ interface AuthGateInternals {
   // The modal's flow continues on a full auth page (email verification, forgot
   // password): the modal closes and requireSignIn() rejects with
   // LEFT_FOR_AUTH_PAGE, not USER_CANCELLED, so a caller can keep what the round
-  // trip needs (the /elections ballot, cast when the verification link returns).
+  // trip needs (e.g. a draft, resumed when the verification link returns).
   leave: () => void
   // Called when the modal's own sign-in/sign-up flow just succeeded — resolves
   // the pending requireSignIn() promise directly instead of waiting on the
