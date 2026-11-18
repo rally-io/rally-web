@@ -92,7 +92,7 @@ describe('api/ serverless functions', () => {
 // Without a framework, Vercel builds every file in api/ as its own function, test
 // files included, unless the name starts with `_` or `.` or ends in .d.ts. The
 // Hobby plan allows 12 per deployment, and a 13th fails the whole deployment with
-// no reason in the commit status (2026-10-27, when elections-og.ts arrived). That
+// no reason in the commit status (2026-10-27, when a 13th function arrived). That
 // is why the tests in this folder start with `_`.
 describe('api/ function count', () => {
   it('stays within the Hobby plan limit of 12 functions', () => {
